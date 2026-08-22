@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="64"
+     height="64"
+     viewBox="0 0 64 64"
+     role="img"
+     aria-labelledby="tn-favicon-title tn-favicon-desc"
+     shape-rendering="geometricPrecision">
+  <title id="tn-favicon-title">Terminal Nova favicon</title>
+  <desc id="tn-favicon-desc">
+    A dedicated small-size reduction containing six solid facet shapes
+    and one central four-point nova.
+  </desc>
+
+  <metadata>
+    Brand: Theme Forge / Terminal Nova
+    Asset: Simplified favicon
+    Version: 1.0
+    Background: Transparent
+    Target display sizes: 16 px, 24 px, 32 px, and 48 px.
+    Construction: Seven filled paths only.
+    No circuit traces, dots, bevels, texture, shadows, raster images,
+    live text, external CSS, fonts, or JavaScript.
+    Gradient fallback: Molten Orange #FF8A3D.
+  </metadata>
+
+  <defs>
+    <linearGradient id="tn-favicon-gradient"
+                    x1="22"
+                    y1="21"
+                    x2="42"
+                    y2="43"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF8A3D"/>
+      <stop offset="0.52" stop-color="#E45A9E"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+
+  <g id="favicon-six-facet-enclosure" fill="#262A33">
+    <path d="M34 3L57 16L44 24L34 18Z"/>
+    <path d="M59 20L59 44L45 38L45 26Z"/>
+    <path d="M57 48L34 61L33 46L44 40Z"/>
+    <path d="M30 61L7 48L20 40L31 46Z"/>
+    <path d="M5 44L5 20L19 26L19 38Z"/>
+    <path d="M7 16L30 3L31 18L20 24Z"/>
+  </g>
+
+  <path id="favicon-central-nova"
+        fill="url(#tn-favicon-gradient) #FF8A3D"
+        d="M32 20
+           C33 26.5 36 29.5 44 32
+           C36 34.5 33 37.5 32 44
+           C31 37.5 28 34.5 20 32
+           C28 29.5 31 26.5 32 20Z"/>
+</svg>

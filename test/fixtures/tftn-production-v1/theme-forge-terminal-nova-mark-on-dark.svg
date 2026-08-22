@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 256 256" role="img" aria-labelledby="tn-mark-dark-title tn-mark-dark-desc" focusable="false" shape-rendering="geometricPrecision">
+  <title id="tn-mark-dark-title">Theme Forge Terminal Nova mark for dark surfaces</title>
+  <desc id="tn-mark-dark-desc">Nova Ingot symbol with six forged enclosure facets and a central four-point colored nova.</desc>
+  <defs>
+    <linearGradient id="tn-mark-dark-nova-gradient" gradientUnits="userSpaceOnUse" x1="88" y1="74" x2="170" y2="184">
+      <stop offset="0" stop-color="#FF8A3D"/>
+      <stop offset="0.5" stop-color="#E45A9E"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(0 0) scale(1)" aria-hidden="true">
+    <path d="M 132 18 L 221 70 L 175 93 L 132 68 Z" fill="#FFF8F0"/>
+    <path d="M 225 77 L 225 180 L 178 156 L 178 100 Z" fill="#FFF8F0"/>
+    <path d="M 221 186 L 132 238 L 132 188 L 175 163 Z" fill="#FFF8F0"/>
+    <path d="M 124 238 L 35 186 L 81 163 L 124 188 Z" fill="#FFF8F0"/>
+    <path d="M 31 180 L 31 77 L 78 100 L 78 156 Z" fill="#FFF8F0"/>
+    <path d="M 35 70 L 124 18 L 124 68 L 81 93 Z" fill="#FFF8F0"/>
+    <path d="M 128 76 C 131 106 143 119 174 128 C 143 137 131 150 128 180 C 125 150 113 137 82 128 C 113 119 125 106 128 76 Z" fill="url(#tn-mark-dark-nova-gradient) #FF8A3D"/>
+  </g>
+</svg>

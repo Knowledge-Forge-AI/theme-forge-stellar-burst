@@ -1,0 +1,63 @@
+{
+  "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
+  "version": "0.1.0",
+  "description": "Declarative SVG compiler, transactional installer, and drift checker",
+  "keywords": [
+    "svg",
+    "declarative",
+    "compiler",
+    "theme",
+    "icons",
+    "design-tokens",
+    "drift-detection"
+  ],
+  "homepage": "https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst#readme",
+  "bugs": {
+    "url": "https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst.git"
+  },
+  "license": "AGPL-3.0-or-later",
+  "author": "Samuel Leighton Lair <lair001@gmail.com>",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "tfsb": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "NOTICE",
+    "COMMERCIAL-LICENSE.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --project=chromium --update-snapshots",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.visual.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "0.9.12",
+    "fflate": "0.8.3",
+    "smol-toml": "1.8.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "@types/node": "22.20.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}

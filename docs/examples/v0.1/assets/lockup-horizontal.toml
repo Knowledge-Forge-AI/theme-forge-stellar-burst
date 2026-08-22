@@ -1,0 +1,146 @@
+schema_version = 1
+id = "lockup-horizontal"
+filename = "theme-forge-terminal-nova-horizontal.svg"
+metadata_text = """
+Brand: Theme Forge / Terminal Nova
+Asset: Horizontal production lockup
+Version: 1.0
+Background: Transparent
+Lettering source before conversion: Terminal Nova Grid 1.0,
+custom geometric uppercase lettering.
+Lettering license: CC0 1.0 Universal,
+https://creativecommons.org/publicdomain/zero/1.0/
+All lettering is represented by internal SVG path geometry.
+No font program is embedded or referenced.
+No raster images, external CSS, or JavaScript.
+"""
+
+[canvas]
+width = 940
+height = 280
+view_box = "0 0 940 280"
+shape_rendering = "geometricPrecision"
+
+[accessibility]
+title = "Theme Forge Terminal Nova horizontal lockup"
+title_id = "tn-horizontal-title"
+description = """
+Horizontal production lockup with the six-facet Terminal Nova mark,
+Theme Forge endorsement, and Terminal Nova wordmark.
+"""
+description_id = "tn-horizontal-desc"
+
+[definitions]
+paths = [
+  { id = "glyph-T", d = "M0 0H8M4 0V12" },
+  { id = "glyph-H", d = "M0 0V12M8 0V12M0 6H8" },
+  { id = "glyph-E", d = "M8 0H0V12H8M0 6H6.5" },
+  { id = "glyph-M", d = "M0 12V0L4 5L8 0V12" },
+  { id = "glyph-F", d = "M0 12V0H8M0 6H6.5" },
+  { id = "glyph-O", d = "M1 0H7L8 1V11L7 12H1L0 11V1Z" },
+  { id = "glyph-R", d = "M0 12V0H6.5L8 1.5V4.5L6.5 6H0M4.5 6L8 12" },
+  { id = "glyph-G", d = "M8 2L6 0H2L0 2V10L2 12H8V6H4.5" },
+  { id = "glyph-I", d = "M0 0H8M4 0V12M0 12H8" },
+  { id = "glyph-N", d = "M0 12V0L8 12V0" },
+  { id = "glyph-A", d = "M0 12L4 0L8 12M1.5 8H6.5" },
+  { id = "glyph-L", d = "M0 0V12H8" },
+  { id = "glyph-V", d = "M0 0L4 12L8 0" },
+]
+
+[[definitions.linear_gradients]]
+id = "tn-horizontal-nova-gradient"
+x1 = 92
+y1 = 88
+x2 = 166
+y2 = 172
+units = "userSpaceOnUse"
+stops = [
+  { offset = 0, color = "#FF8A3D" },
+  { offset = 0.52, color = "#E45A9E" },
+  { offset = 1, color = "#8B5CF6" },
+]
+
+[[definitions.groups]]
+id = "tn-horizontal-mark"
+paths = [
+  { fill = "#2A2D35", d = "M132 18L221 70L175 93L132 68Z" },
+  { fill = "#282A31", d = "M225 77L225 180L178 156L178 100Z" },
+  { fill = "#302844", d = "M221 186L132 238L132 188L175 163Z" },
+  { fill = "#35273F", d = "M124 238L35 186L81 163L124 188Z" },
+  { fill = "#2D2F36", d = "M31 180L31 77L78 100L78 156Z" },
+  { fill = "#342A28", d = "M35 70L124 18L124 68L81 93Z" },
+  { fill = "url(#tn-horizontal-nova-gradient)", fill_fallback = "#FF8A3D", d = "M128 76 C131 106 143 119 174 128 C143 137 131 150 128 180 C125 150 113 137 82 128 C113 119 125 106 128 76Z" },
+]
+
+[[elements]]
+type = "use"
+href = "#tn-horizontal-mark"
+transform = "translate(24 48) scale(0.72)"
+
+[[elements]]
+type = "path"
+id = "lockup-divider"
+d = "M235 50V230"
+fill = "none"
+stroke = "#8A8D94"
+stroke_width = 2
+
+[[elements]]
+type = "group"
+id = "theme-forge-lettering"
+transform = "translate(270 74) scale(2.2)"
+fill = "none"
+stroke = "#343740"
+stroke_width = 0.8
+stroke_linecap = "square"
+stroke_linejoin = "bevel"
+stroke_miterlimit = 2
+uses = [
+  { href = "#glyph-T", x = 0 },
+  { href = "#glyph-H", x = 12 },
+  { href = "#glyph-E", x = 24 },
+  { href = "#glyph-M", x = 36 },
+  { href = "#glyph-E", x = 48 },
+  { href = "#glyph-F", x = 68 },
+  { href = "#glyph-O", x = 80 },
+  { href = "#glyph-R", x = 92 },
+  { href = "#glyph-G", x = 104 },
+  { href = "#glyph-E", x = 116 },
+]
+
+[[elements]]
+type = "group"
+id = "terminal-lettering"
+transform = "translate(270 134) scale(5)"
+fill = "none"
+stroke = "#17191F"
+stroke_width = 1.4
+stroke_linecap = "square"
+stroke_linejoin = "bevel"
+stroke_miterlimit = 2
+uses = [
+  { href = "#glyph-T", x = 0 },
+  { href = "#glyph-E", x = 10 },
+  { href = "#glyph-R", x = 20 },
+  { href = "#glyph-M", x = 30 },
+  { href = "#glyph-I", x = 40 },
+  { href = "#glyph-N", x = 50 },
+  { href = "#glyph-A", x = 60 },
+  { href = "#glyph-L", x = 70 },
+]
+
+[[elements]]
+type = "group"
+id = "nova-lettering"
+transform = "translate(270 134) scale(5)"
+fill = "none"
+stroke_width = 1.4
+stroke_linecap = "square"
+stroke_linejoin = "bevel"
+stroke_miterlimit = 2
+uses = [
+  { href = "#glyph-N", x = 88, stroke = "#FF8A3D" },
+  { href = "#glyph-O", x = 98, stroke = "#F8756B" },
+  { href = "#glyph-V", x = 108, stroke = "#C35AC3" },
+  { href = "#glyph-A", x = 118, stroke = "#8B5CF6" },
+]

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="256"
+     height="256"
+     viewBox="0 0 256 256"
+     role="img"
+     aria-labelledby="tn-dark-title tn-dark-desc"
+     shape-rendering="geometricPrecision">
+  <title id="tn-dark-title">Terminal Nova monochrome dark mark</title>
+  <desc id="tn-dark-desc">
+    Near-black single-color Terminal Nova mark for use on light surfaces.
+  </desc>
+
+  <metadata>
+    Brand: Theme Forge / Terminal Nova
+    Asset: Monochrome dark mark
+    Version: 1.0
+    Foreground: Near Black #111318
+    Background: Transparent
+    Construction: Six enclosure facets and one central nova.
+    No raster images, live text, external CSS, fonts, or JavaScript.
+  </metadata>
+
+  <g id="monochrome-dark-mark" fill="#111318">
+    <path id="facet-top-right"
+          d="M132 18L221 70L175 93L132 68Z"/>
+    <path id="facet-right"
+          d="M225 77L225 180L178 156L178 100Z"/>
+    <path id="facet-bottom-right"
+          d="M221 186L132 238L132 188L175 163Z"/>
+    <path id="facet-bottom-left"
+          d="M124 238L35 186L81 163L124 188Z"/>
+    <path id="facet-left"
+          d="M31 180L31 77L78 100L78 156Z"/>
+    <path id="facet-top-left"
+          d="M35 70L124 18L124 68L81 93Z"/>
+    <path id="central-nova"
+          d="M128 76
+             C131 106 143 119 174 128
+             C143 137 131 150 128 180
+             C125 150 113 137 82 128
+             C113 119 125 106 128 76Z"/>
+  </g>
+</svg>

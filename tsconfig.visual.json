@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["playwright.config.ts", "test/visual/**/*.ts"],
+  "exclude": []
+}
