@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "command": "check",
+  "status": "drift",
+  "exitCode": 2,
+  "summary": "Canonical, build, or install state has drift.",
+  "diagnostics": [],
+  "data": {
+    "canonical": {
+      "valid": true,
+      "sourceChanged": true
+    },
+    "build": {
+      "missing": [],
+      "extra": [],
+      "different": []
+    },
+    "install": {
+      "missing": [],
+      "different": [
+        "docs/public/favicon.svg"
+      ]
+    }
+  }
+}

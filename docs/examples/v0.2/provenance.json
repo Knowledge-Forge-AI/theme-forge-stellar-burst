@@ -1,0 +1,60 @@
+{
+  "kind": "tfsb-import-provenance",
+  "schemaVersion": 1,
+  "records": [
+    {
+      "type": "asset",
+      "assetId": "favicon-on-light",
+      "canonicalPath": ".tfsb/assets/favicon-on-light.toml",
+      "archiveDigest": "sha256:dc88853884d9dda9699b4b92b362e8934974c6f9e742c9627f3a4b4355192dbf",
+      "entryName": "favicon-on-light.svg",
+      "entryDigest": "sha256:cbcf044cd7b3024f9419c0cbe9396d1e9cc0d0d777d64a17581d1ea89debc51e",
+      "digestBasis": "tfsb-asset-toml-v1",
+      "archiveModelDigest": "sha256:d5304692611f5bf55f8f5593059fd54282b21bafa2fcc9c0ab1dbfb65b85eb0d",
+      "canonicalState": "present",
+      "canonicalModelDigest": "sha256:d5304692611f5bf55f8f5593059fd54282b21bafa2fcc9c0ab1dbfb65b85eb0d",
+      "resolution": "aligned",
+      "toolVersion": "0.2.0"
+    },
+    {
+      "type": "asset",
+      "assetId": "theme-forge-terminal-nova-horizontal-on-light",
+      "canonicalPath": ".tfsb/assets/theme-forge-terminal-nova-horizontal-on-light.toml",
+      "archiveDigest": "sha256:dc88853884d9dda9699b4b92b362e8934974c6f9e742c9627f3a4b4355192dbf",
+      "entryName": "theme-forge-terminal-nova-horizontal-on-light.svg",
+      "entryDigest": "sha256:75ad8a39a3e642d878d8c5f43319ca1c79028703e68f65260ca86c70c6a12ec3",
+      "digestBasis": "tfsb-asset-toml-v1",
+      "archiveModelDigest": "sha256:33e621ea746f5fa184242e7512001a5136da609abc8214d9f492aa62dc8f24b1",
+      "canonicalState": "present",
+      "canonicalModelDigest": "sha256:33e621ea746f5fa184242e7512001a5136da609abc8214d9f492aa62dc8f24b1",
+      "resolution": "aligned",
+      "toolVersion": "0.2.0"
+    },
+    {
+      "type": "asset",
+      "assetId": "theme-forge-terminal-nova-mark-on-light",
+      "canonicalPath": ".tfsb/assets/theme-forge-terminal-nova-mark-on-light.toml",
+      "archiveDigest": "sha256:dc88853884d9dda9699b4b92b362e8934974c6f9e742c9627f3a4b4355192dbf",
+      "entryName": "theme-forge-terminal-nova-mark-on-light.svg",
+      "entryDigest": "sha256:ea6b2d70dfa117fc7e875c746c98c512066825af1a3b4980b33409dfc687ebf0",
+      "digestBasis": "tfsb-asset-toml-v1",
+      "archiveModelDigest": "sha256:fec3b59ede13c6ba9383417b4d2cec610805d45d37bd93a4ec9f79a2700830d8",
+      "canonicalState": "present",
+      "canonicalModelDigest": "sha256:fec3b59ede13c6ba9383417b4d2cec610805d45d37bd93a4ec9f79a2700830d8",
+      "resolution": "aligned",
+      "toolVersion": "0.2.0"
+    },
+    {
+      "type": "companion",
+      "canonicalPath": ".tfsb/companions/README.md",
+      "archiveDigest": "sha256:dc88853884d9dda9699b4b92b362e8934974c6f9e742c9627f3a4b4355192dbf",
+      "entryName": "README.md",
+      "entryDigest": "sha256:966282712d1107318de7d51edd20bfbd282c4afeb8505341d7480c33a72e39e6",
+      "archiveByteDigest": "sha256:966282712d1107318de7d51edd20bfbd282c4afeb8505341d7480c33a72e39e6",
+      "canonicalState": "present",
+      "canonicalByteDigest": "sha256:966282712d1107318de7d51edd20bfbd282c4afeb8505341d7480c33a72e39e6",
+      "resolution": "aligned",
+      "toolVersion": "0.2.0"
+    }
+  ]
+}

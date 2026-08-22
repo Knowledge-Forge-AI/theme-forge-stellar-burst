@@ -1,44 +1,49 @@
 # Theme Forge Stellar Burst
 
-Theme Forge Stellar Burst (TFSB) is a deterministic declarative SVG compiler, transactional installer, and drift checker. It imports supported SVG assets into human-editable TOML configuration, compiles canonical standards-compliant SVG, distributes assets to configured project destinations, and verifies that source, build artifacts, and installed files never drift out of sync.
+Theme Forge Stellar Burst (TFSB) is a deterministic declarative SVG compiler, transactional installer, and lifecycle drift checker. It turns a bounded, safe subset of SVG into human-editable TOML, compiles canonical standards-compliant SVGs, distributes assets to configured project destinations, and manages upstream asset updates safely without silently overwriting human changes.
 
 ```text
-SVG archive ──► .tfsb TOML ──► build ──► install ──► check
+SVG bundle
+   ↓ import
+.tfsb TOML + companions
+   ↓ build / install / check
+reconcile / diff / fmt / bundle / preview
 ```
 
 ## Why TFSB
 
 Raw SVG is XML: verbose, error-prone to edit by hand, noisy in pull request diffs, and vulnerable to accidental corruption or drift across different application directories.
 
-TFSB establishes `.tfsb` TOML files as the single canonical source of truth for your vector assets:
+TFSB brings software-engineering discipline to vector asset pipelines:
 
-- **Human-editable:** Assets are structured in clean, readable TOML rather than unwieldy XML markup.
-- **Single source of truth:** Change a color, gradient, or dimension once in TOML, then rebuild and reinstall across your entire repository.
-- **Interoperable output:** Generated output is standard, standards-compliant SVG with deterministic attribute ordering, clean formatting, and no proprietary runtime dependencies.
-- **Integrity verification:** Built-in cryptographic drift checks ensure installed SVGs match the canonical source and haven't been modified out-of-band.
+- **Human-editable TOML:** Vector graphics are structured in clean, readable TOML rather than unwieldy XML markup.
+- **Single source of truth:** `.tfsb` is canonical project state. Change a color, gradient, or dimension once in TOML, then rebuild and reinstall across your entire repository.
+- **Interoperable output:** Generated output remains standard, standards-compliant SVG with deterministic attribute ordering, clean formatting, and no proprietary runtime dependencies.
+- **Companion integrity:** Opaque brand and legal companion documents (`README.md`, `LICENSE`, `NOTICE`) travel byte-for-byte alongside vector assets without being mutated or executed.
+- **Safe reconciliation:** Upstream revisions reconcile against paired-checkpoint provenance so manual edits are never silently clobbered.
 
 ## Install
 
 Install globally via npm:
 
 ```sh
-npm install --global @knowledge-forge-ai/theme-forge-stellar-burst
+npm install --global @knowledge-forge-ai/theme-forge-stellar-burst@0.2.0
 ```
 
 Or add as a project development dependency:
 
 ```sh
-npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst
+npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst@0.2.0
 ```
 
 Node.js `22.0.0` or later is required.
 
-## Quick start
+## New-project quick start
 
 1. **Import** an archive of vector assets into your project:
 
    ```sh
-   tfsb import ~/Downloads/brand-assets.zip --root .
+   tfsb import brand-assets.zip --root . --companion README.md --record-provenance
    ```
 
 2. **Configure** target destinations in `.tfsb/project.toml`.
@@ -61,13 +66,17 @@ Node.js `22.0.0` or later is required.
    tfsb check
    ```
 
-6. **Inspect** all managed assets and destination paths:
+6. **Inspect** all managed assets, companion documents, and configured destinations:
 
    ```sh
    tfsb list
    ```
 
-## What the configuration looks like
+7. **Preview** your asset collection in a static offline visual gallery:
+
+   ```sh
+   tfsb preview
+   ```
 
 ### Project configuration (`.tfsb/project.toml`)
 
@@ -82,20 +91,20 @@ directory = "brand/dist"
 asset = "favicon"
 destinations = [
   "public/favicon.svg",
-  "docs/public/favicon.svg",
+  "docs/src/assets/brand/favicon.svg",
 ]
 ```
 
 > **Build directory vs. install destinations:**
 > - The **build directory** (`brand/dist`) is a TFSB-owned directory that may be wholesale generated and replaced. Protected source trees (`src`, `docs`, `test`) are intentionally forbidden as `build.directory` to prevent accidental deletion of source code.
-> - An **install destination** is an individual configured file copy inside the project. Install destinations may live inside source/application trees (such as `docs/src/assets/brand/` or `docs/public/`), provided they do not overlap `.tfsb` or the build directory.
+> - An **install destination** is an individual configured file copy inside the project. Install destinations may live inside source/application trees (such as `docs/src/assets/brand/` or `public/`), provided they do not overlap `.tfsb` or the build directory.
 
 ### Optional bundle companion documents
 
-When an archive carries legal, licensing, or brand guidance documents (such as `README.md`, `LICENSE`, `NOTICE`, `COPYING`, or `COPYRIGHT`), pass `--companion <path>` during import:
+When an archive carries legal, licensing, or brand guidance documents, pass `--companion <path>` during import:
 
 ```sh
-tfsb import ~/Downloads/brand-assets.zip --root . --companion README.md
+tfsb import brand-assets.zip --root . --companion README.md --record-provenance
 ```
 
 Then configure the companion installation in `.tfsb/project.toml`:
@@ -107,8 +116,6 @@ destinations = [
   "README-BRAND.md",
 ]
 ```
-
-Companion documents are explicitly selected during import, preserved into `.tfsb/companions/*`, and installed byte-for-byte across your project.
 
 ### Asset configuration (`.tfsb/assets/favicon.toml`)
 
@@ -149,22 +156,100 @@ fill_fallback = "#FF8A3D"
 d = "M32 20 C33 26.5 36 29.5 44 32 C36 34.5 33 37.5 32 44 C31 37.5 28 34.5 20 32 C28 29.5 31 26.5 32 20Z"
 ```
 
-## Commands
+## Updating an existing project
 
-- **`tfsb import <archive.zip>`**: Safely parses a local ZIP archive, validates every SVG against the supported schema, and writes `.tfsb/project.toml` and `.tfsb/assets/*.toml`. Supports `--select <path>` to selectively import specific SVGs, `--companion <path>` to carry opaque companion documents, and `--dry-run` to preview changes.
-- **`tfsb build`**: Compiles all `.tfsb/assets/*.toml` files into deterministic SVG output files in the configured build directory and writes `.tfsb-build.json`.
-- **`tfsb install`**: Copies built SVGs and companion documents transactionally to their configured destinations across the repository.
-- **`tfsb check`**: Validates project structure and detects drift. Returns exit code `0` when clean, `1` on invalid schema/configuration, or `2` when source, build, or installed files have drifted.
-- **`tfsb list`**: Displays a formatted manifest of all managed assets, companion documents, and configured installation destinations.
-- **`tfsb --help` / `tfsb --version`**: Shows command help or the installed package version (`0.1.0`).
+When upstream designers supply a revised ZIP archive, reconcile incoming updates against canonical state and paired provenance checkpoints:
 
-## Safety and scope
+```sh
+# 1. Inspect planned changes safely (read-only by default)
+tfsb reconcile revised-brand-assets.zip
 
-- **Bounded Declarative Language & Companion Documents:** TFSB compiles a bounded SVG declarative language and can carry explicitly selected opaque text companion documents (`*.md`, `*.markdown`, `*.txt`, or well-known legal documents `LICENSE`, `NOTICE`, `COPYING`, `COPYRIGHT`) with an SVG bundle. Companion documents are copied byte-for-byte; they are never parsed as SVG, transformed, executed, or generalized into arbitrary package installation. Script and code files (`.py`, `.sh`, `.js`, `.ts`) are rejected.
-- **Local archives only:** TFSB processes only local ZIP archives provided by the operator; it does not download from arbitrary URLs.
-- **Safe archive parsing:** Archives are parsed in memory with strict path canonicalization. Absolute paths, `..` traversal, and symlinks fail closed. Ordinary safe regular non-SVG members in the archive are ignored by default unless explicitly selected with `--companion`, and selecting a non-SVG member with `--select` or selecting an unsupported companion type fails closed.
-- **Project-root confinement:** All write operations (build outputs and installed files) are strictly confined to the project directory tree. Path traversal outside the root is blocked.
-- **Fail-closed bounded subset:** TFSB supports an intentionally bounded declarative subset of SVG (paths, groups, linear gradients, use references, accessibility tags). Unsupported elements, arbitrary scripts, external CSS, foreign objects, and unparsed XML are rejected rather than guessed or approximated.
+# 2. Apply planned changes transactionally
+tfsb reconcile revised-brand-assets.zip --apply
+```
+
+- **Read-only by default:** `tfsb reconcile` analyzes differences without writing to disk.
+- **Human canonical edits are never overwritten silently:** Canonical modifications made since the last import/reconcile are detected and preserved.
+- **Omissions never delete:** If an asset in your project is omitted from the new archive, it is preserved as an accepted absence (tombstone) rather than silently deleted.
+- **Conflicts need exact per-record authority:** When upstream changes conflict with local canonical edits, exact flags (`--resolve <id>=archive|canonical`, `--rename <from>=<to>`, `--remove <id>`) are required to authorize the change.
+- **Renames/removals are explicit:** All renames and removals require operator confirmation.
+
+## Portable bundles
+
+Export your canonical project into a portable, reproducible ZIP bundle:
+
+```sh
+# Export complete canonical assets and companions
+tfsb bundle --output release/brand-assets.zip
+
+# Import into a clean project preserving declared asset IDs and names
+tfsb import release/brand-assets.zip --manifest --root ../fresh-copy
+```
+
+- **Deterministic store-only ZIPs:** Bundle archives use level 0 compression, fixed timestamps, and canonical header sorting for byte-stable hashes across environments.
+- **Exact manifest verification:** The bundle includes `tfsb-manifest.json` containing cryptographic SHA-256 digests and asset identifiers.
+- **Identity preservation:** Importing with `--manifest` restores declared asset IDs and file names instead of guessing from basenames.
+- **No policy transport:** Bundles transport only canonical artwork and companion documents; installation destinations and provenance history remain private to each repository.
+
+## Inspection and automation
+
+TFSB provides rich inspection, formatting, and diffing tools for CI/CD and developer workflows:
+
+```sh
+# Compare canonical state against paired provenance checkpoint
+tfsb diff
+
+# Compare canonical state against an external archive
+tfsb diff --archive revised.zip
+
+# Compare canonical state against build outputs (requires v3 receipt)
+tfsb diff --build
+
+# Compare canonical state against installed destinations
+tfsb diff --install
+
+# Check canonical TOML formatting without writing
+tfsb fmt --check
+
+# Format canonical TOML files deterministically
+tfsb fmt
+
+# Render an offline HTML preview gallery
+tfsb preview
+
+# Emit machine-readable output for automation
+tfsb check --json
+```
+
+### Automation & machine results
+
+Commands supporting `--json` (`check`, `list`, `reconcile`, `diff`, `bundle`, `fmt`, `preview`) emit a single envelope matching JSON schema version 1 with deterministic key sorting:
+
+- **Exit code `0`:** Clean / success.
+- **Exit code `1`:** Invalid / failed operation.
+- **Exit code `2`:** Valid drift / conflict state.
+
+## Upgrading a v0.1 project
+
+Upgrading an existing v0.1 project to v0.2 is straightforward:
+
+- **Bootstrap provenance:** A matching archive can bootstrap provenance with `reconcile ... --apply` to generate `.tfsb/provenance.json`.
+- **Mismatching archive:** A mismatching archive requires explicit decisions (`--resolve`, `--rename`, `--remove`).
+- **Build receipts:** Valid v2 build receipts remain accepted as build ownership evidence for `check`, `build`, and `install`.
+- **Upgrade to v3 receipt:** Run `tfsb build` once to emit v3 policy evidence before using `diff --build`.
+- **Preview directory:** `.tfsb-preview` is generated state and should be added to `.gitignore`.
+
+## Safety and limits
+
+TFSB is built with a defense-in-depth safety architecture:
+
+- **Local ZIPs only:** Processes only local archives provided by the operator; no arbitrary network access.
+- **Fail-closed SVG subset:** Supports a safe declarative subset (paths, groups, linear gradients, use references, accessibility tags). Scripts, CSS `<style>` blocks, external resources, foreign objects, and unparsed XML fail closed.
+- **No scripts/external resources:** Scripts (`.js`, `.ts`, `.py`, `.sh`) and executable companion files are rejected immediately.
+- **Path/symlink confinement:** Absolute paths, `..` traversal, and symlink traversals fail closed across all read, write, build, and install operations.
+- **Exact companion allowlist:** Only text documentation (`*.md`, `*.markdown`, `*.txt`) and well-known legal documents (`LICENSE`, `NOTICE`, `COPYING`, `COPYRIGHT`) are permitted as companions.
+- **Limits:** Maximum 1,024 archive entries, maximum 128 selected/mutating SVG assets, 8 MiB per selected entry, 32 MiB selected aggregate, and 128 MiB raw archive size.
+- **Full external icon warehouses are not a v0.2 lifecycle target:** TFSB is designed for bounded, curated brand and application icon sets.
 
 ## Development
 
@@ -175,6 +260,7 @@ npm ci
 npm run typecheck
 npm test
 npm run build
+npm audit --omit=dev
 ```
 
 Run browser visual-equivalence qualification:
@@ -186,7 +272,10 @@ npm run test:visual
 
 For more architectural background, see:
 - [v0.1 Architecture Specification](docs/architecture/v0.1.md)
+- [v0.2 Architecture Specification](docs/architecture/v0.2.md)
 - [ADR 0001: Declarative SVG Language](docs/decisions/0001-declarative-svg-language.md)
+- [ADR 0002: Paired-Checkpoint Provenance](docs/decisions/0002-safe-reconciliation-and-provenance.md)
+- [ADR 0003: Deterministic Bundle Format](docs/decisions/0003-deterministic-bundle-format.md)
 - [Visual Qualification Framework](docs/implementation/tfsb3-visual-testing.md)
 
 ## License

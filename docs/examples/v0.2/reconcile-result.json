@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "command": "reconcile",
+  "status": "conflict",
+  "exitCode": 2,
+  "summary": "Reconciliation has unresolved conflicts.",
+  "diagnostics": [],
+  "data": {
+    "applied": false,
+    "changed": false,
+    "pending": true,
+    "blocked": true,
+    "records": [
+      {
+        "key": "theme-forge-terminal-nova-mark-on-light",
+        "kind": "asset",
+        "classification": "CONFLICT",
+        "plannedAction": "resolve",
+        "requiredAuthority": "resolve",
+        "blocker": true,
+        "resolutionRequired": true
+      }
+    ]
+  }
+}

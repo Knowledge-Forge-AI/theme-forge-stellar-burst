@@ -1,0 +1,45 @@
+schema_version = 1
+name = "theme-forge-terminal-nova"
+
+[build]
+directory = "brand/dist"
+
+[[install]]
+asset = "theme-forge-terminal-nova-mark-on-light"
+destinations = ["docs/src/assets/brand/theme-forge-terminal-nova-mark-on-light.svg"]
+
+[[install]]
+asset = "theme-forge-terminal-nova-mark-on-dark"
+destinations = ["docs/src/assets/brand/theme-forge-terminal-nova-mark-on-dark.svg"]
+
+[[install]]
+asset = "theme-forge-terminal-nova-horizontal-on-light"
+destinations = ["docs/src/assets/brand/theme-forge-terminal-nova-horizontal-on-light.svg"]
+
+[[install]]
+asset = "theme-forge-terminal-nova-horizontal-on-dark"
+destinations = ["docs/src/assets/brand/theme-forge-terminal-nova-horizontal-on-dark.svg"]
+
+[[install]]
+asset = "theme-forge-terminal-nova-stacked-on-light"
+destinations = ["docs/src/assets/brand/theme-forge-terminal-nova-stacked-on-light.svg"]
+
+[[install]]
+asset = "theme-forge-terminal-nova-stacked-on-dark"
+destinations = ["docs/src/assets/brand/theme-forge-terminal-nova-stacked-on-dark.svg"]
+
+[[install]]
+asset = "favicon-on-light"
+destinations = [
+  "docs/public/favicon-on-light.svg",
+  "docs/public/favicon.svg",
+]
+
+[[install]]
+asset = "favicon-on-dark"
+destinations = ["docs/public/favicon-on-dark.svg"]
+
+[[companion]]
+file = "README.md"
+destinations = ["README-BRAND.md"]
+

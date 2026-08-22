@@ -1,11 +1,12 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { strToU8, zipSync, type Zippable } from "fflate";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { readArchive, readSvgArchive } from "../src/archive.js";
+import { ARCHIVE_LIMITS, readArchive, readSvgArchive } from "../src/archive.js";
+import { computeSha256 } from "../src/digests.js";
 
 const roots: string[] = [];
 
@@ -30,6 +31,30 @@ function encrypted(bytes: Uint8Array): Uint8Array {
     if (signature === 0x02014b50) view.setUint16(offset + 8, view.getUint16(offset + 8, true) | 1, true);
   }
   return result;
+}
+
+async function sparseArchiveAtRawLimit(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tfsb-archive-limit-"));
+  roots.push(root);
+  const path = join(root, "maximum.zip");
+  const raw = zipSync({ "a.svg": strToU8("<svg></svg>") }, { level: 0, mtime: new Date("1980-01-02T00:00:00Z") });
+  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  const eocd = raw.length - 22;
+  const oldCentralOffset = view.getUint32(eocd + 16, true);
+  const centralSize = view.getUint32(eocd + 12, true);
+  const newCentralOffset = ARCHIVE_LIMITS.archiveFileBytes - centralSize - 22;
+  const ending = raw.slice(oldCentralOffset);
+  new DataView(ending.buffer, ending.byteOffset, ending.byteLength)
+    .setUint32(centralSize + 16, newCentralOffset, true);
+  const handle = await open(path, "w+");
+  try {
+    await handle.write(raw.subarray(0, oldCentralOffset), 0, oldCentralOffset, 0);
+    await handle.write(ending, 0, ending.length, newCentralOffset);
+    await handle.truncate(ARCHIVE_LIMITS.archiveFileBytes);
+  } finally {
+    await handle.close();
+  }
+  return path;
 }
 
 describe("bounded ZIP archive inspection", () => {
@@ -58,6 +83,14 @@ describe("bounded ZIP archive inspection", () => {
   it("rejects portable normalized duplicates", async () => {
     const path = await archive({ "A.svg": strToU8("a"), "a.svg": strToU8("b") });
     await expect(readSvgArchive(path)).rejects.toMatchObject({
+      diagnostic: { code: "ARCHIVE_COLLISION" },
+    });
+
+    const nfcPath = await archive({
+      "caf\u00e9.svg": strToU8("a"),
+      "cafe\u0301.svg": strToU8("b"),
+    });
+    await expect(readSvgArchive(nfcPath)).rejects.toMatchObject({
       diagnostic: { code: "ARCHIVE_COLLISION" },
     });
   });
@@ -119,6 +152,61 @@ describe("bounded ZIP archive inspection", () => {
       diagnostic: { code: "ARCHIVE_LIMIT_EXCEEDED" },
     });
   });
+
+  it("rejects an oversized sparse file before structure validation or hashing", async () => {
+    const root = await mkdtemp(join(tmpdir(), "tfsb-archive-oversized-"));
+    roots.push(root);
+    const path = join(root, "oversized.zip");
+    const handle = await open(path, "w+");
+    await handle.truncate(ARCHIVE_LIMITS.archiveFileBytes + 1);
+    await handle.close();
+    let structureReached = false;
+    let hashReached = false;
+    await expect(readArchive(path, [], [], {
+      hooks: {
+        afterStructure: () => { structureReached = true; },
+        beforeHash: () => { hashReached = true; },
+      },
+    })).rejects.toMatchObject({ diagnostic: { code: "ARCHIVE_LIMIT_EXCEEDED" } });
+    expect(structureReached).toBe(false);
+    expect(hashReached).toBe(false);
+  });
+
+  it("rejects malformed ZIP structure without a whole-archive hash pass", async () => {
+    const root = await mkdtemp(join(tmpdir(), "tfsb-archive-malformed-"));
+    roots.push(root);
+    const path = join(root, "malformed.zip");
+    await writeFile(path, Buffer.alloc(512 * 1024, 0x61));
+    let hashReached = false;
+    await expect(readArchive(path, [], [], { hooks: { beforeHash: () => { hashReached = true; } } }))
+      .rejects.toMatchObject({ diagnostic: { code: "ARCHIVE_INVALID_ZIP" } });
+    expect(hashReached).toBe(false);
+  });
+
+  it("accepts a valid sparse ZIP at the exact fixed raw-file ceiling", async () => {
+    const path = await sparseArchiveAtRawLimit();
+    const result = await readArchive(path);
+    expect(result.svgs.map((entry) => entry.entryName)).toEqual(["a.svg"]);
+    expect(result.archiveDigest).toBe(computeSha256(await readFile(path)));
+  });
+
+  it.each(["afterStructure", "onHashChunk", "beforeSelectedEntryInspection"] as const)(
+    "fails closed when archive identity changes at the %s phase",
+    async (phase) => {
+      const path = await archive({
+        "a.svg": strToU8("<svg></svg>"),
+        "padding.bin": new Uint8Array(192 * 1024),
+      });
+      let mutated = false;
+      const mutate = async () => {
+        if (mutated) return;
+        mutated = true;
+        await appendFile(path, "x");
+      };
+      await expect(readArchive(path, [], [], { hooks: { [phase]: mutate } }))
+        .rejects.toMatchObject({ diagnostic: { code: "ARCHIVE_CHANGED_DURING_PLAN" } });
+    },
+  );
 
   it("rejects declared entry compressedSize exceeding limits or file extents", async () => {
     const root = await mkdtemp(join(tmpdir(), "tfsb-archive-"));

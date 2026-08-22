@@ -17,7 +17,12 @@ export type DiagnosticOperation =
   | "build"
   | "install"
   | "check"
-  | "list";
+  | "list"
+  | "reconcile"
+  | "bundle"
+  | "diff"
+  | "fmt"
+  | "preview";
 export type DiagnosticDomain =
   | "project-toml"
   | "asset-toml"
@@ -25,7 +30,10 @@ export type DiagnosticDomain =
   | "archive"
   | "project"
   | "filesystem"
-  | "cli";
+  | "cli"
+  | "provenance"
+  | "transaction"
+  | "manifest";
 
 export interface Diagnostic {
   readonly code: string;

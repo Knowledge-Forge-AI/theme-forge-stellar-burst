@@ -1,0 +1,34 @@
+{
+  "kind": "tfsb-bundle-manifest",
+  "schemaVersion": 1,
+  "generator": {
+    "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
+    "version": "0.2.0"
+  },
+  "projectName": "theme-forge-terminal-nova",
+  "files": [
+    {
+      "type": "companion",
+      "name": "README.md",
+      "sha256": "966282712d1107318de7d51edd20bfbd282c4afeb8505341d7480c33a72e39e6"
+    },
+    {
+      "type": "asset",
+      "name": "favicon-on-light.svg",
+      "assetId": "favicon-on-light",
+      "sha256": "c8c25a66b254378bc20d3774fece387e83732f893aa7f24ee36ebfbe236bf2d6"
+    },
+    {
+      "type": "asset",
+      "name": "theme-forge-terminal-nova-horizontal-on-light.svg",
+      "assetId": "theme-forge-terminal-nova-horizontal-on-light",
+      "sha256": "14288f23b48fd51265f46b0a78cea41a17617681c4649fc494c70a868d3de55e"
+    },
+    {
+      "type": "asset",
+      "name": "theme-forge-terminal-nova-mark-on-light.svg",
+      "assetId": "theme-forge-terminal-nova-mark-on-light",
+      "sha256": "4b90e891802d3b70144d26b500bdb750de862419701305000e1125c1c4a96f3a"
+    }
+  ]
+}

@@ -10,9 +10,40 @@ const examples = [
 ] as const;
 
 describe("checked-in example language", () => {
-  it("parses project.toml", () => {
+  it.each(["check-result.json", "reconcile-result.json", "preview-result.json"])("parses the v0.2 %s machine-result example", (name) => {
+    const value = JSON.parse(readRepoFile(`docs/examples/v0.2/${name}`)) as Record<string, unknown>;
+    expect(value.schemaVersion).toBe(1);
+    expect(["check", "reconcile", "preview"]).toContain(value.command);
+    expect(value).toHaveProperty("diagnostics");
+    expect(value).toHaveProperty("data");
+  });
+
+  it("parses the v0.2 provenance.json example", () => {
+    const value = JSON.parse(readRepoFile("docs/examples/v0.2/provenance.json")) as Record<string, unknown>;
+    expect(value.kind).toBe("tfsb-import-provenance");
+    expect(value.schemaVersion).toBe(1);
+    expect(Array.isArray(value.records)).toBe(true);
+  });
+
+  it("parses the v0.2 tfsb-manifest.json example", () => {
+    const value = JSON.parse(readRepoFile("docs/examples/v0.2/tfsb-manifest.json")) as Record<string, unknown>;
+    expect(value.kind).toBe("tfsb-bundle-manifest");
+    expect(value.schemaVersion).toBe(1);
+    expect(value.generator).toEqual({
+      name: "@knowledge-forge-ai/theme-forge-stellar-burst",
+      version: "0.2.0",
+    });
+  });
+
+  it("parses v0.1 project.toml", () => {
     const project = unwrap(parseProjectToml(readRepoFile("docs/examples/v0.1/project.toml")));
     expect(project.name).toBe("Theme Forge Terminal Nova");
+  });
+
+  it("parses v0.2 project.toml with unchanged schema-1 parser", () => {
+    const project = unwrap(parseProjectToml(readRepoFile("docs/examples/v0.2/project.toml")));
+    expect(project.name).toBe("theme-forge-terminal-nova");
+    expect(project.schemaVersion).toBe(1);
   });
 
   it.each(examples)("normalizes %s TOML to the fixture SVG model", (asset, fixture) => {
