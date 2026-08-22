@@ -1,0 +1,69 @@
+schema_version = 1
+id = "favicon"
+filename = "favicon.svg"
+metadata_text = """
+Brand: Theme Forge / Terminal Nova
+Asset: Simplified favicon
+Version: 1.0
+Background: Transparent
+Target display sizes: 16 px, 24 px, 32 px, and 48 px.
+Construction: Seven filled paths only.
+No circuit traces, dots, bevels, texture, shadows, raster images,
+live text, external CSS, fonts, or JavaScript.
+Gradient fallback: Molten Orange #FF8A3D.
+"""
+
+[canvas]
+width = 64
+height = 64
+view_box = "0 0 64 64"
+shape_rendering = "geometricPrecision"
+
+[accessibility]
+title = "Terminal Nova favicon"
+title_id = "tn-favicon-title"
+description = """
+A dedicated small-size reduction containing six solid facet shapes
+and one central four-point nova.
+"""
+description_id = "tn-favicon-desc"
+
+[[definitions.linear_gradients]]
+id = "tn-favicon-gradient"
+x1 = 22
+y1 = 21
+x2 = 42
+y2 = 43
+units = "userSpaceOnUse"
+stops = [
+  { offset = 0, color = "#FF8A3D" },
+  { offset = 0.52, color = "#E45A9E" },
+  { offset = 1, color = "#8B5CF6" },
+]
+
+[[elements]]
+type = "group"
+id = "favicon-six-facet-enclosure"
+fill = "#262A33"
+paths = [
+  { d = "M34 3L57 16L44 24L34 18Z" },
+  { d = "M59 20L59 44L45 38L45 26Z" },
+  { d = "M57 48L34 61L33 46L44 40Z" },
+  { d = "M30 61L7 48L20 40L31 46Z" },
+  { d = "M5 44L5 20L19 26L19 38Z" },
+  { d = "M7 16L30 3L31 18L20 24Z" },
+]
+
+[[elements]]
+type = "path"
+id = "favicon-central-nova"
+fill = "url(#tn-favicon-gradient)"
+fill_fallback = "#FF8A3D"
+d = """
+M32 20
+C33 26.5 36 29.5 44 32
+C36 34.5 33 37.5 32 44
+C31 37.5 28 34.5 20 32
+C28 29.5 31 26.5 32 20Z
+"""
+

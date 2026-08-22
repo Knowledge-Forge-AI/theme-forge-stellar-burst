@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 64 64" role="img" aria-labelledby="tn-favicon-light-title tn-favicon-light-desc" focusable="false" shape-rendering="geometricPrecision">
+  <title id="tn-favicon-light-title">Theme Forge Terminal Nova favicon for light surfaces</title>
+  <desc id="tn-favicon-light-desc">Dedicated seven-shape favicon for light browser surfaces, using six Gunmetal facets and a colored four-point nova.</desc>
+  <defs>
+    <linearGradient id="tn-favicon-light-nova-gradient" gradientUnits="userSpaceOnUse" x1="20" y1="20" x2="44" y2="44">
+      <stop offset="0" stop-color="#FF8A3D"/>
+      <stop offset="0.5" stop-color="#E45A9E"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+  <g aria-hidden="true">
+    <path d="M 34 3 L 57 16 L 44 24 L 34 18 Z" fill="#262A33"/>
+    <path d="M 59 20 L 59 44 L 45 38 L 45 26 Z" fill="#262A33"/>
+    <path d="M 57 48 L 34 61 L 33 46 L 44 40 Z" fill="#262A33"/>
+    <path d="M 30 61 L 7 48 L 20 40 L 31 46 Z" fill="#262A33"/>
+    <path d="M 5 44 L 5 20 L 19 26 L 19 38 Z" fill="#262A33"/>
+    <path d="M 7 16 L 30 3 L 31 18 L 20 24 Z" fill="#262A33"/>
+    <path d="M 32 20 C 33 26.5 36 29.5 44 32 C 36 34.5 33 37.5 32 44 C 31 37.5 28 34.5 20 32 C 28 29.5 31 26.5 32 20 Z" fill="url(#tn-favicon-light-nova-gradient) #FF8A3D"/>
+  </g>
+</svg>

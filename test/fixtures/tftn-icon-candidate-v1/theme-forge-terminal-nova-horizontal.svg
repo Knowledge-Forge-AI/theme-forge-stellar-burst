@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="940"
+     height="280"
+     viewBox="0 0 940 280"
+     role="img"
+     aria-labelledby="tn-horizontal-title tn-horizontal-desc"
+     shape-rendering="geometricPrecision">
+  <title id="tn-horizontal-title">Theme Forge Terminal Nova horizontal lockup</title>
+  <desc id="tn-horizontal-desc">
+    Horizontal production lockup with the six-facet Terminal Nova mark,
+    Theme Forge endorsement, and Terminal Nova wordmark.
+  </desc>
+
+  <metadata>
+    Brand: Theme Forge / Terminal Nova
+    Asset: Horizontal production lockup
+    Version: 1.0
+    Background: Transparent
+    Lettering source before conversion: Terminal Nova Grid 1.0,
+    custom geometric uppercase lettering.
+    Lettering license: CC0 1.0 Universal,
+    https://creativecommons.org/publicdomain/zero/1.0/
+    All lettering is represented by internal SVG path geometry.
+    No font program is embedded or referenced.
+    No raster images, external CSS, or JavaScript.
+  </metadata>
+
+  <defs>
+    <linearGradient id="tn-horizontal-nova-gradient"
+                    x1="92"
+                    y1="88"
+                    x2="166"
+                    y2="172"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF8A3D"/>
+      <stop offset="0.52" stop-color="#E45A9E"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+
+    <g id="tn-horizontal-mark">
+      <path fill="#2A2D35" d="M132 18L221 70L175 93L132 68Z"/>
+      <path fill="#282A31" d="M225 77L225 180L178 156L178 100Z"/>
+      <path fill="#302844" d="M221 186L132 238L132 188L175 163Z"/>
+      <path fill="#35273F" d="M124 238L35 186L81 163L124 188Z"/>
+      <path fill="#2D2F36" d="M31 180L31 77L78 100L78 156Z"/>
+      <path fill="#342A28" d="M35 70L124 18L124 68L81 93Z"/>
+      <path fill="url(#tn-horizontal-nova-gradient) #FF8A3D"
+            d="M128 76
+               C131 106 143 119 174 128
+               C143 137 131 150 128 180
+               C125 150 113 137 82 128
+               C113 119 125 106 128 76Z"/>
+    </g>
+
+    <!-- Terminal Nova Grid 1.0 path glyphs -->
+    <path id="glyph-T" d="M0 0H8M4 0V12"/>
+    <path id="glyph-H" d="M0 0V12M8 0V12M0 6H8"/>
+    <path id="glyph-E" d="M8 0H0V12H8M0 6H6.5"/>
+    <path id="glyph-M" d="M0 12V0L4 5L8 0V12"/>
+    <path id="glyph-F" d="M0 12V0H8M0 6H6.5"/>
+    <path id="glyph-O" d="M1 0H7L8 1V11L7 12H1L0 11V1Z"/>
+    <path id="glyph-R" d="M0 12V0H6.5L8 1.5V4.5L6.5 6H0M4.5 6L8 12"/>
+    <path id="glyph-G" d="M8 2L6 0H2L0 2V10L2 12H8V6H4.5"/>
+    <path id="glyph-I" d="M0 0H8M4 0V12M0 12H8"/>
+    <path id="glyph-N" d="M0 12V0L8 12V0"/>
+    <path id="glyph-A" d="M0 12L4 0L8 12M1.5 8H6.5"/>
+    <path id="glyph-L" d="M0 0V12H8"/>
+    <path id="glyph-V" d="M0 0L4 12L8 0"/>
+  </defs>
+
+  <use href="#tn-horizontal-mark"
+       transform="translate(24 48) scale(.72)"/>
+
+  <path id="lockup-divider"
+        d="M235 50V230"
+        fill="none"
+        stroke="#8A8D94"
+        stroke-width="2"/>
+
+  <g id="theme-forge-lettering"
+     transform="translate(270 74) scale(2.2)"
+     fill="none"
+     stroke="#343740"
+     stroke-width=".8"
+     stroke-linecap="square"
+     stroke-linejoin="bevel"
+     stroke-miterlimit="2">
+    <use href="#glyph-T" x="0"/>
+    <use href="#glyph-H" x="12"/>
+    <use href="#glyph-E" x="24"/>
+    <use href="#glyph-M" x="36"/>
+    <use href="#glyph-E" x="48"/>
+    <use href="#glyph-F" x="68"/>
+    <use href="#glyph-O" x="80"/>
+    <use href="#glyph-R" x="92"/>
+    <use href="#glyph-G" x="104"/>
+    <use href="#glyph-E" x="116"/>
+  </g>
+
+  <g id="terminal-lettering"
+     transform="translate(270 134) scale(5)"
+     fill="none"
+     stroke="#17191F"
+     stroke-width="1.4"
+     stroke-linecap="square"
+     stroke-linejoin="bevel"
+     stroke-miterlimit="2">
+    <use href="#glyph-T" x="0"/>
+    <use href="#glyph-E" x="10"/>
+    <use href="#glyph-R" x="20"/>
+    <use href="#glyph-M" x="30"/>
+    <use href="#glyph-I" x="40"/>
+    <use href="#glyph-N" x="50"/>
+    <use href="#glyph-A" x="60"/>
+    <use href="#glyph-L" x="70"/>
+  </g>
+
+  <g id="nova-lettering"
+     transform="translate(270 134) scale(5)"
+     fill="none"
+     stroke-width="1.4"
+     stroke-linecap="square"
+     stroke-linejoin="bevel"
+     stroke-miterlimit="2">
+    <use href="#glyph-N" x="88" stroke="#FF8A3D"/>
+    <use href="#glyph-O" x="98" stroke="#F8756B"/>
+    <use href="#glyph-V" x="108" stroke="#C35AC3"/>
+    <use href="#glyph-A" x="118" stroke="#8B5CF6"/>
+  </g>
+</svg>

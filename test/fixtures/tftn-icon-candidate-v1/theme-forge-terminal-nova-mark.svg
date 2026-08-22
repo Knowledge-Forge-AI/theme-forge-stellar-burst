@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="256"
+     height="256"
+     viewBox="0 0 256 256"
+     role="img"
+     aria-labelledby="tn-mark-title tn-mark-desc"
+     shape-rendering="geometricPrecision">
+  <title id="tn-mark-title">Theme Forge Terminal Nova mark</title>
+  <desc id="tn-mark-desc">
+    A flat six-facet forged hexagonal enclosure surrounding a four-point nova,
+    using the Forge Ember orange-to-violet color direction.
+  </desc>
+
+  <metadata>
+    Brand: Theme Forge / Terminal Nova
+    Asset: Primary production mark
+    Version: 1.0
+    Background: Transparent
+    Palette: Molten Orange #FF8A3D; Deep Violet #8B5CF6;
+    Gunmetal #262A33; Warm White #FFF8F0; Black #000000.
+    Gradient fallback: Molten Orange #FF8A3D.
+    Construction: Six solid enclosure facets and one central nova path.
+    No raster images, live text, external CSS, fonts, or JavaScript.
+  </metadata>
+
+  <defs>
+    <linearGradient id="tn-nova-gradient"
+                    x1="92"
+                    y1="88"
+                    x2="166"
+                    y2="172"
+                    gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF8A3D"/>
+      <stop offset="0.52" stop-color="#E45A9E"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+
+  <g id="six-facet-enclosure">
+    <path id="facet-top-right"
+          fill="#2A2D35"
+          d="M132 18L221 70L175 93L132 68Z"/>
+    <path id="facet-right"
+          fill="#282A31"
+          d="M225 77L225 180L178 156L178 100Z"/>
+    <path id="facet-bottom-right"
+          fill="#302844"
+          d="M221 186L132 238L132 188L175 163Z"/>
+    <path id="facet-bottom-left"
+          fill="#35273F"
+          d="M124 238L35 186L81 163L124 188Z"/>
+    <path id="facet-left"
+          fill="#2D2F36"
+          d="M31 180L31 77L78 100L78 156Z"/>
+    <path id="facet-top-left"
+          fill="#342A28"
+          d="M35 70L124 18L124 68L81 93Z"/>
+  </g>
+
+  <path id="central-nova"
+        fill="url(#tn-nova-gradient) #FF8A3D"
+        d="M128 76
+           C131 106 143 119 174 128
+           C143 137 131 150 128 180
+           C125 150 113 137 82 128
+           C113 119 125 106 128 76Z"/>
+</svg>

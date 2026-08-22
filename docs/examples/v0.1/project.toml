@@ -1,0 +1,25 @@
+schema_version = 1
+name = "Theme Forge Terminal Nova"
+
+[build]
+directory = "brand/dist"
+
+[[install]]
+asset = "favicon"
+destinations = [
+  "docs/public/favicon.svg",
+  "docs/public/favicon-on-light.svg",
+]
+
+[[install]]
+asset = "mark"
+destinations = [
+  "docs/src/assets/brand/theme-forge-terminal-nova-mark.svg",
+]
+
+[[install]]
+asset = "lockup-horizontal"
+destinations = [
+  "docs/src/assets/brand/theme-forge-terminal-nova-horizontal.svg",
+]
+
