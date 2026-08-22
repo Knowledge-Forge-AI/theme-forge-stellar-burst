@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "command": "preview",
+  "status": "ok",
+  "exitCode": 0,
+  "summary": "Static preview was written.",
+  "diagnostics": [],
+  "data": {
+    "outputDirectory": ".tfsb-preview",
+    "written": true,
+    "replaced": false,
+    "assetCount": 1,
+    "companionCount": 1,
+    "opened": {
+      "requested": false,
+      "status": "not_requested"
+    },
+    "files": {
+      "index": "index.html",
+      "stylesheet": "preview.css",
+      "marker": ".tfsb-preview.json",
+      "assets": [
+        "assets/favicon-on-light.svg"
+      ]
+    },
+    "assets": [
+      {
+        "id": "favicon-on-light",
+        "filename": "favicon-on-light.svg",
+        "geometryProfile": "near_square",
+        "sizes": [
+          16,
+          24,
+          32,
+          48,
+          64,
+          128,
+          256
+        ],
+        "buildStatus": "clean",
+        "installStatus": "no_destinations",
+        "destinations": []
+      }
+    ],
+    "companions": [
+      {
+        "file": "README.md",
+        "sha256": "966282712d1107318de7d51edd20bfbd282c4afeb8505341d7480c33a72e39e6",
+        "installStatus": "no_destinations",
+        "destinations": []
+      }
+    ],
+    "buildExtra": []
+  }
+}

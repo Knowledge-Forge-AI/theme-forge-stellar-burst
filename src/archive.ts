@@ -1,8 +1,18 @@
-import { open, type FileHandle } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import type { Stats } from "node:fs";
+import { lstat, open, type FileHandle } from "node:fs/promises";
 
 import { inflateSync } from "fflate";
 
 import { DiagnosticError, fail, type DiagnosticContext } from "./diagnostics.js";
+import { computeRawSha256, type Sha256Digest } from "./digests.js";
+import {
+  BUNDLE_MANIFEST_FILENAME,
+  parseBundleManifest,
+  unwrapBundleManifest,
+  type BundleManifestV1,
+} from "./manifest.js";
+import type { AssetId } from "./types.js";
 
 export const ARCHIVE_LIMITS = {
   totalEntries: 1_024,
@@ -11,6 +21,7 @@ export const ARCHIVE_LIMITS = {
   selectedAggregateBytes: 32 * 1024 * 1024,
   expansionRatio: 100,
   centralDirectoryBytes: 64 * 1024 * 1024,
+  archiveFileBytes: 128 * 1024 * 1024,
 } as const;
 
 export const ALLOWED_COMPANION_EXTENSIONS = [".md", ".markdown", ".txt"] as const;
@@ -49,8 +60,8 @@ export interface SelectedArchiveSvg {
   readonly uncompressedSize: number;
 }
 
-function archiveContext(source: string): DiagnosticContext {
-  return { operation: "import", domain: "archive", source };
+function archiveContext(source: string, operation: DiagnosticContext["operation"] = "import"): DiagnosticContext {
+  return { operation, domain: "archive", source };
 }
 
 function invalid(ctx: DiagnosticContext, message: string, location?: string): never {
@@ -287,18 +298,94 @@ export interface SelectedArchiveCompanion {
 export interface ArchiveReadResult {
   readonly svgs: readonly SelectedArchiveSvg[];
   readonly companions: readonly SelectedArchiveCompanion[];
+  readonly archiveDigest: Sha256Digest;
+  readonly snapshot: ArchiveSnapshot;
+}
+
+export interface ArchiveReadOptions {
+  readonly selectAllSvgs?: boolean;
+  readonly selectAllCompanions?: boolean;
+  readonly allowNoSvgs?: boolean;
+  readonly operation?: "import" | "reconcile" | "diff";
+  readonly hooks?: ArchiveReadHooks;
+}
+
+export interface ArchiveReadHooks {
+  readonly afterStructure?: () => void | Promise<void>;
+  readonly beforeHash?: () => void | Promise<void>;
+  readonly onHashChunk?: () => void | Promise<void>;
+  readonly beforeSelectedEntryInspection?: () => void | Promise<void>;
+}
+
+export interface ArchiveSnapshot {
+  readonly path: string;
+  readonly dev: number;
+  readonly ino: number;
+  readonly size: number;
+  readonly mtimeMs: number;
+  readonly ctimeMs: number;
+}
+
+function archiveSnapshot(path: string, stat: Stats): ArchiveSnapshot {
+  return { path, dev: stat.dev, ino: stat.ino, size: stat.size, mtimeMs: stat.mtimeMs, ctimeMs: stat.ctimeMs };
+}
+
+function sameSnapshot(left: ArchiveSnapshot, right: ArchiveSnapshot): boolean {
+  return left.dev === right.dev && left.ino === right.ino && left.size === right.size &&
+    left.mtimeMs === right.mtimeMs && left.ctimeMs === right.ctimeMs;
+}
+
+async function hashOpenArchive(
+  handle: FileHandle,
+  size: number,
+  ctx: DiagnosticContext,
+  hooks?: ArchiveReadHooks,
+): Promise<Sha256Digest> {
+  await hooks?.beforeHash?.();
+  const hash = createHash("sha256");
+  const chunk = Buffer.allocUnsafe(64 * 1024);
+  let position = 0;
+  while (position < size) {
+    const length = Math.min(chunk.length, size - position);
+    const { bytesRead } = await handle.read(chunk, 0, length, position);
+    if (bytesRead !== length) invalid(ctx, "Archive changed or became truncated while hashing.");
+    hash.update(chunk.subarray(0, bytesRead));
+    position += bytesRead;
+    await hooks?.onHashChunk?.();
+  }
+  return `sha256:${hash.digest("hex")}`;
+}
+
+export async function verifyArchiveSnapshot(snapshot: ArchiveSnapshot, operation: DiagnosticContext["operation"] = "reconcile"): Promise<void> {
+  const ctx = archiveContext(snapshot.path, operation);
+  const stat = await lstat(snapshot.path).catch(() => undefined);
+  if (stat === undefined || stat.isSymbolicLink() || !stat.isFile() || !sameSnapshot(snapshot, archiveSnapshot(snapshot.path, stat))) {
+    fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed after candidate inspection.");
+  }
 }
 
 export async function readArchive(
   archivePath: string,
   svgSelections: readonly string[] = [],
   companionSelections: readonly string[] = [],
+  options: ArchiveReadOptions = {},
 ): Promise<ArchiveReadResult> {
-  const ctx = archiveContext(archivePath);
+  const ctx = archiveContext(archivePath, options.operation ?? "import");
   let handle: FileHandle | undefined;
   try {
+    const pathStat = await lstat(archivePath);
+    if (!pathStat.isFile() || pathStat.isSymbolicLink()) {
+      fail(ctx, "ARCHIVE_READ_FAILED", "Archive must be a non-symlink regular file.");
+    }
     handle = await open(archivePath, "r");
     const stat = await handle.stat();
+    const snapshot = archiveSnapshot(archivePath, stat);
+    if (!sameSnapshot(snapshot, archiveSnapshot(archivePath, pathStat))) {
+      fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed while it was opened.");
+    }
+    if (stat.size > ARCHIVE_LIMITS.archiveFileBytes) {
+      fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive exceeds the fixed 128 MiB raw-file limit.");
+    }
     const tailLength = Math.min(stat.size, 65_557);
     const tail = await readExactly(handle, tailLength, stat.size - tailLength, ctx);
     let eocd = -1;
@@ -330,9 +417,11 @@ export async function readArchive(
       totalEntries,
       ctx,
     );
+    await options.hooks?.afterStructure?.();
+    const archiveDigest = await hashOpenArchive(handle, stat.size, ctx, options.hooks);
     const byName = new Map(entries.map((entry) => [entry.name, entry]));
     const selectedSvgEntries =
-      svgSelections.length === 0
+      options.selectAllSvgs === true || (options.selectAllSvgs === undefined && svgSelections.length === 0)
         ? entries.filter((entry) => !entry.directory && entry.name.toLowerCase().endsWith(".svg"))
         : [...new Set(svgSelections)].map((selection) => {
             const normalized = normalizeEntryName(selection.normalize("NFC"), false, ctx).name;
@@ -345,13 +434,17 @@ export async function readArchive(
             }
             return entry;
           });
-    if (selectedSvgEntries.length === 0) fail(ctx, "ARCHIVE_SELECTION_EMPTY", "Archive selection contains no SVG entries.");
+    if (selectedSvgEntries.length === 0 && options.allowNoSvgs !== true) {
+      fail(ctx, "ARCHIVE_SELECTION_EMPTY", "Archive selection contains no SVG entries.");
+    }
     if (selectedSvgEntries.length > ARCHIVE_LIMITS.selectedSvgEntries) {
       fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive selects more than 128 SVG entries.");
     }
 
     const uniqueCompanionSelections = [...new Set(companionSelections)];
-    const selectedCompanionEntries = uniqueCompanionSelections.map((selection) => {
+    const selectedCompanionEntries = options.selectAllCompanions === true
+      ? entries.filter((entry) => !entry.directory && isAllowedCompanionFilename(entry.name))
+      : uniqueCompanionSelections.map((selection) => {
       const normalized = normalizeEntryName(selection.normalize("NFC"), false, ctx).name;
       const entry = byName.get(normalized);
       if (entry === undefined || entry.directory) {
@@ -365,8 +458,8 @@ export async function readArchive(
           selection,
         );
       }
-      return entry;
-    });
+          return entry;
+        });
 
     const allSelected = [...selectedSvgEntries, ...selectedCompanionEntries];
     let declaredAggregate = 0;
@@ -388,6 +481,7 @@ export async function readArchive(
 
     const svgs: SelectedArchiveSvg[] = [];
     let actualAggregate = 0;
+    await options.hooks?.beforeSelectedEntryInspection?.();
     for (const entry of selectedSvgEntries) {
       const bytes = await readEntry(handle, entry, stat.size, ctx);
       actualAggregate += bytes.length;
@@ -435,7 +529,12 @@ export async function readArchive(
       });
     }
 
-    return { svgs, companions };
+    const finalStat = await handle.stat();
+    if (!sameSnapshot(snapshot, archiveSnapshot(archivePath, finalStat))) {
+      fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed during candidate inspection.");
+    }
+    await verifyArchiveSnapshot(snapshot, options.operation ?? "import");
+    return { svgs, companions, archiveDigest, snapshot };
   } catch (error) {
     if (error instanceof DiagnosticError) throw error;
     if (error instanceof Error && typeof (error as NodeJS.ErrnoException).code === "string") {
@@ -453,4 +552,229 @@ export async function readSvgArchive(
 ): Promise<readonly SelectedArchiveSvg[]> {
   const result = await readArchive(archivePath, selections, []);
   return result.svgs;
+}
+
+export interface ManifestArchiveAssetEntry {
+  readonly entryName: string;
+  readonly assetId: AssetId;
+  readonly bytes: Uint8Array;
+  readonly sha256: string;
+  readonly compressedSize: number;
+  readonly uncompressedSize: number;
+}
+
+export interface ManifestArchiveCompanionEntry {
+  readonly entryName: string;
+  readonly filename: string;
+  readonly bytes: Uint8Array;
+  readonly sha256: string;
+  readonly compressedSize: number;
+  readonly uncompressedSize: number;
+}
+
+export interface ManifestArchiveReadResult {
+  readonly manifest: BundleManifestV1;
+  readonly svgs: readonly ManifestArchiveAssetEntry[];
+  readonly companions: readonly ManifestArchiveCompanionEntry[];
+  readonly archiveDigest: Sha256Digest;
+  readonly snapshot: ArchiveSnapshot;
+}
+
+export async function readManifestArchive(
+  archivePath: string,
+  svgSelections: readonly string[] = [],
+  companionSelections: readonly string[] = [],
+  options: ArchiveReadOptions = {},
+): Promise<ManifestArchiveReadResult> {
+  const ctx = archiveContext(archivePath, options.operation ?? "import");
+  let handle: FileHandle | undefined;
+  try {
+    const pathStat = await lstat(archivePath);
+    if (!pathStat.isFile() || pathStat.isSymbolicLink()) {
+      fail(ctx, "ARCHIVE_READ_FAILED", "Archive must be a non-symlink regular file.");
+    }
+    handle = await open(archivePath, "r");
+    const stat = await handle.stat();
+    const snapshot = archiveSnapshot(archivePath, stat);
+    if (!sameSnapshot(snapshot, archiveSnapshot(archivePath, pathStat))) {
+      fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed while it was opened.");
+    }
+    if (stat.size > ARCHIVE_LIMITS.archiveFileBytes) {
+      fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive exceeds the fixed 128 MiB raw-file limit.");
+    }
+    const tailLength = Math.min(stat.size, 65_557);
+    const tail = await readExactly(handle, tailLength, stat.size - tailLength, ctx);
+    let eocd = -1;
+    for (let offset = tail.length - 22; offset >= 0; offset -= 1) {
+      if (tail.readUInt32LE(offset) === 0x06054b50) {
+        eocd = offset;
+        break;
+      }
+    }
+    if (eocd < 0) invalid(ctx, "ZIP end-of-central-directory record is missing.");
+    const disk = tail.readUInt16LE(eocd + 4);
+    const centralDisk = tail.readUInt16LE(eocd + 6);
+    const diskEntries = tail.readUInt16LE(eocd + 8);
+    const totalEntries = tail.readUInt16LE(eocd + 10);
+    const centralSize = tail.readUInt32LE(eocd + 12);
+    const centralOffset = tail.readUInt32LE(eocd + 16);
+    const commentLength = tail.readUInt16LE(eocd + 20);
+    if (eocd + 22 + commentLength !== tail.length || disk !== 0 || centralDisk !== 0 || diskEntries !== totalEntries) {
+      invalid(ctx, "Unsupported multi-disk or malformed ZIP archive.");
+    }
+    if (totalEntries > ARCHIVE_LIMITS.totalEntries) {
+      fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive contains more than 1,024 entries.");
+    }
+    if (centralSize > ARCHIVE_LIMITS.centralDirectoryBytes || centralOffset + centralSize > stat.size) {
+      fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "ZIP central directory exceeds the bounded importer limit.");
+    }
+    const entries = parseCentralDirectory(
+      await readExactly(handle, centralSize, centralOffset, ctx),
+      totalEntries,
+      ctx,
+    );
+
+    await options.hooks?.afterStructure?.();
+    const archiveDigest = await hashOpenArchive(handle, stat.size, ctx, options.hooks);
+    const byName = new Map(entries.map((entry) => [entry.name, entry]));
+
+    // Find and parse manifest
+    const manifestEntry = byName.get(BUNDLE_MANIFEST_FILENAME);
+    if (manifestEntry === undefined) {
+      fail(ctx, "ARCHIVE_MANIFEST_MISSING", "Archive lacks required root tfsb-manifest.json.");
+    }
+    for (const entry of entries) {
+      if (entry.directory) {
+        fail(ctx, "ARCHIVE_UNSAFE_TYPE", `Directory entry '${entry.name}' is not allowed in manifest-assisted archives.`, entry.name);
+      }
+    }
+
+    const manifestBytes = await readEntry(handle, manifestEntry, stat.size, ctx);
+    let manifestText: string;
+    try {
+      manifestText = new TextDecoder("utf-8", { fatal: true }).decode(manifestBytes);
+    } catch {
+      fail(ctx, "ARCHIVE_INVALID_UTF8", "Manifest JSON is not valid UTF-8.");
+    }
+
+    const manifest = unwrapBundleManifest(parseBundleManifest(manifestText, BUNDLE_MANIFEST_FILENAME));
+
+    // Inventory check: regular files in archive must equal manifest.files + manifest itself
+    const manifestNames = new Set(manifest.files.map((file) => file.name));
+    for (const entry of entries) {
+      if (entry.name !== BUNDLE_MANIFEST_FILENAME && !manifestNames.has(entry.name)) {
+        fail(ctx, "ARCHIVE_UNDECLARED_ENTRY", `Archive contains undeclared entry '${entry.name}'.`, entry.name);
+      }
+    }
+    for (const file of manifest.files) {
+      if (!byName.has(file.name)) {
+        fail(ctx, "ARCHIVE_MISSING_ENTRY", `Manifest lists entry '${file.name}' which is missing from archive.`, file.name);
+      }
+    }
+
+    // Check size limits across declared entries
+    let declaredAggregate = manifestBytes.length;
+    for (const file of manifest.files) {
+      const entry = byName.get(file.name)!;
+      declaredAggregate += entry.uncompressedSize;
+      if (
+        entry.compressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
+        entry.uncompressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
+        (entry.compressedSize === 0
+          ? entry.uncompressedSize !== 0
+          : entry.uncompressedSize > entry.compressedSize * ARCHIVE_LIMITS.expansionRatio)
+      ) {
+        fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", `Selected entry '${entry.name}' exceeds archive limits.`, entry.name);
+      }
+    }
+    if (declaredAggregate > ARCHIVE_LIMITS.selectedAggregateBytes) {
+      fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Selected entries exceed the 32 MiB aggregate limit.");
+    }
+
+    // Read and verify digest for EVERY manifest entry
+    const readEntriesByName = new Map<string, { bytes: Uint8Array; entry: CentralEntry }>();
+    await options.hooks?.beforeSelectedEntryInspection?.();
+
+    for (const file of manifest.files) {
+      const entry = byName.get(file.name)!;
+      const bytes = await readEntry(handle, entry, stat.size, ctx);
+      const computedSha256 = computeRawSha256(bytes);
+      if (computedSha256 !== file.sha256) {
+        fail(ctx, "ARCHIVE_DIGEST_MISMATCH", `Digest mismatch for entry '${file.name}'.`, file.name);
+      }
+      readEntriesByName.set(file.name, { bytes, entry });
+    }
+
+    // Selection handling
+    const isFiltered = svgSelections.length > 0 || companionSelections.length > 0;
+    const selectedSvgNames = new Set(svgSelections);
+    const selectedCompanionNames = new Set(companionSelections);
+
+    if (isFiltered) {
+      for (const sel of svgSelections) {
+        const found = manifest.files.find((f) => f.type === "asset" && f.name === sel);
+        if (found === undefined) {
+          fail(ctx, "ARCHIVE_SELECTION_MISSING", `Selected entry '${sel}' does not exist in manifest.`, sel);
+        }
+      }
+      for (const sel of companionSelections) {
+        const found = manifest.files.find((f) => f.type === "companion" && f.name === sel);
+        if (found === undefined) {
+          fail(ctx, "ARCHIVE_SELECTION_MISSING", `Selected companion '${sel}' does not exist in manifest.`, sel);
+        }
+      }
+    }
+
+    const svgs: ManifestArchiveAssetEntry[] = [];
+    const companions: ManifestArchiveCompanionEntry[] = [];
+
+    for (const file of manifest.files) {
+      if (file.type === "asset") {
+        if (isFiltered && !selectedSvgNames.has(file.name)) continue;
+        const { bytes, entry } = readEntriesByName.get(file.name)!;
+        svgs.push({
+          entryName: file.name,
+          assetId: file.assetId,
+          bytes,
+          sha256: file.sha256,
+          compressedSize: entry.compressedSize,
+          uncompressedSize: bytes.length,
+        });
+      } else {
+        if (isFiltered && !selectedCompanionNames.has(file.name)) continue;
+        const { bytes, entry } = readEntriesByName.get(file.name)!;
+        companions.push({
+          entryName: file.name,
+          filename: file.name,
+          bytes,
+          sha256: file.sha256,
+          compressedSize: entry.compressedSize,
+          uncompressedSize: bytes.length,
+        });
+      }
+    }
+
+    if (svgs.length === 0 && options.allowNoSvgs !== true) {
+      fail(ctx, "ARCHIVE_SELECTION_EMPTY", "Archive selection contains no SVG entries.");
+    }
+    if (svgs.length > ARCHIVE_LIMITS.selectedSvgEntries) {
+      fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive selects more than 128 SVG assets.");
+    }
+
+    const finalStat = await handle.stat();
+    if (!sameSnapshot(snapshot, archiveSnapshot(archivePath, finalStat))) {
+      fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed during candidate inspection.");
+    }
+    await verifyArchiveSnapshot(snapshot, options.operation ?? "import");
+
+    return { manifest, svgs, companions, archiveDigest, snapshot };
+  } catch (error) {
+    if (error instanceof DiagnosticError) throw error;
+    if (error instanceof Error && typeof (error as NodeJS.ErrnoException).code === "string") {
+      return fail(ctx, "ARCHIVE_READ_FAILED", "Archive could not be read safely.");
+    }
+    throw error;
+  } finally {
+    await handle?.close();
+  }
 }

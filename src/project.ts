@@ -1,12 +1,9 @@
-import { lstat, readFile, readdir } from "node:fs/promises";
-import type { Dirent } from "node:fs";
-import { join } from "node:path";
-
 import { isAllowedCompanionFilename } from "./archive.js";
 import { DiagnosticError, fail, type DiagnosticContext } from "./diagnostics.js";
 import { resolveConfinedPath, validateProjectPathLayout } from "./root.js";
 import { serializeSvg } from "./svg.js";
 import { parseAssetToml, parseProjectToml } from "./toml.js";
+import { snapshotCanonicalTree, snapshotsEqual, type CanonicalSnapshot } from "./transaction.js";
 import type { NormalizedAsset, NormalizedProject, Result } from "./types.js";
 
 export interface LoadedProject {
@@ -19,6 +16,39 @@ export interface LoadedProject {
   readonly buildDirectory: string;
   readonly installDestinations: ReadonlyMap<string, readonly string[]>;
   readonly companionDestinations: ReadonlyMap<string, readonly string[]>;
+  readonly snapshot: CanonicalSnapshot;
+}
+
+export const MAX_LIFECYCLE_ASSETS = 128;
+
+export function enforceMutationAssetLimit(
+  project: number | Pick<LoadedProject, "assets">,
+  operation: DiagnosticContext["operation"],
+): void {
+  const assetCount = typeof project === "number" ? project : project.assets.length;
+  if (assetCount > MAX_LIFECYCLE_ASSETS) {
+    fail(
+      { operation, domain: "project" },
+      "RESOURCE_LIMIT_EXCEEDED",
+      `Mutation supports at most ${MAX_LIFECYCLE_ASSETS} assets; project contains ${assetCount}.`,
+      ".tfsb/assets",
+    );
+  }
+}
+
+export async function verifyLoadedProjectSnapshot(
+  project: Pick<LoadedProject, "root" | "snapshot">,
+  operation: DiagnosticContext["operation"],
+): Promise<void> {
+  const current = await snapshotCanonicalTree(project.root, false, operation);
+  if (!snapshotsEqual(project.snapshot, current)) {
+    fail(
+      { operation, domain: "transaction" },
+      "CANONICAL_CHANGED_DURING_PLAN",
+      "Canonical tree changed during the operation.",
+      ".tfsb",
+    );
+  }
 }
 
 function unwrap<T>(result: Result<T>): T {
@@ -36,49 +66,45 @@ export async function loadCanonicalProject(
   root: string,
   operation: DiagnosticContext["operation"],
 ): Promise<LoadedProject> {
+  return decodeCanonicalProjectSnapshot(await snapshotCanonicalTree(root, false, operation), operation, root);
+}
+
+export async function loadCanonicalProjectFromSnapshot(
+  snapshot: CanonicalSnapshot,
+  operation: DiagnosticContext["operation"],
+): Promise<LoadedProject> {
+  return decodeCanonicalProjectSnapshot(snapshot, operation, snapshot.root);
+}
+
+async function decodeCanonicalProjectSnapshot(
+  snapshot: CanonicalSnapshot,
+  operation: DiagnosticContext["operation"],
+  root: string,
+): Promise<LoadedProject> {
   const ctx = context(operation);
   const canonicalFiles = new Map<string, Uint8Array>();
-  const canonicalDirectory = await lstat(join(root, ".tfsb"));
-  if (!canonicalDirectory.isDirectory() || canonicalDirectory.isSymbolicLink()) {
-    fail(ctx, "ROOT_SYMLINK_ESCAPE", "Canonical .tfsb must be a non-symlink directory.", ".tfsb");
-  }
-  const projectPath = join(root, ".tfsb", "project.toml");
-  let projectBytes: Buffer;
-  try {
-    projectBytes = await readFile(projectPath);
-  } catch {
-    fail(ctx, "ROOT_NOT_FOUND", "Canonical .tfsb/project.toml could not be read.", ".tfsb/project.toml");
-  }
+  if (!snapshot.canonicalPresent) fail(ctx, "ROOT_NOT_FOUND", "Canonical .tfsb directory is missing.", ".tfsb");
+  const projectBytes = snapshot.files.get(".tfsb/project.toml")?.bytes;
+  if (projectBytes === undefined) fail(ctx, "ROOT_NOT_FOUND", "Canonical .tfsb/project.toml could not be read.", ".tfsb/project.toml");
   canonicalFiles.set(".tfsb/project.toml", projectBytes);
-  const project = unwrap(parseProjectToml(projectBytes.toString("utf8"), ".tfsb/project.toml"));
+  const project = unwrap(parseProjectToml(Buffer.from(projectBytes).toString("utf8"), ".tfsb/project.toml"));
   validateProjectPathLayout(project);
 
-  const assetsDirectory = join(root, ".tfsb", "assets");
-  const assetsStat = await lstat(assetsDirectory).catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") return undefined;
-    throw error;
-  });
-  if (assetsStat === undefined || !assetsStat.isDirectory() || assetsStat.isSymbolicLink()) {
+  if (!snapshot.directories.includes(".tfsb/assets")) {
     fail(ctx, "PROJECT_ASSETS_MISSING", "Canonical .tfsb/assets must be a non-symlink directory.", ".tfsb/assets");
-  }
-  let entries: Dirent<string>[];
-  try {
-    entries = await readdir(assetsDirectory, { withFileTypes: true });
-  } catch {
-    fail(ctx, "PROJECT_ASSETS_MISSING", "Canonical .tfsb/assets directory could not be read.", ".tfsb/assets");
   }
   const assets: NormalizedAsset[] = [];
   const ids = new Map<string, string>();
   const filenames = new Map<string, string>();
-  for (const entry of [...entries].sort((left, right) => left.name.localeCompare(right.name, "en"))) {
-    const relativePath = `.tfsb/assets/${entry.name}`;
-    if (!entry.isFile() || entry.isSymbolicLink() || !entry.name.endsWith(".toml")) {
-      fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical asset entry '${entry.name}'.`, relativePath);
-    }
-    const bytes = await readFile(join(assetsDirectory, entry.name));
+  const assetPaths = [...snapshot.files.keys()]
+    .filter((path) => path.startsWith(".tfsb/assets/"))
+    .sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
+  for (const relativePath of assetPaths) {
+    const entryName = relativePath.slice(".tfsb/assets/".length);
+    const bytes = snapshot.files.get(relativePath)!.bytes;
     canonicalFiles.set(relativePath, bytes);
-    const asset = unwrap(parseAssetToml(bytes.toString("utf8"), relativePath));
-    if (entry.name !== `${asset.id}.toml`) {
+    const asset = unwrap(parseAssetToml(Buffer.from(bytes).toString("utf8"), relativePath));
+    if (entryName !== `${asset.id}.toml`) {
       fail(
         ctx,
         "PROJECT_ASSET_FILENAME_MISMATCH",
@@ -114,30 +140,19 @@ export async function loadCanonicalProject(
     }
   }
 
-  const companionsDirectory = join(root, ".tfsb", "companions");
-  const companionsStat = await lstat(companionsDirectory).catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") return undefined;
-    throw error;
-  });
   const companions = new Map<string, Uint8Array>();
-  if (companionsStat !== undefined) {
-    if (!companionsStat.isDirectory() || companionsStat.isSymbolicLink()) {
-      fail(ctx, "PROJECT_COMPANIONS_INVALID", "Canonical .tfsb/companions must be a non-symlink directory.", ".tfsb/companions");
-    }
-    let companionEntries: Dirent<string>[];
-    try {
-      companionEntries = await readdir(companionsDirectory, { withFileTypes: true });
-    } catch {
-      fail(ctx, "PROJECT_COMPANIONS_INVALID", "Canonical .tfsb/companions directory could not be read.", ".tfsb/companions");
-    }
-    for (const entry of [...companionEntries].sort((left, right) => left.name.localeCompare(right.name, "en"))) {
-      const relativePath = `.tfsb/companions/${entry.name}`;
-      if (!entry.isFile() || entry.isSymbolicLink() || !isAllowedCompanionFilename(entry.name)) {
-        fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical companion entry '${entry.name}'.`, relativePath);
+  if (snapshot.directories.includes(".tfsb/companions")) {
+    const companionPaths = [...snapshot.files.keys()]
+      .filter((path) => path.startsWith(".tfsb/companions/"))
+      .sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
+    for (const relativePath of companionPaths) {
+      const entryName = relativePath.slice(".tfsb/companions/".length);
+      if (!isAllowedCompanionFilename(entryName)) {
+        fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical companion entry '${entryName}'.`, relativePath);
       }
-      const bytes = await readFile(join(companionsDirectory, entry.name));
+      const bytes = snapshot.files.get(relativePath)!.bytes;
       canonicalFiles.set(relativePath, bytes);
-      companions.set(entry.name, bytes);
+      companions.set(entryName, bytes);
     }
   }
   for (const companion of project.companions ?? []) {
@@ -162,7 +177,7 @@ export async function loadCanonicalProject(
     installDestinations.set(
       install.asset,
       await Promise.all(
-        install.destinations.map((destination) => resolveConfinedPath(root, destination, operation)),
+        install.destinations.map((destination) => resolveConfinedPath(root, destination, operation, { allowFinalSymlink: true })),
       ),
     );
   }
@@ -171,7 +186,7 @@ export async function loadCanonicalProject(
     companionDestinations.set(
       companion.file,
       await Promise.all(
-        companion.destinations.map((destination) => resolveConfinedPath(root, destination, operation)),
+        companion.destinations.map((destination) => resolveConfinedPath(root, destination, operation, { allowFinalSymlink: true })),
       ),
     );
   }
@@ -185,5 +200,6 @@ export async function loadCanonicalProject(
     buildDirectory,
     installDestinations,
     companionDestinations,
+    snapshot,
   };
 }

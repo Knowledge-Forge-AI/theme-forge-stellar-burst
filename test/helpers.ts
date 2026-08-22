@@ -1,12 +1,22 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { Result } from "../src/index.js";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 
+export function repoPath(relativePath: string): string {
+  return join(repositoryRoot, relativePath);
+}
+
 export function readRepoFile(relativePath: string): string {
-  return readFileSync(`${repositoryRoot}/${relativePath}`, "utf8");
+  return readFileSync(repoPath(relativePath), "utf8");
+}
+
+export function makeTempDir(prefix = "tfsb-test-"): string {
+  return mkdtempSync(join(tmpdir(), prefix));
 }
 
 export function unwrap<T>(result: Result<T>): T {

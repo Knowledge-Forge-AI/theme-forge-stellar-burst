@@ -102,7 +102,7 @@ describe("TFSB2 import/build/install/check/list integration", () => {
     await configureInstall(root, asset, ["consumer/mark.svg", "consumer/mark-copy.svg"]);
 
     const dry = await buildProject(root, true);
-    expect(dry.files.size).toBe(7);
+    expect(dry.outputs).toHaveLength(6);
     await expect(access(join(root, "brand/dist"))).rejects.toMatchObject({ code: "ENOENT" });
     await buildProject(root);
     const first = await directoryBytes(join(root, "brand/dist"));
@@ -193,8 +193,8 @@ describe("TFSB2 import/build/install/check/list integration", () => {
       await readFile(join(relocatedRoot, "brand/dist/.tfsb-build.json"), "utf8"),
     ) as Record<string, unknown>;
     expect(receipt).toMatchObject({
-      kind: "tfsb-build-v2",
-      schemaVersion: 2,
+      kind: "tfsb-build-v3",
+      schemaVersion: 3,
       buildDirectory: "brand/dist",
     });
     expect(receipt).not.toHaveProperty("projectRootHash");
