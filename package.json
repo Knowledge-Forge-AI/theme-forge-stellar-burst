@@ -48,6 +48,7 @@
     "test:visual:update": "playwright test --project=chromium --update-snapshots",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.visual.json && tsc -p tsconfig.tools.json",
     "audit:dogfood": "npm run build && node tools/audit-dogfood-corpus.mjs",
+    "pretest": "npm run build",
     "test": "vitest run"
   },
   "dependencies": {
