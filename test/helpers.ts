@@ -29,3 +29,19 @@ export function unwrap<T>(result: Result<T>): T {
 export function firstCode<T>(result: Result<T>): string | undefined {
   return result.ok ? undefined : result.diagnostics[0]?.code;
 }
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => Buffer.from(left).compare(Buffer.from(right)))
+        .map(([key, child]) => [key, canonicalize(child)]),
+    );
+  }
+  return value;
+}
+
+export function stableJson(value: unknown): string {
+  return `${JSON.stringify(canonicalize(value), null, 2)}\n`;
+}

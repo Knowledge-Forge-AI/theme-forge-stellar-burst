@@ -1,0 +1,359 @@
+{
+  "aggregateDigest": "sha256:18abd3eed070b1c10244bfb1696b44eaea9c282fa260761f75e6a3c25df486b8",
+  "corpora": [
+    {
+      "after": {
+        "dirty": false,
+        "head": "33a44aa8b0b43d9b0ed14eb08860a1b5550a1573"
+      },
+      "before": {
+        "dirty": false,
+        "head": "33a44aa8b0b43d9b0ed14eb08860a1b5550a1573"
+      },
+      "corpus": "lucide",
+      "origin": "git@github.com:lucide-icons/lucide.git",
+      "revision": "33a44aa8b0b43d9b0ed14eb08860a1b5550a1573",
+      "shards": [
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 16,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 16,
+            "bundleSha256": "sha256:317d3ca3c44029d58fcc222df35ff858fdf60e275e1d9f2687c984f5bd462922",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:6b3693dc18e0c3188930ee67f0c0354500927e19f3618763b25ca717ea519e59",
+          "name": "lucide-16",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 16,
+          "selectionRationale": "Deterministic collision-free tracked blobs covering presentation, common shapes, and available transforms before sorted fill."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 32,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 32,
+            "bundleSha256": "sha256:17503d6cddcbcefc6b376c94182416b7da2fff3862e2fb1600a4f60930e58d25",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:aa41c5cd847e963c3f62c7e252dd0d288f5cab421a1d6fde767bf8b051b83de0",
+          "name": "lucide-32",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 32,
+          "selectionRationale": "Deterministic collision-free tracked blobs covering presentation, common shapes, and available transforms before sorted fill."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 128,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 128,
+            "bundleSha256": "sha256:b0aa1a1c454ce39da8d572fd66541c9c54657c8e117198bb7a955fc653623970",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:ad55cca17bb1289820addaa5687f838321f940af26c3c0d940ad342c7d7079fc",
+          "name": "lucide-128",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 128,
+          "selectionRationale": "Deterministic collision-free tracked blobs covering presentation, common shapes, and available transforms before sorted fill."
+        }
+      ]
+    },
+    {
+      "after": {
+        "dirty": false,
+        "head": "34c22501f9ac9f22b12f825677ccbab1fb22e14b"
+      },
+      "before": {
+        "dirty": false,
+        "head": "34c22501f9ac9f22b12f825677ccbab1fb22e14b"
+      },
+      "corpus": "simple-icons",
+      "origin": "https://github.com/simple-icons/simple-icons",
+      "revision": "34c22501f9ac9f22b12f825677ccbab1fb22e14b",
+      "shards": [
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 16,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed. The optional 128 shard is omitted pending per-icon review.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 16,
+            "bundleSha256": "sha256:38a898d7fe5476853992bee73e95d88f8af3e70d12b0d439b1bd6ed1afdd4b85",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:85d365ed8e1d88b2fa53b64c5ce015b00a1401a92f1689d2ead74ee7db670898",
+          "name": "simple-icons-16",
+          "normalizationAuthority": "title-only",
+          "selectedCount": 16,
+          "selectionRationale": "Deterministic title-only, path-geometry, collision-free tracked blobs."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 32,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed. The optional 128 shard is omitted pending per-icon review.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 32,
+            "bundleSha256": "sha256:de4d203c982f0ccb809db6024beea098def034104ed76100228ce620ee2be089",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:fa0a8de8e8ef6a5793b472a25bbbc50d70552543d4746957c090ef1d00c8d0fe",
+          "name": "simple-icons-32",
+          "normalizationAuthority": "title-only",
+          "selectedCount": 32,
+          "selectionRationale": "Deterministic title-only, path-geometry, collision-free tracked blobs."
+        }
+      ]
+    },
+    {
+      "after": {
+        "dirty": false,
+        "head": "5a0fe38e97784d94279ce4eb1bf85f9a91bf027e"
+      },
+      "before": {
+        "dirty": false,
+        "head": "5a0fe38e97784d94279ce4eb1bf85f9a91bf027e"
+      },
+      "corpus": "tabler-icons",
+      "origin": "git@github.com:tabler/tabler-icons.git",
+      "revision": "5a0fe38e97784d94279ce4eb1bf85f9a91bf027e",
+      "shards": [
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 16,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 16,
+            "bundleSha256": "sha256:d81cd8d68c1156a7b6330ae73bcb4a84d95f29e93d7cf4448ab9d7d5d80dc2eb",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:537ca86d7763f82f29c2c3a9445b58a6bbed0c7e134b71fc0bcf49f61128ddfb",
+          "name": "tabler-outline-16",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 16,
+          "selectionRationale": "Deterministic outline tracked blobs with presentation and common-shape coverage."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 32,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 32,
+            "bundleSha256": "sha256:bb08c32ea53cfbcc08dd184d0953b322784bf794a0c9f4247169e80729bc1eca",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:4a13ed46236669fcfbbb90d9449ab97c18864d38517f3638be7993ea36368020",
+          "name": "tabler-outline-32",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 32,
+          "selectionRationale": "Deterministic outline tracked blobs with presentation and common-shape coverage."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 16,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 16,
+            "bundleSha256": "sha256:4ca9f02e14c62867f1111ed7afc57c7a7e8324021f2bdc7e23f7efd2bbded538",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:9f2ba122b0b569576077ea9c57ad7df904170ab94712622f92f742e80c749cf1",
+          "name": "tabler-filled-16",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 16,
+          "selectionRationale": "Deterministic filled tracked blobs with identities disjoint from the paired outline set."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 32,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 32,
+            "bundleSha256": "sha256:c59e5537fe65198daa0db9897a053320fd21e9a5c2d150590257a5128e020887",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:6e75d05258a3c1c9baf0fd44701a05c73332dc2bb6bbf312e66cae2e066f0bda",
+          "name": "tabler-filled-32",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 32,
+          "selectionRationale": "Deterministic filled tracked blobs with identities disjoint from the paired outline set."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 128,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed.",
+          "lifecycleOutcome": {
+            "analyzeStatus": "drift",
+            "assetCount": 128,
+            "bundleSha256": "sha256:1e630e1fc45c4319cb85a94a8612776894a56fe87f723d17c32095480d90527c",
+            "checkClean": true,
+            "manifestReimportClean": true,
+            "status": "qualified"
+          },
+          "manifestDigest": "sha256:14a95b513504e7c132ecaf73bcc7a30208c9b7b15f5ee2be136a7855f4bde411",
+          "name": "tabler-paired-128",
+          "normalizationAuthority": "consumer_labelled",
+          "selectedCount": 128,
+          "selectionRationale": "Collision-free paired 64-outline and 64-filled tracked blobs; no path-derived or collection-derived identity."
+        }
+      ]
+    },
+    {
+      "after": {
+        "dirty": false,
+        "head": "df53f7020a3a0345918abc9924ef5eda82e28038"
+      },
+      "before": {
+        "dirty": false,
+        "head": "df53f7020a3a0345918abc9924ef5eda82e28038"
+      },
+      "corpus": "thesvg",
+      "origin": "git@github.com:glincker/thesvg.git",
+      "revision": "df53f7020a3a0345918abc9924ef5eda82e28038",
+      "shards": [
+        {
+          "analyzer": {
+            "directlyImportable": 2,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed. v0.3 explicitly forbids an import acceptance shard for this corpus.",
+          "lifecycleOutcome": {
+            "reason": "theSVG has no v0.3 import acceptance shard.",
+            "status": "inventory_only"
+          },
+          "manifestDigest": "sha256:495257e83de8353afdb4d4b344d80a1697f50103d4f052c2ddd01a822751d3d3",
+          "name": "thesvg-directly-importable-inventory",
+          "normalizationAuthority": "none",
+          "selectedCount": 2,
+          "selectionRationale": "Deterministic first tracked regular SVGs classified directly_importable; analyzer inventory only."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 2,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed. v0.3 explicitly forbids an import acceptance shard for this corpus.",
+          "lifecycleOutcome": {
+            "reason": "theSVG has no v0.3 import acceptance shard.",
+            "status": "inventory_only"
+          },
+          "manifestDigest": "sha256:6b1801b0b5817923ae62c92d9fa2c0654677797d7ef1d5782fd27503bec5adb6",
+          "name": "thesvg-importable-with-normalization-inventory",
+          "normalizationAuthority": "none",
+          "selectedCount": 2,
+          "selectionRationale": "Deterministic first tracked regular SVGs classified importable_with_normalization; analyzer inventory only."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 2
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed. v0.3 explicitly forbids an import acceptance shard for this corpus.",
+          "lifecycleOutcome": {
+            "reason": "theSVG has no v0.3 import acceptance shard.",
+            "status": "inventory_only"
+          },
+          "manifestDigest": "sha256:cb87269a28ca2ba83da3aa96e74fb1378e248e53f8d01924d6a4f83fb1faab56",
+          "name": "thesvg-unsupported-inventory",
+          "normalizationAuthority": "none",
+          "selectedCount": 2,
+          "selectionRationale": "Deterministic first tracked regular SVGs classified unsupported; analyzer inventory only."
+        },
+        {
+          "analyzer": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 2,
+            "unsupported": 0
+          },
+          "legalDisposition": "Local-only tracked-blob evaluation; no redistribution permission is claimed. v0.3 explicitly forbids an import acceptance shard for this corpus.",
+          "lifecycleOutcome": {
+            "reason": "theSVG has no v0.3 import acceptance shard.",
+            "status": "inventory_only"
+          },
+          "manifestDigest": "sha256:b918849a504f6bf290a62a5c6685e76994d3400ca03f30c1ab8da7c0e80ffb70",
+          "name": "thesvg-unsafe-inventory",
+          "normalizationAuthority": "none",
+          "selectedCount": 2,
+          "selectionRationale": "Deterministic first tracked regular SVGs classified unsafe; analyzer inventory only."
+        }
+      ]
+    }
+  ],
+  "schema": "tfsb-dogfood-shard-qualification",
+  "schemaVersion": 1
+}

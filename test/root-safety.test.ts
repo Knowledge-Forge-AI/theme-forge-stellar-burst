@@ -25,7 +25,7 @@ async function project(): Promise<string> {
     archive,
     zipSync({ "mark.svg": svg }, { level: 0, mtime: new Date("1980-01-02T00:00:00Z") }),
   );
-  await importProject({ archive, root });
+  await importProject({ archive, root, schema: 1 });
   return root;
 }
 

@@ -1,0 +1,31 @@
+schema_version = 2
+id = "synthetic-status-tile"
+filename = "synthetic-status-tile.svg"
+
+[canvas]
+width = 24
+height = 24
+view_box = "0 0 24 24"
+
+[accessibility]
+mode = "decorative"
+
+[presentation]
+fill = "currentColor"
+
+[[elements]]
+type = "rect"
+x = 3
+y = 3
+width = 18
+height = 18
+corner_radius = 3
+
+[[elements]]
+type = "path"
+fill = "none"
+stroke = "#FFFFFF"
+stroke_width = 2
+stroke_linecap = "round"
+stroke_linejoin = "round"
+d = "M7 12L10 15L17 8"

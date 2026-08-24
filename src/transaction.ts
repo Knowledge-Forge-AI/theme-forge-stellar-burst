@@ -50,7 +50,9 @@ export interface CanonicalTransactionOptions {
   readonly expectedSnapshot: CanonicalSnapshot;
   readonly archiveSnapshot?: ArchiveSnapshot;
   readonly hooks?: TransactionHooks;
-  readonly operation?: "import" | "reconcile" | "fmt";
+  readonly operation?: "import" | "reconcile" | "fmt" | "migrate";
+  readonly validateStagedTree?: (stageRoot: string) => void | Promise<void>;
+  readonly verifyExternalState?: () => void | Promise<void>;
 }
 
 export async function withCanonicalMutationLock<T>(
@@ -241,7 +243,7 @@ async function durableWrite(path: string, bytes: Uint8Array): Promise<void> {
   await syncPath(path);
 }
 
-function validateNextTree(nextFiles: CanonicalTree, operation: "import" | "reconcile" | "fmt"): void {
+function validateNextTree(nextFiles: CanonicalTree, operation: "import" | "reconcile" | "fmt" | "migrate"): void {
   const ctx = context(operation);
   if (!nextFiles.has(".tfsb/project.toml")) fail(ctx, "TRANSACTION_INVALID_PLAN", "Next tree lacks project.toml.");
   for (const path of nextFiles.keys()) {
@@ -265,8 +267,11 @@ export async function executeCanonicalTransaction(options: CanonicalTransactionO
   }
   const lock = join(root, ".tfsb.lock");
   let lockHandle;
+  let lockIdentity: { readonly dev: number; readonly ino: number } | undefined;
   try {
     lockHandle = await open(lock, "wx", 0o600);
+    const stat = await lockHandle.stat();
+    lockIdentity = { dev: stat.dev, ino: stat.ino };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       fail(ctx, "ROOT_LOCKED", "Canonical mutation lock exists; inspect the active or stale .tfsb.lock before retrying.", ".tfsb.lock");
@@ -281,6 +286,7 @@ export async function executeCanonicalTransaction(options: CanonicalTransactionO
   let promoted = false;
   let inFlightError: unknown;
   try {
+    await options.verifyExternalState?.();
     await options.hooks?.beforeStageCreate?.();
     await mkdir(stage, { mode: 0o700 });
     await mkdir(join(stage, "assets"), { mode: 0o700 });
@@ -297,12 +303,14 @@ export async function executeCanonicalTransaction(options: CanonicalTransactionO
     if (needsCompanions) await syncPath(join(stage, "companions"));
     await syncPath(stage);
     await options.hooks?.afterStageWrite?.();
+    await options.validateStagedTree?.(stage);
 
     const current = await snapshotCanonicalTree(root, !options.expectedSnapshot.canonicalPresent, operation);
     if (!snapshotsEqual(options.expectedSnapshot, current)) {
       fail(ctx, "CANONICAL_CHANGED_DURING_PLAN", "Canonical tree changed after reconciliation planning.");
     }
     if (options.archiveSnapshot !== undefined) await verifyArchiveSnapshot(options.archiveSnapshot, operation);
+    await options.verifyExternalState?.();
     if ((await findRecoveryResidue(root)).some((name) => name !== `.tfsb-stage-${token}`)) {
       fail(ctx, "TFSB_RECOVERY_REQUIRED", "Unexpected transaction residue appeared during mutation.");
     }
@@ -371,7 +379,9 @@ export async function executeCanonicalTransaction(options: CanonicalTransactionO
   } finally {
     let lockCleanupFailed = false;
     await lockHandle.close().catch(() => { lockCleanupFailed = true; });
-    await rm(lock, { force: true }).catch(() => { lockCleanupFailed = true; });
+    const currentLock = await optionalLstat(lock).catch(() => undefined);
+    if (currentLock === undefined || currentLock.isSymbolicLink() || currentLock.dev !== lockIdentity?.dev || currentLock.ino !== lockIdentity.ino) lockCleanupFailed = true;
+    else await rm(lock).catch(() => { lockCleanupFailed = true; });
     if (lockCleanupFailed) {
       const primary = inFlightError instanceof DiagnosticError ? ` after ${inFlightError.diagnostic.code}` : inFlightError === undefined ? "" : " after an earlier transaction failure";
       fail(ctx, "TFSB_LOCK_CLEANUP_FAILED", `Canonical operation ended${primary}, but .tfsb.lock cleanup failed; inspect it before retrying.`, ".tfsb.lock");

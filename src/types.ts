@@ -22,7 +22,9 @@ export type DiagnosticOperation =
   | "bundle"
   | "diff"
   | "fmt"
-  | "preview";
+  | "preview"
+  | "analyze"
+  | "migrate";
 export type DiagnosticDomain =
   | "project-toml"
   | "asset-toml"
@@ -33,7 +35,8 @@ export type DiagnosticDomain =
   | "cli"
   | "provenance"
   | "transaction"
-  | "manifest";
+  | "manifest"
+  | "analyze";
 
 export interface Diagnostic {
   readonly code: string;

@@ -210,7 +210,7 @@ export async function createVisualFixture(fixtureDir = FIXTURE_DIRECTORY): Promi
     archive,
     zipSync(archiveEntries, { level: 6, mtime: new Date("1980-01-02T00:00:00Z") }),
   );
-  const imported = await importProject({ archive, root });
+  const imported = await importProject({ archive, root, schema: 1 });
   const projectPath = join(root, ".tfsb/project.toml");
   const projectToml = await readFile(projectPath, "utf8");
   const installs = imported.assets

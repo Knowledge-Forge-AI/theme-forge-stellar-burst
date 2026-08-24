@@ -41,7 +41,7 @@ async function initialized(): Promise<string> {
   for (const name of await readdir(FIXTURE)) files[name] = await readFile(join(FIXTURE, name));
   const archive = join(root, "fixture.zip");
   await writeFile(archive, zipSync(files, { level: 6, mtime: new Date("1980-01-02T00:00:00Z") }));
-  await importProject({ archive, root, recordProvenance: true });
+  await importProject({ archive, root, schema: 1, recordProvenance: true });
   return root;
 }
 

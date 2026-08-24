@@ -1,0 +1,8 @@
+schema_version = 1
+
+[defaults]
+unlabelled_mode = "decorative"
+
+[[entry]]
+source = "icons/action.svg"
+accessibility = "consumer_labelled"

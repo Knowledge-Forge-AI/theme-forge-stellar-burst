@@ -7,10 +7,12 @@ import type { ProjectInventory } from "./list.js";
 import type { PreviewResult } from "./preview.js";
 import { compareUtf8 } from "./provenance.js";
 import type { ReconcilePlannedAction, ReconcileRequiredAuthority, ReconciliationClassification, ReconciliationResult } from "./reconcile.js";
+import type { NormalizationLedgerV1 } from "./normalization-ledger.js";
+import type { NormalizationPolicyIdentityV1 } from "./normalization-policy.js";
 import type { Diagnostic } from "./types.js";
 
 export const JSON_RESULT_SCHEMA_VERSION = 1 as const;
-export type JsonCommand = "check" | "list" | "reconcile" | "diff" | "bundle" | "fmt" | "preview";
+export type JsonCommand = "check" | "list" | "reconcile" | "diff" | "bundle" | "fmt" | "preview" | "analyze" | "migrate";
 export type JsonStatus = "ok" | "drift" | "conflict" | "error";
 export type JsonExitCode = 0 | 1 | 2;
 
@@ -38,7 +40,7 @@ export interface JsonResultEnvelope<C extends JsonCommand = JsonCommand, D = unk
 export interface CheckJsonData { readonly canonical: { readonly valid: boolean; readonly sourceChanged: boolean }; readonly build: CheckResult["build"]; readonly install: CheckResult["install"]; }
 export type ListJsonData = ProjectInventory;
 export interface ReconcileJsonRecord { readonly key: string; readonly kind: "asset" | "companion"; readonly classification: ReconciliationClassification; readonly plannedAction: ReconcilePlannedAction; readonly requiredAuthority: ReconcileRequiredAuthority; readonly blocker: boolean; readonly resolutionRequired: boolean; }
-export interface ReconcileJsonData { readonly applied: boolean; readonly changed: boolean; readonly pending: boolean; readonly blocked: boolean; readonly records: readonly ReconcileJsonRecord[]; }
+export interface ReconcileJsonData { readonly applied: boolean; readonly changed: boolean; readonly pending: boolean; readonly blocked: boolean; readonly records: readonly ReconcileJsonRecord[]; readonly normalizationPolicy?: NormalizationPolicyIdentityV1; readonly normalizationLedger?: NormalizationLedgerV1; }
 export type DiffJsonData = DiffResult;
 export interface BundleJsonEntry { readonly type: "asset" | "companion" | "manifest"; readonly name: string; readonly assetId?: string; readonly size: number; readonly sha256: string; }
 export interface BundleJsonData { readonly output: string; readonly dryRun: boolean; readonly written: boolean; readonly replaced: boolean; readonly archiveBytes: number; readonly assetCount: number; readonly companionCount: number; readonly entries: readonly BundleJsonEntry[]; }
@@ -94,5 +96,5 @@ export function mapListJson(result: ProjectInventory): ListJsonData {
 
 export function mapReconcileJson(result: ReconciliationResult): ReconcileJsonData {
   const records = result.records.map((record) => ({ key: record.key, kind: record.kind, classification: record.classification, plannedAction: record.plannedAction, requiredAuthority: record.requiredAuthority, blocker: record.blocker, resolutionRequired: record.requiredAuthority === "resolve" })).sort((left, right) => compareUtf8(left.key, right.key));
-  return { applied: result.applied, changed: result.changed, pending: result.pending, blocked: result.blocked, records };
+  return { applied: result.applied, changed: result.changed, pending: result.pending, blocked: result.blocked, records, ...(result.normalizationPolicy === undefined ? {} : { normalizationPolicy: result.normalizationPolicy, normalizationLedger: result.normalizationLedger! }) };
 }

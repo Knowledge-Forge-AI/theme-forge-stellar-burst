@@ -1,0 +1,27 @@
+{
+  "kind": "tfsb-import-provenance",
+  "records": [
+    {
+      "archive": null,
+      "assetId": "example",
+      "canonicalPath": ".tfsb/assets/example.toml",
+      "migration": {
+        "afterBasis": "tfsb-asset-toml-v2",
+        "afterDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "afterSvgDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "beforeBasis": "tfsb-asset-toml-v1",
+        "beforeDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "beforeSvgDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "fromSchemaVersion": 1,
+        "resolution": "schema_migration_accepted_divergence",
+        "svgBasis": "tfsb-svg-output-v1",
+        "svgEquivalent": true,
+        "toSchemaVersion": 2,
+        "toolVersion": "0.2.0"
+      },
+      "normalizationPolicy": null,
+      "type": "asset"
+    }
+  ],
+  "schemaVersion": 2
+}

@@ -1,6 +1,6 @@
 {
   "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Declarative SVG compiler, transactional installer, and drift checker",
   "keywords": [
     "svg",
@@ -48,6 +48,7 @@
     "test:visual:update": "playwright test --project=chromium --update-snapshots",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.visual.json && tsc -p tsconfig.tools.json",
     "audit:dogfood": "npm run build && node tools/audit-dogfood-corpus.mjs",
+    "qualify:dogfood": "npm run build && node tools/qualify-dogfood-shards.mjs",
     "pretest": "npm run build",
     "test": "vitest run"
   },

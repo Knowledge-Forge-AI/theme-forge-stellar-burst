@@ -21,7 +21,7 @@ async function initialized() {
   const svg = await readFile(join(process.cwd(), "test/fixtures/tftn-icon-candidate-v1/favicon.svg"));
   const archive = join(root, "source.zip");
   await writeFile(archive, zipSync({ "favicon.svg": svg }, { level: 0, mtime: new Date("1980-01-02T00:00:00Z") }));
-  await importProject({ archive, root });
+  await importProject({ archive, root, schema: 1 });
   const snapshot = await snapshotCanonicalTree(root);
   const next = new Map([...snapshot.files].map(([path, file]) => [path, file.bytes]));
   const assetPath = ".tfsb/assets/favicon.toml";
@@ -139,7 +139,7 @@ describe("recoverable canonical-tree transaction", () => {
     const concurrent = initialTree("snapshot-winner");
 
     await expect(planImportWithHooks(
-      { archive, root, recordProvenance: true },
+      { archive, root, schema: 1, recordProvenance: true },
       { afterRootValidation: () => materializeCanonical(root, concurrent) },
     )).rejects.toMatchObject({ diagnostic: { code: "ROOT_ALREADY_INITIALIZED" } });
 
@@ -157,7 +157,7 @@ describe("recoverable canonical-tree transaction", () => {
       const svg = await readFile(join(process.cwd(), "test/fixtures/tftn-icon-candidate-v1/favicon.svg"));
       const archive = join(root, "source.zip");
       await writeFile(archive, zipSync({ "favicon.svg": svg }, { level: 0 }));
-      const plan = await planImport({ archive, root, recordProvenance: true });
+      const plan = await planImport({ archive, root, schema: 1, recordProvenance: true });
       const concurrent = initialTree(seam);
 
       await expect(executeImport(plan, { [seam]: () => materializeCanonical(root, concurrent) }))
@@ -178,7 +178,7 @@ describe("recoverable canonical-tree transaction", () => {
     await writeFile(archive, zipSync({ "favicon.svg": svg }, { level: 0 }));
     const concurrent = initialTree("archive-winner");
     const plan = await planImportWithHooks(
-      { archive, root, recordProvenance: true },
+      { archive, root, schema: 1, recordProvenance: true },
       { archiveHooks: { afterStructure: () => materializeCanonical(root, concurrent) } },
     );
 
@@ -237,7 +237,7 @@ describe("recoverable canonical-tree transaction", () => {
     const svg = await readFile(join(process.cwd(), "test/fixtures/tftn-icon-candidate-v1/favicon.svg"));
     const archive = join(root, "source.zip");
     await writeFile(archive, zipSync({ "favicon.svg": svg }, { level: 0, mtime: new Date("1980-01-02T00:00:00Z") }));
-    const plan = await planImport({ archive, root, recordProvenance: true });
+    const plan = await planImport({ archive, root, schema: 1, recordProvenance: true });
     await writeFile(archive, zipSync({ "favicon.svg": Buffer.concat([svg, Buffer.from(" ")]) }, { level: 0, mtime: new Date("1980-01-02T00:00:00Z") }));
     await expect(executeImport(plan)).rejects.toMatchObject({ diagnostic: { code: "ARCHIVE_CHANGED_DURING_PLAN" } });
     await expect(access(join(root, ".tfsb"))).rejects.toMatchObject({ code: "ENOENT" });

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-24
+
+Major feature release advancing Theme Forge Stellar Burst with productized archive pre-import analysis (`tfsb analyze`), Schema 2 vector models and typed geometric primitives, granular accessibility modes (`labelled`, `decorative`, `consumer_labelled`), direct canonical Schema 2 import, explicit exact-common normalization with normalization map schema 1 and `tfsb-normalization-policy-v1`, provenance schema 2, deterministic Schema 1 to Schema 2 migration (`tfsb migrate`), schema-2 reconciliation, raw versus normalized archive diffing, deterministic bundle and manifest compatibility, scriptless offline preview galleries, and frozen Schema 1 backward compatibility.
+
+### Added
+
+- **Productized Pre-Import Analysis (`tfsb analyze`):**
+  - Upstream archive and directory tree scanning classifying assets into `directly_importable`, `importable_with_normalization`, `unsupported`, or `unsafe`.
+  - Machine-readable `--json` single-envelope output and formatted human summaries.
+- **Schema 2 Vector Model & Typed Primitives:**
+  - `schema_version = 2` for project and asset TOML.
+  - Typed geometric primitives: `circle`, `ellipse`, `rect`, `line`, `polyline`, `polygon`.
+  - Root and element presentation attributes and `currentColor` token support.
+  - Typed `translate`, `scale`, and `rotate` transforms.
+  - Mixed and nested groups up to depth 8.
+  - Typed local `<defs>` and `<use>` references.
+- **Granular Accessibility Modes:**
+  - Modeled `labelled`, `decorative` (`aria-hidden="true"`), and `consumer_labelled` modes.
+- **Direct Schema-2 Import & Exact-Common Normalization:**
+  - Direct import for canonical Schema 2 SVGs.
+  - Deterministic exact-common normalization (`--normalize exact-common`) backed by `normalization-map.toml` schema 1 and cryptographic `tfsb-normalization-policy-v1` policy digests.
+- **Provenance Schema 2 & Migration (`tfsb migrate`):**
+  - Schema 2 paired-checkpoint provenance tracking.
+  - Safe, whole-project deterministic migration from Schema 1 to Schema 2 with non-destructive `--check` planning and verified byte-level equivalence.
+- **Schema-2 Reconciliation & Archive Diffing:**
+  - Multi-baseline archive diffing against raw sources and normalized canonical models.
+  - Safe reconciliation against Schema 2 assets with explicit authority enforcement.
+
 ## [0.2.0] - 2026-08-22
 
 Major feature release expanding Theme Forge Stellar Burst from an initial compiler into a complete lifecycle management system for vector assets, introducing safe archive reconciliation, paired-checkpoint provenance, deterministic bundle export/import, semantic diffing, canonical formatting, static offline visual previews, and versioned JSON machine automation.

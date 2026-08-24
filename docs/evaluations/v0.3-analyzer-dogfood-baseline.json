@@ -1,0 +1,1215 @@
+{
+  "authority": {
+    "compatibilityCounts": "authoritative_product_analyzer",
+    "importReadinessConstraintsRemainSeparate": [
+      "identity",
+      "legal_and_redistribution",
+      "resource_limits",
+      "normalization_authority",
+      "source_tree_safety"
+    ],
+    "previousProductBaseline": {
+      "analyzerCommit": "7953b6a38d3579547b25fc20d97bbd1df440d9e4",
+      "machineArtifactSha256": "sha256:1e7a9fdaa55809fdad034ab1e94ccf193840d1549db2c1ea0546e288fb310442",
+      "phase": "TFSB31R1",
+      "status": "correct_for_then_implemented_analyzer"
+    },
+    "projectionArtifact": "historical_provisional_evidence",
+    "regularSvgCorpusMeaning": "measurement_projection_of_regular_tracked_svg_blobs_only",
+    "sourceSafetyAndProfileMeasurementSeparated": true
+  },
+  "corpora": [
+    {
+      "analyzerMeasurement": {
+        "aggregateJsonByteIdentical": true,
+        "detailNdjsonByteIdentical": true,
+        "expectedOutcome": {
+          "aggregateJsonSha256": "sha256:e582d3ef81057635c4f1ea5fe645da7e892509f7759653d18f6d37c552a3dbab",
+          "detailNdjsonSha256": "sha256:03d78ae832cc92e55b0e01f8443740a4b99cf907cd1050c2e147368b1ec5a7d1",
+          "detailRecords": 2256,
+          "detailRecordsSha256": "sha256:c60ac4402c97885a2cd7065e316bd8993c49415d5ebebf256516675b1e43792d",
+          "exitCode": 1,
+          "status": "error"
+        },
+        "identity": {
+          "assetIdCollisions": {
+            "affectedFiles": 33,
+            "groups": 11
+          },
+          "invalidAssetIdentities": 2,
+          "portablePathCollisions": {
+            "affectedFiles": 0,
+            "groups": 0
+          }
+        },
+        "independentRun": {
+          "aggregateJsonSha256": "sha256:e582d3ef81057635c4f1ea5fe645da7e892509f7759653d18f6d37c552a3dbab",
+          "detailNdjsonSha256": "sha256:03d78ae832cc92e55b0e01f8443740a4b99cf907cd1050c2e147368b1ec5a7d1",
+          "detailRecords": 2256,
+          "detailRecordsSha256": "sha256:c60ac4402c97885a2cd7065e316bd8993c49415d5ebebf256516675b1e43792d",
+          "exitCode": 1,
+          "status": "error"
+        },
+        "profileArithmeticValid": true,
+        "profiles": {
+          "commonV03": {
+            "counts": {
+              "directlyImportable": 0,
+              "importableWithNormalization": 2147,
+              "unsafe": 20,
+              "unsupported": 89
+            },
+            "diagnosticCounts": {
+              "ANALYZE_INVALID_CANVAS_DIMENSION": 1,
+              "ANALYZE_INVALID_ID": 3,
+              "ANALYZE_INVALID_VIEWBOX": 13,
+              "ANALYZE_UNSAFE_ACTIVE_ATTRIBUTE": 18,
+              "ANALYZE_UNSAFE_ACTIVE_ELEMENT": 2,
+              "ANALYZE_UNSAFE_EXTERNAL_REFERENCE": 18,
+              "ANALYZE_UNSAFE_XML_DECLARATION": 1,
+              "ANALYZE_UNSUPPORTED_ATTRIBUTE": 55,
+              "ANALYZE_UNSUPPORTED_CSS_CLASS": 25,
+              "ANALYZE_UNSUPPORTED_ELEMENT": 39,
+              "ANALYZE_UNSUPPORTED_NAMESPACE": 17,
+              "ANALYZE_UNSUPPORTED_PAINT": 85,
+              "ANALYZE_UNSUPPORTED_TRANSFORM": 13
+            },
+            "featureCounts": {
+              "accessibility.consumer_labelled": 2,
+              "accessibility.labelled": 7,
+              "accessibility.unlabelled": 2246,
+              "attribute.class": 25,
+              "attribute.clip-path": 31,
+              "attribute.style": 18,
+              "definition.linearGradient": 23,
+              "definitions.forward_order": 42,
+              "element.circle": 508,
+              "element.clipPath": 31,
+              "element.defs": 47,
+              "element.ellipse": 27,
+              "element.g": 43,
+              "element.line": 78,
+              "element.linearGradient": 23,
+              "element.metadata": 1,
+              "element.other": 12,
+              "element.path": 2184,
+              "element.polygon": 3,
+              "element.polyline": 5,
+              "element.rect": 468,
+              "element.stop": 23,
+              "element.style": 2,
+              "element.svg": 2256,
+              "element.title": 7,
+              "group.mixed_or_nested_children": 30,
+              "namespace.svg": 2255,
+              "namespace.xlink": 2,
+              "paint.currentColor": 2156,
+              "paint.hex": 110,
+              "paint.linearGradient": 23,
+              "paint.none": 2240,
+              "paint.other": 85,
+              "presentation.clip-rule": 17,
+              "presentation.fill-opacity": 11,
+              "presentation.fill-rule": 19,
+              "presentation.opacity": 26,
+              "presentation.stroke-opacity": 1,
+              "reference.external": 18,
+              "reference.local": 49,
+              "root-presentation.fill": 2242,
+              "root-presentation.stroke": 2137,
+              "root-presentation.stroke-linecap": 2137,
+              "root-presentation.stroke-linejoin": 2137,
+              "root-presentation.stroke-width": 2137,
+              "transform.rotate": 2,
+              "transform.scale": 14,
+              "transform.translate": 18,
+              "xml.comment": 2,
+              "xml.declaration": 3,
+              "xml.doctype": 1
+            },
+            "normalizationCounts": {
+              "accessibility_authority_required": 2147,
+              "canonicalize_definition_order": 2,
+              "promote_root_presentation": 2146,
+              "rect_corner_completion": 366
+            },
+            "profile": "tfsb-svg-common-v0.3"
+          },
+          "schema1": {
+            "counts": {
+              "directlyImportable": 0,
+              "importableWithNormalization": 0,
+              "unsafe": 20,
+              "unsupported": 2236
+            },
+            "diagnosticCounts": {
+              "ANALYZE_INVALID_ACCESSIBILITY": 6,
+              "ANALYZE_SYNTAX_ERROR": 1,
+              "ANALYZE_UNSAFE_ACTIVE_ATTRIBUTE": 18,
+              "ANALYZE_UNSAFE_ACTIVE_ELEMENT": 2,
+              "ANALYZE_UNSAFE_EXTERNAL_REFERENCE": 18,
+              "ANALYZE_UNSAFE_XML_DECLARATION": 1,
+              "ANALYZE_UNSUPPORTED_ATTRIBUTE": 2234,
+              "ANALYZE_UNSUPPORTED_NAMESPACE": 14
+            },
+            "featureCounts": {
+              "accessibility.consumer_labelled": 2,
+              "accessibility.labelled": 7,
+              "accessibility.unlabelled": 2246,
+              "attribute.class": 25,
+              "attribute.clip-path": 31,
+              "attribute.style": 18,
+              "definition.linearGradient": 23,
+              "definitions.forward_order": 42,
+              "element.circle": 508,
+              "element.clipPath": 31,
+              "element.defs": 47,
+              "element.ellipse": 27,
+              "element.g": 43,
+              "element.line": 78,
+              "element.linearGradient": 23,
+              "element.metadata": 1,
+              "element.other": 12,
+              "element.path": 2184,
+              "element.polygon": 3,
+              "element.polyline": 5,
+              "element.rect": 468,
+              "element.stop": 23,
+              "element.style": 2,
+              "element.svg": 2256,
+              "element.title": 7,
+              "group.mixed_or_nested_children": 30,
+              "namespace.svg": 2255,
+              "namespace.xlink": 2,
+              "paint.currentColor": 2156,
+              "paint.hex": 110,
+              "paint.linearGradient": 23,
+              "paint.none": 2240,
+              "paint.other": 85,
+              "presentation.clip-rule": 17,
+              "presentation.fill-opacity": 11,
+              "presentation.fill-rule": 19,
+              "presentation.opacity": 26,
+              "presentation.stroke-opacity": 1,
+              "reference.external": 18,
+              "reference.local": 49,
+              "root-presentation.fill": 2242,
+              "root-presentation.stroke": 2137,
+              "root-presentation.stroke-linecap": 2137,
+              "root-presentation.stroke-linejoin": 2137,
+              "root-presentation.stroke-width": 2137,
+              "transform.rotate": 2,
+              "transform.scale": 14,
+              "transform.translate": 18,
+              "xml.comment": 2,
+              "xml.declaration": 3,
+              "xml.doctype": 1
+            },
+            "normalizationCounts": {},
+            "profile": "tfsb-svg-schema-1"
+          }
+        },
+        "resourceObservations": {
+          "maxFileBytes": 250090,
+          "sourceBytes": 2731340,
+          "xmlElements": 13793
+        },
+        "sensitiveLeakageMatches": [],
+        "totals": {
+          "files": 2256,
+          "svgFiles": 2256
+        }
+      },
+      "checkoutState": {
+        "branch": "main",
+        "detached": false,
+        "dirty": false,
+        "shallow": false,
+        "statusBeforeAfterByteIdentical": true,
+        "statusSha256": "sha256:2b739fb590f39732558d52f0a1015e5bb2dfb8c5ab336ab464faebe8b5d40c9a"
+      },
+      "id": "lucide",
+      "provisionalComparison": {
+        "commonV03": {
+          "authoritative": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 2147,
+            "unsafe": 20,
+            "unsupported": 89
+          },
+          "delta": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 2147,
+            "unsafe": 20,
+            "unsupported": 89
+          }
+        },
+        "nonzeroDeltaExplanations": [],
+        "projectionRevisionMatches": true,
+        "schema1": {
+          "authoritative": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 20,
+            "unsupported": 2236
+          },
+          "delta": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 20,
+            "unsupported": 2236
+          }
+        }
+      },
+      "regularSvgCorpus": {
+        "construction": "git_ls_tree_and_cat_file_tracked_head_blobs",
+        "excludedNonRegularSvgEntries": [],
+        "manifestFields": [
+          "origin",
+          "revision",
+          "path",
+          "blob",
+          "bytes",
+          "mode"
+        ],
+        "manifestSha256": "sha256:fae5570822c6646c2a36c015425d7e58bd44c7780bf83db4faf251bafcfc4780",
+        "regularSvgPaths": 2256,
+        "sourceBytes": 2731340,
+        "trackedSvgPaths": 2256
+      },
+      "repository": {
+        "origin": "git@github.com:lucide-icons/lucide.git",
+        "revision": "33a44aa8b0b43d9b0ed14eb08860a1b5550a1573"
+      },
+      "sourceSafety": {
+        "directory": {
+          "acceptedAsAnalyzableSource": true,
+          "completeProfileDataAuthoritative": true,
+          "exitCode": 1,
+          "profileEquivalentToRegularSvgMeasurement": true,
+          "scanAbortingDiagnostics": [],
+          "status": "error"
+        },
+        "zip": {
+          "acceptedAsAnalyzableSource": true,
+          "disposition": "run_complete_regular_inventory",
+          "exitCode": 1,
+          "profileEquivalentToRegularSvgMeasurement": true,
+          "scanAbortingDiagnostics": [],
+          "status": "error"
+        }
+      },
+      "trackedTree": {
+        "entries": 5267,
+        "nonRegularEntries": []
+      }
+    },
+    {
+      "analyzerMeasurement": {
+        "aggregateJsonByteIdentical": true,
+        "detailNdjsonByteIdentical": true,
+        "expectedOutcome": {
+          "aggregateJsonSha256": "sha256:6c21da4fe8fd48ef0254ef35d9886c25878d97309866882ef866048ab614a5c0",
+          "detailNdjsonSha256": "sha256:c669020e8697279a63d0ae2f8962ff98ad96c9cfc2d3e8e65060ecbc272dc949",
+          "detailRecords": 3453,
+          "detailRecordsSha256": "sha256:2d7428fa24e88521e4c1d9774d0445c280198a60b1578feb1faae4d7e34a071e",
+          "exitCode": 2,
+          "status": "drift"
+        },
+        "identity": {
+          "assetIdCollisions": {
+            "affectedFiles": 0,
+            "groups": 0
+          },
+          "invalidAssetIdentities": 0,
+          "portablePathCollisions": {
+            "affectedFiles": 0,
+            "groups": 0
+          }
+        },
+        "independentRun": {
+          "aggregateJsonSha256": "sha256:6c21da4fe8fd48ef0254ef35d9886c25878d97309866882ef866048ab614a5c0",
+          "detailNdjsonSha256": "sha256:c669020e8697279a63d0ae2f8962ff98ad96c9cfc2d3e8e65060ecbc272dc949",
+          "detailRecords": 3453,
+          "detailRecordsSha256": "sha256:2d7428fa24e88521e4c1d9774d0445c280198a60b1578feb1faae4d7e34a071e",
+          "exitCode": 2,
+          "status": "drift"
+        },
+        "profileArithmeticValid": true,
+        "profiles": {
+          "commonV03": {
+            "counts": {
+              "directlyImportable": 0,
+              "importableWithNormalization": 3453,
+              "unsafe": 0,
+              "unsupported": 0
+            },
+            "diagnosticCounts": {},
+            "featureCounts": {
+              "accessibility.labelled": 3453,
+              "element.path": 3453,
+              "element.svg": 3453,
+              "element.title": 3453,
+              "namespace.svg": 3453
+            },
+            "normalizationCounts": {
+              "title_only_to_labelled": 3453
+            },
+            "profile": "tfsb-svg-common-v0.3"
+          },
+          "schema1": {
+            "counts": {
+              "directlyImportable": 0,
+              "importableWithNormalization": 0,
+              "unsafe": 0,
+              "unsupported": 3453
+            },
+            "diagnosticCounts": {
+              "ANALYZE_INVALID_ACCESSIBILITY": 3453
+            },
+            "featureCounts": {
+              "accessibility.labelled": 3453,
+              "element.path": 3453,
+              "element.svg": 3453,
+              "element.title": 3453,
+              "namespace.svg": 3453
+            },
+            "normalizationCounts": {},
+            "profile": "tfsb-svg-schema-1"
+          }
+        },
+        "resourceObservations": {
+          "maxFileBytes": 54166,
+          "sourceBytes": 4978575,
+          "xmlElements": 10359
+        },
+        "sensitiveLeakageMatches": [],
+        "totals": {
+          "files": 3453,
+          "svgFiles": 3453
+        }
+      },
+      "checkoutState": {
+        "branch": "develop",
+        "detached": false,
+        "dirty": false,
+        "shallow": false,
+        "statusBeforeAfterByteIdentical": true,
+        "statusSha256": "sha256:612342707896c2b64c22e13d4ff2af0832da2b2ee5550866ef5343b0145cae2d"
+      },
+      "id": "simple-icons",
+      "provisionalComparison": {
+        "commonV03": {
+          "authoritative": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 3453,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "delta": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 3453,
+            "unsafe": 0,
+            "unsupported": 0
+          }
+        },
+        "nonzeroDeltaExplanations": [],
+        "projectionRevisionMatches": true,
+        "schema1": {
+          "authoritative": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 3453
+          },
+          "delta": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 3453
+          }
+        }
+      },
+      "regularSvgCorpus": {
+        "construction": "git_ls_tree_and_cat_file_tracked_head_blobs",
+        "excludedNonRegularSvgEntries": [],
+        "manifestFields": [
+          "origin",
+          "revision",
+          "path",
+          "blob",
+          "bytes",
+          "mode"
+        ],
+        "manifestSha256": "sha256:daf7d34e05803b13f76227cd6d717e3f505360d1b6e4edf2801191212a469b8a",
+        "regularSvgPaths": 3453,
+        "sourceBytes": 4978575,
+        "trackedSvgPaths": 3453
+      },
+      "repository": {
+        "origin": "git@github.com:simple-icons/simple-icons",
+        "revision": "34c22501f9ac9f22b12f825677ccbab1fb22e14b"
+      },
+      "sourceSafety": {
+        "directory": {
+          "acceptedAsAnalyzableSource": false,
+          "completeProfileDataAuthoritative": false,
+          "exitCode": 1,
+          "profileEquivalentToRegularSvgMeasurement": null,
+          "scanAbortingDiagnostics": [
+            "ANALYZE_SNAPSHOT_FAILED"
+          ],
+          "status": "error"
+        },
+        "zip": {
+          "disposition": "not_run_non_regular_tracked_entry",
+          "reason": "A faithful complete tracked export would include a non-regular entry; no ZIP was used to launder it into a regular file."
+        }
+      },
+      "trackedTree": {
+        "entries": 3540,
+        "nonRegularEntries": [
+          {
+            "mode": "120000",
+            "object": "070266a2687d844408b8aa5f33b641c2de388dc9",
+            "path": ".nvmrc",
+            "type": "blob"
+          }
+        ]
+      }
+    },
+    {
+      "analyzerMeasurement": {
+        "aggregateJsonByteIdentical": true,
+        "detailNdjsonByteIdentical": true,
+        "expectedOutcome": {
+          "aggregateJsonSha256": "sha256:85240e63d239cac7538f61891569c7553dcfccc2118027b43225592516a727a1",
+          "detailNdjsonSha256": "sha256:0959bed8ae979d3bdb67a8f76a5dcbc393acee4c82192e3580648a80a53e9264",
+          "detailRecords": 6410,
+          "detailRecordsSha256": "sha256:a79e6f08486ea1bcbe39056f853775597e72f40f9142cdab57acf96d5a539714",
+          "exitCode": 1,
+          "status": "error"
+        },
+        "identity": {
+          "assetIdCollisions": {
+            "affectedFiles": 2109,
+            "groups": 1054
+          },
+          "invalidAssetIdentities": 218,
+          "portablePathCollisions": {
+            "affectedFiles": 0,
+            "groups": 0
+          }
+        },
+        "independentRun": {
+          "aggregateJsonSha256": "sha256:85240e63d239cac7538f61891569c7553dcfccc2118027b43225592516a727a1",
+          "detailNdjsonSha256": "sha256:0959bed8ae979d3bdb67a8f76a5dcbc393acee4c82192e3580648a80a53e9264",
+          "detailRecords": 6410,
+          "detailRecordsSha256": "sha256:a79e6f08486ea1bcbe39056f853775597e72f40f9142cdab57acf96d5a539714",
+          "exitCode": 1,
+          "status": "error"
+        },
+        "profileArithmeticValid": true,
+        "profiles": {
+          "commonV03": {
+            "counts": {
+              "directlyImportable": 0,
+              "importableWithNormalization": 6184,
+              "unsafe": 225,
+              "unsupported": 1
+            },
+            "diagnosticCounts": {
+              "ANALYZE_INVALID_ID": 9,
+              "ANALYZE_INVALID_PATH_DATA": 1,
+              "ANALYZE_INVALID_REFERENCE": 225,
+              "ANALYZE_PROFILE_ELEMENT_LIMIT_EXCEEDED": 10,
+              "ANALYZE_UNSAFE_ACTIVE_ATTRIBUTE": 225,
+              "ANALYZE_UNSAFE_EXTERNAL_REFERENCE": 225,
+              "ANALYZE_UNSUPPORTED_ATTRIBUTE": 226,
+              "ANALYZE_UNSUPPORTED_CSS_CLASS": 171,
+              "ANALYZE_UNSUPPORTED_ELEMENT": 225,
+              "ANALYZE_UNSUPPORTED_PAINT": 226,
+              "ANALYZE_UNSUPPORTED_TRANSFORM": 6
+            },
+            "featureCounts": {
+              "accessibility.unlabelled": 6410,
+              "attribute.class": 171,
+              "attribute.style": 225,
+              "attribute.xlink-href": 225,
+              "element.circle": 116,
+              "element.desc": 1,
+              "element.ellipse": 22,
+              "element.g": 12,
+              "element.line": 40,
+              "element.path": 6410,
+              "element.polyline": 16,
+              "element.rect": 225,
+              "element.svg": 6410,
+              "element.symbol": 225,
+              "element.use": 225,
+              "group.mixed_or_nested_children": 6,
+              "namespace.svg": 6410,
+              "namespace.xlink": 226,
+              "paint.currentColor": 6409,
+              "paint.hex": 5,
+              "paint.none": 5342,
+              "paint.other": 226,
+              "presentation.clip-rule": 1,
+              "presentation.fill-rule": 1,
+              "presentation.opacity": 6,
+              "reference.external": 225,
+              "reference.local": 225,
+              "reference.xlink_local": 225,
+              "root-presentation.fill": 6184,
+              "root-presentation.stroke": 5130,
+              "root-presentation.stroke-linecap": 5130,
+              "root-presentation.stroke-linejoin": 5130,
+              "root-presentation.stroke-width": 5130,
+              "transform.matrix": 6,
+              "transform.rotate": 15,
+              "transform.translate": 4,
+              "xml.comment": 6184
+            },
+            "normalizationCounts": {
+              "accessibility_authority_required": 6184,
+              "promote_root_presentation": 6184
+            },
+            "profile": "tfsb-svg-common-v0.3"
+          },
+          "schema1": {
+            "counts": {
+              "directlyImportable": 0,
+              "importableWithNormalization": 0,
+              "unsafe": 225,
+              "unsupported": 6185
+            },
+            "diagnosticCounts": {
+              "ANALYZE_UNSAFE_ACTIVE_ATTRIBUTE": 225,
+              "ANALYZE_UNSAFE_EXTERNAL_REFERENCE": 225,
+              "ANALYZE_UNSUPPORTED_ATTRIBUTE": 6184,
+              "ANALYZE_UNSUPPORTED_NAMESPACE": 226
+            },
+            "featureCounts": {
+              "accessibility.unlabelled": 6410,
+              "attribute.class": 171,
+              "attribute.style": 225,
+              "attribute.xlink-href": 225,
+              "element.circle": 116,
+              "element.desc": 1,
+              "element.ellipse": 22,
+              "element.g": 12,
+              "element.line": 40,
+              "element.path": 6410,
+              "element.polyline": 16,
+              "element.rect": 225,
+              "element.svg": 6410,
+              "element.symbol": 225,
+              "element.use": 225,
+              "group.mixed_or_nested_children": 6,
+              "namespace.svg": 6410,
+              "namespace.xlink": 226,
+              "paint.currentColor": 6409,
+              "paint.hex": 5,
+              "paint.none": 5342,
+              "paint.other": 226,
+              "presentation.clip-rule": 1,
+              "presentation.fill-rule": 1,
+              "presentation.opacity": 6,
+              "reference.external": 225,
+              "reference.local": 225,
+              "reference.xlink_local": 225,
+              "root-presentation.fill": 6184,
+              "root-presentation.stroke": 5130,
+              "root-presentation.stroke-linecap": 5130,
+              "root-presentation.stroke-linejoin": 5130,
+              "root-presentation.stroke-width": 5130,
+              "transform.matrix": 6,
+              "transform.rotate": 15,
+              "transform.translate": 4,
+              "xml.comment": 6184
+            },
+            "normalizationCounts": {},
+            "profile": "tfsb-svg-schema-1"
+          }
+        },
+        "resourceObservations": {
+          "maxFileBytes": 2834325,
+          "sourceBytes": 18675570,
+          "xmlElements": 185876
+        },
+        "sensitiveLeakageMatches": [],
+        "totals": {
+          "files": 6410,
+          "svgFiles": 6410
+        }
+      },
+      "checkoutState": {
+        "branch": "main",
+        "detached": false,
+        "dirty": false,
+        "shallow": false,
+        "statusBeforeAfterByteIdentical": true,
+        "statusSha256": "sha256:b406531d2bdff861e13e954bfbd3eed40a51e513662735443390410d94f91dc1"
+      },
+      "id": "tabler-icons",
+      "provisionalComparison": {
+        "commonV03": {
+          "authoritative": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 6184,
+            "unsafe": 225,
+            "unsupported": 1
+          },
+          "delta": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 6184,
+            "unsafe": 225,
+            "unsupported": 1
+          }
+        },
+        "nonzeroDeltaExplanations": [],
+        "projectionRevisionMatches": true,
+        "schema1": {
+          "authoritative": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 225,
+            "unsupported": 6185
+          },
+          "delta": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 0,
+            "unsupported": 0
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 225,
+            "unsupported": 6185
+          }
+        }
+      },
+      "regularSvgCorpus": {
+        "construction": "git_ls_tree_and_cat_file_tracked_head_blobs",
+        "excludedNonRegularSvgEntries": [],
+        "manifestFields": [
+          "origin",
+          "revision",
+          "path",
+          "blob",
+          "bytes",
+          "mode"
+        ],
+        "manifestSha256": "sha256:41b81fcbf6fa94f8829927398601285e07438a8650f5d77189f6add7e9c2dcff",
+        "regularSvgPaths": 6410,
+        "sourceBytes": 18675570,
+        "trackedSvgPaths": 6410
+      },
+      "repository": {
+        "origin": "git@github.com:tabler/tabler-icons.git",
+        "revision": "5a0fe38e97784d94279ce4eb1bf85f9a91bf027e"
+      },
+      "sourceSafety": {
+        "directory": {
+          "acceptedAsAnalyzableSource": true,
+          "completeProfileDataAuthoritative": true,
+          "exitCode": 1,
+          "profileEquivalentToRegularSvgMeasurement": true,
+          "scanAbortingDiagnostics": [],
+          "status": "error"
+        },
+        "zip": {
+          "acceptedAsAnalyzableSource": true,
+          "disposition": "run_complete_regular_inventory",
+          "exitCode": 1,
+          "profileEquivalentToRegularSvgMeasurement": true,
+          "scanAbortingDiagnostics": [],
+          "status": "error"
+        }
+      },
+      "trackedTree": {
+        "entries": 7189,
+        "nonRegularEntries": []
+      }
+    },
+    {
+      "analyzerMeasurement": {
+        "aggregateJsonByteIdentical": true,
+        "detailNdjsonByteIdentical": true,
+        "expectedOutcome": {
+          "aggregateJsonSha256": "sha256:34fc94728a5cbda760140c74cefbf36520ec95fa4154402a22cdd17ee0f4f819",
+          "detailNdjsonSha256": "sha256:c6aaf556d6ccf82ab01c7d57d66155a11af030c0a208a4cbb6b724c0d9bfe0f6",
+          "detailRecords": 12457,
+          "detailRecordsSha256": "sha256:dcd9ce5b5a3096c06a35dd6e9e12c304c4ead8993df4a0b1722e3540822e4324",
+          "exitCode": 1,
+          "status": "error"
+        },
+        "identity": {
+          "assetIdCollisions": {
+            "affectedFiles": 12444,
+            "groups": 17
+          },
+          "invalidAssetIdentities": 0,
+          "portablePathCollisions": {
+            "affectedFiles": 0,
+            "groups": 0
+          }
+        },
+        "independentRun": {
+          "aggregateJsonSha256": "sha256:34fc94728a5cbda760140c74cefbf36520ec95fa4154402a22cdd17ee0f4f819",
+          "detailNdjsonSha256": "sha256:c6aaf556d6ccf82ab01c7d57d66155a11af030c0a208a4cbb6b724c0d9bfe0f6",
+          "detailRecords": 12457,
+          "detailRecordsSha256": "sha256:dcd9ce5b5a3096c06a35dd6e9e12c304c4ead8993df4a0b1722e3540822e4324",
+          "exitCode": 1,
+          "status": "error"
+        },
+        "profileArithmeticValid": true,
+        "profiles": {
+          "commonV03": {
+            "counts": {
+              "directlyImportable": 2,
+              "importableWithNormalization": 8022,
+              "unsafe": 789,
+              "unsupported": 3644
+            },
+            "diagnosticCounts": {
+              "ANALYZE_INVALID_ACCESSIBILITY": 25,
+              "ANALYZE_INVALID_CANVAS_DIMENSION": 1762,
+              "ANALYZE_INVALID_GEOMETRY": 61,
+              "ANALYZE_INVALID_ID": 1719,
+              "ANALYZE_INVALID_REFERENCE": 187,
+              "ANALYZE_INVALID_VIEWBOX": 230,
+              "ANALYZE_PROFILE_DEPTH_LIMIT_EXCEEDED": 1,
+              "ANALYZE_UNSAFE_ACTIVE_ATTRIBUTE": 601,
+              "ANALYZE_UNSAFE_ACTIVE_ELEMENT": 355,
+              "ANALYZE_UNSAFE_EXTERNAL_REFERENCE": 602,
+              "ANALYZE_UNSAFE_XML_DECLARATION": 23,
+              "ANALYZE_UNSUPPORTED_ATTRIBUTE": 1677,
+              "ANALYZE_UNSUPPORTED_CSS_CLASS": 386,
+              "ANALYZE_UNSUPPORTED_ELEMENT": 924,
+              "ANALYZE_UNSUPPORTED_NAMESPACE": 382,
+              "ANALYZE_UNSUPPORTED_PAINT": 1450,
+              "ANALYZE_UNSUPPORTED_TRANSFORM": 143,
+              "ANALYZE_UNSUPPORTED_VERSION": 144,
+              "ANALYZE_UNSUPPORTED_XML_NODE": 3
+            },
+            "featureCounts": {
+              "accessibility.consumer_labelled": 17,
+              "accessibility.decorative": 1,
+              "accessibility.labelled": 9336,
+              "accessibility.unlabelled": 3080,
+              "attribute.class": 386,
+              "attribute.clip-path": 369,
+              "attribute.href": 27,
+              "attribute.style": 601,
+              "attribute.xlink-href": 68,
+              "definition.basic_geometry": 13,
+              "definition.group": 7,
+              "definition.linearGradient": 916,
+              "definition.path": 35,
+              "definitions.forward_order": 455,
+              "element.circle": 338,
+              "element.clipPath": 395,
+              "element.defs": 1593,
+              "element.desc": 9,
+              "element.ellipse": 98,
+              "element.g": 3133,
+              "element.image": 3,
+              "element.line": 13,
+              "element.linearGradient": 953,
+              "element.metadata": 91,
+              "element.other": 382,
+              "element.path": 12411,
+              "element.polygon": 182,
+              "element.polyline": 3,
+              "element.rect": 1860,
+              "element.stop": 1016,
+              "element.style": 352,
+              "element.svg": 12457,
+              "element.symbol": 4,
+              "element.title": 9388,
+              "element.use": 54,
+              "group.mixed_or_nested_children": 2070,
+              "namespace.other": 64,
+              "namespace.svg": 12434,
+              "namespace.xlink": 1908,
+              "paint.currentColor": 563,
+              "paint.external": 2,
+              "paint.hex": 7115,
+              "paint.linearGradient": 955,
+              "paint.none": 2734,
+              "paint.other": 1449,
+              "presentation.clip-rule": 500,
+              "presentation.fill-opacity": 120,
+              "presentation.fill-rule": 2347,
+              "presentation.opacity": 250,
+              "presentation.stroke-opacity": 14,
+              "reference.external": 602,
+              "reference.local": 1346,
+              "reference.xlink_local": 68,
+              "root-presentation.clip-rule": 15,
+              "root-presentation.fill": 4516,
+              "root-presentation.fill-rule": 457,
+              "root-presentation.stroke": 15,
+              "root-presentation.stroke-linecap": 12,
+              "root-presentation.stroke-linejoin": 27,
+              "root-presentation.stroke-miterlimit": 13,
+              "root-presentation.stroke-width": 13,
+              "transform.matrix": 143,
+              "transform.rotate": 104,
+              "transform.scale": 48,
+              "transform.skewX": 1,
+              "transform.translate": 802,
+              "xml.cdata": 2,
+              "xml.comment": 141,
+              "xml.declaration": 1806,
+              "xml.doctype": 21,
+              "xml.processing-instruction": 1
+            },
+            "normalizationCounts": {
+              "accessibility_authority_required": 806,
+              "canonicalize_definition_order": 60,
+              "canonicalize_svg_version": 7,
+              "declare_decorative": 1,
+              "geometry_defaults_expanded": 23,
+              "promote_root_presentation": 3711,
+              "rect_corner_completion": 38,
+              "title_only_to_labelled": 7214,
+              "xlink_href_to_href": 1,
+              "xlink_namespace_to_svg2_href": 7
+            },
+            "profile": "tfsb-svg-common-v0.3"
+          },
+          "schema1": {
+            "counts": {
+              "directlyImportable": 0,
+              "importableWithNormalization": 0,
+              "unsafe": 789,
+              "unsupported": 11668
+            },
+            "diagnosticCounts": {
+              "ANALYZE_INVALID_ACCESSIBILITY": 5052,
+              "ANALYZE_UNSAFE_ACTIVE_ATTRIBUTE": 601,
+              "ANALYZE_UNSAFE_ACTIVE_ELEMENT": 355,
+              "ANALYZE_UNSAFE_EXTERNAL_REFERENCE": 602,
+              "ANALYZE_UNSAFE_XML_DECLARATION": 24,
+              "ANALYZE_UNSUPPORTED_ATTRIBUTE": 5300,
+              "ANALYZE_UNSUPPORTED_NAMESPACE": 1936,
+              "ANALYZE_UNSUPPORTED_VERSION": 133,
+              "ANALYZE_UNSUPPORTED_XML_NODE": 3
+            },
+            "featureCounts": {
+              "accessibility.consumer_labelled": 17,
+              "accessibility.decorative": 1,
+              "accessibility.labelled": 9336,
+              "accessibility.unlabelled": 3080,
+              "attribute.class": 386,
+              "attribute.clip-path": 369,
+              "attribute.href": 27,
+              "attribute.style": 601,
+              "attribute.xlink-href": 68,
+              "definition.basic_geometry": 13,
+              "definition.group": 7,
+              "definition.linearGradient": 916,
+              "definition.path": 35,
+              "definitions.forward_order": 455,
+              "element.circle": 338,
+              "element.clipPath": 395,
+              "element.defs": 1593,
+              "element.desc": 9,
+              "element.ellipse": 98,
+              "element.g": 3133,
+              "element.image": 3,
+              "element.line": 13,
+              "element.linearGradient": 953,
+              "element.metadata": 91,
+              "element.other": 382,
+              "element.path": 12411,
+              "element.polygon": 182,
+              "element.polyline": 3,
+              "element.rect": 1860,
+              "element.stop": 1016,
+              "element.style": 352,
+              "element.svg": 12457,
+              "element.symbol": 4,
+              "element.title": 9388,
+              "element.use": 54,
+              "group.mixed_or_nested_children": 2070,
+              "namespace.other": 64,
+              "namespace.svg": 12434,
+              "namespace.xlink": 1908,
+              "paint.currentColor": 563,
+              "paint.external": 2,
+              "paint.hex": 7115,
+              "paint.linearGradient": 955,
+              "paint.none": 2734,
+              "paint.other": 1449,
+              "presentation.clip-rule": 500,
+              "presentation.fill-opacity": 120,
+              "presentation.fill-rule": 2347,
+              "presentation.opacity": 250,
+              "presentation.stroke-opacity": 14,
+              "reference.external": 602,
+              "reference.local": 1346,
+              "reference.xlink_local": 68,
+              "root-presentation.clip-rule": 15,
+              "root-presentation.fill": 4516,
+              "root-presentation.fill-rule": 457,
+              "root-presentation.stroke": 15,
+              "root-presentation.stroke-linecap": 12,
+              "root-presentation.stroke-linejoin": 27,
+              "root-presentation.stroke-miterlimit": 13,
+              "root-presentation.stroke-width": 13,
+              "transform.matrix": 143,
+              "transform.rotate": 104,
+              "transform.scale": 48,
+              "transform.skewX": 1,
+              "transform.translate": 802,
+              "xml.cdata": 2,
+              "xml.comment": 141,
+              "xml.declaration": 1806,
+              "xml.doctype": 21,
+              "xml.processing-instruction": 1
+            },
+            "normalizationCounts": {},
+            "profile": "tfsb-svg-schema-1"
+          }
+        },
+        "resourceObservations": {
+          "maxFileBytes": 101559,
+          "sourceBytes": 28183953,
+          "xmlElements": 75644
+        },
+        "sensitiveLeakageMatches": [],
+        "totals": {
+          "files": 12457,
+          "svgFiles": 12457
+        }
+      },
+      "checkoutState": {
+        "branch": "main",
+        "detached": false,
+        "dirty": false,
+        "shallow": false,
+        "statusBeforeAfterByteIdentical": true,
+        "statusSha256": "sha256:fc14d6197995f717b02fd98d447303ec894bba4856c4fef0c6cf83106e5953dd"
+      },
+      "id": "thesvg",
+      "provisionalComparison": {
+        "commonV03": {
+          "authoritative": {
+            "directlyImportable": 2,
+            "importableWithNormalization": 8022,
+            "unsafe": 789,
+            "unsupported": 3644
+          },
+          "delta": {
+            "directlyImportable": 2,
+            "importableWithNormalization": -9,
+            "unsafe": -3,
+            "unsupported": 10
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 8031,
+            "unsafe": 792,
+            "unsupported": 3634
+          }
+        },
+        "nonzeroDeltaExplanations": [
+          {
+            "count": 2,
+            "disposition": "projection_helper_defect",
+            "explanation": "The projection required accessibility authority for role=img SVGs with no local title or description. The accepted profile models that exact source shape as consumer_labelled without normalization.",
+            "paths": [
+              "public/icons/devspace/default.svg",
+              "public/icons/ovhcloud/default.svg"
+            ],
+            "profiles": [
+              "commonV03"
+            ],
+            "responsibleRules": [
+              "accessibility.consumer_labelled"
+            ],
+            "transition": "importableWithNormalization -> directlyImportable"
+          },
+          {
+            "count": 3,
+            "disposition": "expected_product_contract_correction",
+            "explanation": "The product enforces the complete identifier grammar; the provisional helper did not. These group IDs contain characters outside the accepted identifier grammar.",
+            "paths": [
+              "public/icons/aws-res-amazon-api-gateway-endpoint/default.svg",
+              "public/icons/cody/default.svg",
+              "public/icons/colgate/default.svg"
+            ],
+            "profiles": [
+              "commonV03"
+            ],
+            "responsibleRules": [
+              "ANALYZE_INVALID_ID"
+            ],
+            "transition": "importableWithNormalization -> unsupported"
+          },
+          {
+            "count": 4,
+            "disposition": "expected_product_contract_correction",
+            "explanation": "The product requires typed linear-gradient definitions under defs and resolves paint references against valid local definitions. The provisional helper accepted direct-root linearGradient placement.",
+            "paths": [
+              "public/icons/matlab/default.svg",
+              "public/icons/mediawiki/wordmark-light.svg",
+              "public/icons/volcano/default.svg",
+              "public/icons/zulip/wordmark.svg"
+            ],
+            "profiles": [
+              "commonV03"
+            ],
+            "responsibleRules": [
+              "ANALYZE_UNSUPPORTED_ELEMENT",
+              "ANALYZE_INVALID_REFERENCE"
+            ],
+            "transition": "importableWithNormalization -> unsupported"
+          },
+          {
+            "count": 3,
+            "disposition": "projection_helper_defect",
+            "explanation": "The projection treated any url(...) paint outside its narrow valid-ID regex as external. These are local fragment references to digit-leading invalid IDs, so the product correctly rejects them as unsupported rather than unsafe.",
+            "paths": [
+              "public/icons/azure-disk-encryption-sets/default.svg",
+              "public/icons/azure-maintenance-configuration/default.svg",
+              "public/icons/azure-service-catalog-mad/default.svg"
+            ],
+            "profiles": [
+              "schema1",
+              "commonV03"
+            ],
+            "responsibleRules": [
+              "ANALYZE_INVALID_ID",
+              "ANALYZE_INVALID_REFERENCE",
+              "ANALYZE_UNSUPPORTED_PAINT"
+            ],
+            "transition": "unsafe -> unsupported"
+          }
+        ],
+        "projectionRevisionMatches": true,
+        "schema1": {
+          "authoritative": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 789,
+            "unsupported": 11668
+          },
+          "delta": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": -3,
+            "unsupported": 3
+          },
+          "provisional": {
+            "directlyImportable": 0,
+            "importableWithNormalization": 0,
+            "unsafe": 792,
+            "unsupported": 11665
+          }
+        }
+      },
+      "regularSvgCorpus": {
+        "construction": "git_ls_tree_and_cat_file_tracked_head_blobs",
+        "excludedNonRegularSvgEntries": [],
+        "manifestFields": [
+          "origin",
+          "revision",
+          "path",
+          "blob",
+          "bytes",
+          "mode"
+        ],
+        "manifestSha256": "sha256:ba061857abb3c31d55af3479a106bfa8e38e3ef7988d4669b0c019195863a407",
+        "regularSvgPaths": 12457,
+        "sourceBytes": 28183953,
+        "trackedSvgPaths": 12457
+      },
+      "repository": {
+        "origin": "git@github.com:glincker/thesvg.git",
+        "revision": "df53f7020a3a0345918abc9924ef5eda82e28038"
+      },
+      "sourceSafety": {
+        "directory": {
+          "acceptedAsAnalyzableSource": true,
+          "completeProfileDataAuthoritative": true,
+          "exitCode": 1,
+          "profileEquivalentToRegularSvgMeasurement": true,
+          "scanAbortingDiagnostics": [],
+          "status": "error"
+        },
+        "zip": {
+          "acceptedAsAnalyzableSource": true,
+          "disposition": "run_complete_regular_inventory",
+          "exitCode": 1,
+          "profileEquivalentToRegularSvgMeasurement": true,
+          "scanAbortingDiagnostics": [],
+          "status": "error"
+        }
+      },
+      "trackedTree": {
+        "entries": 12780,
+        "nonRegularEntries": []
+      }
+    }
+  ],
+  "evidenceVersion": 2,
+  "kind": "authoritative_analyzer_dogfood_evidence",
+  "phase": "TFSB32R1",
+  "product": {
+    "analyzerSourceSha256": "sha256:3968190b9bd0b614230d5e6e7a2fc823054ad9f59fd4fb53fc54f0dcb35826a9",
+    "commandSchema": "tfsb-analyze-v1",
+    "detailSchema": "tfsb-analyze-details-v1",
+    "package": "@knowledge-forge-ai/theme-forge-stellar-burst",
+    "packageVersion": "0.2.0",
+    "phaseIdentity": "TFSB32R1",
+    "profiles": {
+      "commonV03": "tfsb-svg-common-v0.3",
+      "schema1": "tfsb-svg-schema-1"
+    }
+  },
+  "schema": "tfsb-v0.3-analyzer-dogfood-baseline",
+  "schemaVersion": 1,
+  "verification": {
+    "allAggregateJsonByteIdentical": true,
+    "allDetailNdjsonByteIdentical": true,
+    "allLeakageScansClear": true,
+    "allProfileArithmeticValid": true,
+    "allRegularSourceEquivalenceChecksPass": true,
+    "independentRuns": 2
+  }
+}

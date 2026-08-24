@@ -51,17 +51,17 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testMatch: ["visual-equivalence.spec.ts", "preview.spec.ts"],
+      testMatch: ["visual-equivalence.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts"],
       use: { browserName: "chromium" },
     },
     {
       name: "firefox",
-      testMatch: ["cross-browser-smoke.spec.ts", "preview.spec.ts"],
+      testMatch: ["cross-browser-smoke.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts"],
       use: { browserName: "firefox" },
     },
     {
       name: "webkit",
-      testMatch: ["cross-browser-smoke.spec.ts", "preview.spec.ts"],
+      testMatch: ["cross-browser-smoke.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts"],
       use: { browserName: "webkit" },
     },
   ],

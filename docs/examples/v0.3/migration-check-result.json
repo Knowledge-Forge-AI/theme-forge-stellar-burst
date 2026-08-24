@@ -1,0 +1,26 @@
+{
+  "applied": false,
+  "assetCount": 1,
+  "buildReceiptSourceStale": true,
+  "companionCount": 0,
+  "companionPaths": [],
+  "files": [
+    {
+      "afterBasis": "tfsb-asset-toml-v2",
+      "afterDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "beforeBasis": "tfsb-asset-toml-v1",
+      "beforeDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "path": ".tfsb/assets/example.toml",
+      "svgEquivalent": true,
+      "svgOutputDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "fromSchemaVersion": 1,
+  "migrationNeeded": true,
+  "mode": "check",
+  "projectPath": ".tfsb/project.toml",
+  "provenancePath": ".tfsb/provenance.json",
+  "provenanceTransition": "schema_migration_checkpoint",
+  "svgEquivalentCount": 1,
+  "toSchemaVersion": 2
+}

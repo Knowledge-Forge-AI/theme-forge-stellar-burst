@@ -6,8 +6,14 @@ import { deriveAssetIdentity } from "./importer.js";
 import { optionalLstat, readRegularFileSnapshot } from "./filesystem.js";
 import { loadCanonicalProject, verifyLoadedProjectSnapshot, type LoadedProject } from "./project.js";
 import { compareUtf8, parseImportProvenance, unwrapProvenance, type ImportProvenanceV1, type ProvenanceRecordV1 } from "./provenance.js";
+import { parseImportProvenanceV2, unwrapProvenanceV2, type ProvenanceRecordV2 } from "./provenance2.js";
 import { BUILD_RECEIPT_FILENAME, type BuildReceiptProjectPolicyV3 } from "./receipt.js";
 import { findProjectRoot } from "./root.js";
+import type { AnyNormalizedAsset } from "./schema-dispatch.js";
+import { parseSvgV2 } from "./schema2-svg.js";
+import { parseAssetTomlV2 } from "./schema2-toml.js";
+import type { ArtworkElementV2, SvgDocumentV2 } from "./schema2-types.js";
+import { planSchema2Reconciliation } from "./reconcile2.js";
 import { parseSvg } from "./svg.js";
 import type { ArtworkElement, AssetId, NormalizedAsset, Result, SvgDocument } from "./types.js";
 
@@ -50,7 +56,13 @@ export interface ArchiveSemanticChange {
   readonly pathText?: PathTextChange;
   readonly diagnosticCode?: string;
 }
-export interface ArchiveDiffResult { readonly baseline: "archive"; readonly assets: readonly string[]; readonly companions: readonly string[]; readonly changes: readonly ArchiveSemanticChange[]; readonly different: boolean; }
+export interface ArchiveSourceRelation {
+  readonly key: string;
+  readonly rawRelation: "unchanged" | "changed" | "new" | "omitted" | "conflict" | "untracked";
+  readonly normalizationRelation: "direct" | "normalized" | "accepted_migration_divergence" | "authority_required" | "not_applicable";
+  readonly semanticComparison: "unchanged" | "changed" | "unavailable";
+}
+export interface ArchiveDiffResult { readonly baseline: "archive"; readonly assets: readonly string[]; readonly companions: readonly string[]; readonly changes: readonly ArchiveSemanticChange[]; readonly sourceRelations?: readonly ArchiveSourceRelation[]; readonly different: boolean; }
 
 export interface FileHashChange { readonly path: string; readonly changeType: "added" | "removed" | "changed"; readonly beforeSha256?: string; readonly afterSha256?: string; }
 export interface PolicyChange { readonly kind: "build_directory" | "install_declaration" | "asset_destination" | "companion_declaration" | "companion_destination"; readonly key: string; readonly changeType: "added" | "removed" | "changed"; readonly destination?: string; readonly before?: string; readonly after?: string; }
@@ -64,8 +76,45 @@ export interface DiffOptions { readonly root?: string; readonly baseline?: DiffB
 function context(domain: DiagnosticContext["domain"] = "project"): DiagnosticContext { return { operation: "diff", domain }; }
 function unwrap<T>(result: Result<T>): T { if (result.ok) return result.value; const first = result.diagnostics[0]; if (first === undefined) throw new Error("Diagnostic result was unexpectedly empty."); throw new DiagnosticError(first); }
 function provenanceKey(record: ProvenanceRecordV1): string { return record.type === "asset" ? `asset:${record.assetId}` : `companion:${record.canonicalPath.slice(".tfsb/companions/".length)}`; }
+function provenanceKeyV2(record: ProvenanceRecordV2): string { return record.type === "asset" ? `asset:${record.assetId}` : `companion:${record.canonicalPath.slice(".tfsb/companions/".length)}`; }
 
 export async function diffProvenance(project: LoadedProject): Promise<ProvenanceDiffResult> {
+  if (project.project.schemaVersion === 2) {
+    const bytes = project.snapshot.files.get(".tfsb/provenance.json")?.bytes;
+    const provenance = bytes === undefined
+      ? { kind: "tfsb-import-provenance" as const, schemaVersion: 2 as const, records: [] }
+      : unwrapProvenanceV2(parseImportProvenanceV2(Buffer.from(bytes).toString("utf8"), ".tfsb/provenance.json"));
+    const recordsByKey = new Map(provenance.records.map((record) => [provenanceKeyV2(record), record]));
+    const current = new Map<string, { kind: "asset" | "companion"; digest: Sha256Digest }>();
+    for (const asset of project.assets) current.set(`asset:${asset.id}`, { kind: "asset", digest: computeAssetSemanticDigest(asset) });
+    for (const [file, value] of project.companions) current.set(`companion:${file}`, { kind: "companion", digest: computeCompanionByteDigest(value) });
+    const keys = [...new Set([...recordsByKey.keys(), ...current.keys()])].sort(compareUtf8);
+    const records: ProvenanceDiffRecord[] = keys.map((key) => {
+      const accepted = recordsByKey.get(key); const now = current.get(key);
+      if (accepted === undefined) return { key, kind: now!.kind, currentPresent: true, currentDigest: now!.digest, relation: "untracked_current_record" };
+      const archive = accepted.archive;
+      const acceptedDigest = accepted.type === "asset" ? accepted.migration?.afterDigest ?? archive?.canonicalDigest ?? undefined : accepted.archive.canonicalDigest ?? undefined;
+      const archiveComparable = archive !== null && archive !== undefined && archive.canonicalBasis === (accepted.type === "asset" ? "tfsb-asset-toml-v2" : "tfsb-companion-bytes-v1");
+      let relation: ProvenanceRelation;
+      if (now === undefined) relation = "canonical_missing";
+      else if (acceptedDigest === undefined) relation = "untracked_current_record";
+      else if (now.digest === acceptedDigest) relation = accepted.type === "asset" && accepted.migration !== null ? "accepted_divergence" : archive === null || archive === undefined || archive.archiveCanonicalDigest !== acceptedDigest ? "accepted_divergence" : "aligned";
+      else if (archiveComparable && now.digest === archive!.archiveCanonicalDigest) relation = "checkpoint_convergence";
+      else relation = "canonical_changed_since_decision";
+      return {
+        key,
+        kind: accepted.type,
+        currentPresent: now !== undefined,
+        ...(now === undefined ? {} : { currentDigest: now.digest }),
+        ...(acceptedDigest === undefined ? {} : { acceptedCanonicalPresent: true, acceptedCanonicalDigest: acceptedDigest }),
+        ...(archive === null || archive === undefined || accepted.type === "asset" && accepted.migration !== null ? {} : { acceptedArchiveDigest: archive.archiveCanonicalDigest, priorResolution: archive.resolution }),
+        relation,
+      };
+    });
+    const result: ProvenanceDiffResult = { baseline: "provenance", records, different: records.some((record) => !["aligned", "accepted_divergence"].includes(record.relation)) };
+    await verifyLoadedProjectSnapshot(project, "diff");
+    return result;
+  }
   const bytes = project.snapshot.files.get(".tfsb/provenance.json")?.bytes;
   const provenance: ImportProvenanceV1 = bytes === undefined ? { kind: "tfsb-import-provenance", schemaVersion: 1, records: [] } : unwrapProvenance(parseImportProvenance(Buffer.from(bytes).toString("utf8"), ".tfsb/provenance.json"));
   const recordsByKey = new Map(provenance.records.map((record) => [provenanceKey(record), record]));
@@ -98,7 +147,7 @@ export async function diffProvenance(project: LoadedProject): Promise<Provenance
   return result;
 }
 
-interface CandidateArchive { readonly assets: ReadonlyMap<string, NormalizedAsset>; readonly companions: ReadonlyMap<string, Uint8Array>; }
+interface CandidateArchive { readonly assets: ReadonlyMap<string, AnyNormalizedAsset>; readonly companions: ReadonlyMap<string, Uint8Array>; }
 async function loadArchiveCandidates(project: LoadedProject, archivePath: string): Promise<CandidateArchive> {
   const provenanceBytes = project.snapshot.files.get(".tfsb/provenance.json")?.bytes;
   const provenance = provenanceBytes === undefined ? undefined : unwrapProvenance(parseImportProvenance(Buffer.from(provenanceBytes).toString("utf8"), ".tfsb/provenance.json"));
@@ -107,7 +156,7 @@ async function loadArchiveCandidates(project: LoadedProject, archivePath: string
   try { manifest = await readManifestArchive(archivePath, [], [], { allowNoSvgs: true, operation: "diff" }); }
   catch (error) { if (!(error instanceof DiagnosticError) || error.diagnostic.code !== "ARCHIVE_MANIFEST_MISSING") throw error; }
   const ordinary = manifest === undefined ? await readArchive(archivePath, [], [], { selectAllSvgs: true, selectAllCompanions: true, allowNoSvgs: true, operation: "diff" }) : undefined;
-  const assets = new Map<string, NormalizedAsset>();
+  const assets = new Map<string, AnyNormalizedAsset>();
   const assetEntries = manifest?.svgs ?? ordinary!.svgs;
   for (const entry of assetEntries) {
     const tracked = byEntry.get(entry.entryName);
@@ -118,7 +167,9 @@ async function loadArchiveCandidates(project: LoadedProject, archivePath: string
     let text: string;
     try { text = new TextDecoder("utf8", { fatal: true }).decode(entry.bytes); }
     catch { fail(context("archive"), "ARCHIVE_INVALID_UTF8", `Selected SVG '${entry.entryName}' is not valid UTF-8.`, entry.entryName); }
-    const asset: NormalizedAsset = { schemaVersion: 1, id: currentId, filename, svg: unwrap(parseSvg(text, entry.entryName)) };
+    const asset: AnyNormalizedAsset = project.project.schemaVersion === 1
+      ? { schemaVersion: 1, id: currentId, filename, svg: unwrap(parseSvg(text, entry.entryName)) }
+      : { schemaVersion: 2, id: currentId, filename, svg: unwrap(parseSvgV2(text, entry.entryName)) };
     if (assets.has(asset.id)) fail(context("archive"), "ARCHIVE_COLLISION", `Archive contains duplicate asset identity '${asset.id}'.`, entry.entryName);
     assets.set(asset.id, asset);
   }
@@ -133,7 +184,7 @@ async function loadArchiveCandidates(project: LoadedProject, archivePath: string
 }
 
 interface FlatField { readonly category: ArchiveChangeCategory; readonly location: string; readonly value: DiffScalar; readonly pathText?: string; }
-const PRESENTATION = new Set(["fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin", "strokeMiterlimit", "opacity", "ariaHidden"]);
+const PRESENTATION = new Set(["fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin", "strokeMiterlimit", "opacity", "ariaHidden", "fillOpacity", "strokeOpacity", "fillRule", "clipRule"]);
 function scalarFields(target: Map<string, FlatField>, base: string, value: unknown, defaultCategory: ArchiveChangeCategory): void {
   if (value === undefined) return;
   if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
@@ -150,25 +201,31 @@ function scalarFields(target: Map<string, FlatField>, base: string, value: unkno
   }
   for (const key of Object.keys(value as Record<string, unknown>).sort(compareUtf8)) scalarFields(target, `${base}.${key}`, (value as Record<string, unknown>)[key], defaultCategory);
 }
-function uniqueElementKeys(elements: readonly ArtworkElement[]): readonly string[] {
+function uniqueElementKeys(elements: readonly (ArtworkElement | ArtworkElementV2)[]): readonly string[] {
   const counts = new Map<string, number>();
   for (const element of elements) if (element.id !== undefined) counts.set(element.id, (counts.get(element.id) ?? 0) + 1);
   return elements.map((element, index) => element.id !== undefined && counts.get(element.id) === 1 ? `id:${element.id}` : `position:${index}`);
 }
-function flattenSvg(svg: SvgDocument): Map<string, FlatField> {
+function flattenSvg(svg: SvgDocument | SvgDocumentV2): Map<string, FlatField> {
   const fields = new Map<string, FlatField>();
   scalarFields(fields, "canvas", svg.canvas, "canvas");
   scalarFields(fields, "accessibility", svg.accessibility, "accessibility");
+  if ("presentation" in svg) scalarFields(fields, "presentation", svg.presentation, "presentation");
   if (svg.metadataText !== undefined) scalarFields(fields, "metadata.text", svg.metadataText, "metadata");
   for (const gradient of svg.definitions.linearGradients) scalarFields(fields, `definitions.gradient[id:${gradient.id}]`, gradient, "gradient");
   for (const path of svg.definitions.paths) scalarFields(fields, `definitions.path[id:${path.id}]`, path, "definition");
   for (const group of svg.definitions.groups) scalarFields(fields, `definitions.group[id:${group.id}]`, group, "definition");
+  if ("circles" in svg.definitions) {
+    for (const kind of ["circles", "ellipses", "rects", "lines", "polylines", "polygons"] as const) {
+      for (const value of svg.definitions[kind]) scalarFields(fields, `definitions.${kind}[id:${value.id}]`, value, "definition");
+    }
+  }
   const keys = uniqueElementKeys(svg.elements);
   svg.elements.forEach((element, index) => scalarFields(fields, `artwork[${keys[index]}]`, element, "artwork_element"));
   return fields;
 }
 function preview(text: string): { length: number; prefix: string; suffix: string } { const scalars = Array.from(text); return { length: scalars.length, prefix: scalars.slice(0, 64).join(""), suffix: scalars.slice(-64).join("") }; }
-function compareAsset(id: string, before: NormalizedAsset, after: NormalizedAsset): ArchiveSemanticChange[] {
+function compareAsset(id: string, before: AnyNormalizedAsset, after: AnyNormalizedAsset): ArchiveSemanticChange[] {
   const left = flattenSvg(before.svg); const right = flattenSvg(after.svg);
   const keys = [...new Set([...left.keys(), ...right.keys()])].sort(compareUtf8);
   const changes: ArchiveSemanticChange[] = [];
@@ -190,8 +247,9 @@ function compareAsset(id: string, before: NormalizedAsset, after: NormalizedAsse
 }
 
 export async function diffArchive(project: LoadedProject, archivePath: string): Promise<ArchiveDiffResult> {
+  if (project.project.schemaVersion === 2) return diffArchiveV2(project, archivePath);
   const candidate = await loadArchiveCandidates(project, archivePath);
-  const currentAssets = new Map<string, NormalizedAsset>(project.assets.map((asset) => [asset.id, asset]));
+  const currentAssets = new Map<string, AnyNormalizedAsset>(project.assets.map((asset) => [asset.id, asset]));
   const changes: ArchiveSemanticChange[] = [];
   for (const id of [...new Set([...currentAssets.keys(), ...candidate.assets.keys()])].sort(compareUtf8)) {
     const before = currentAssets.get(id); const after = candidate.assets.get(id);
@@ -205,6 +263,80 @@ export async function diffArchive(project: LoadedProject, archivePath: string): 
   }
   changes.sort((left, right) => compareUtf8(left.key, right.key) || compareUtf8(left.category, right.category) || compareUtf8(left.location, right.location) || compareUtf8(left.changeType, right.changeType) || compareUtf8(left.diagnosticCode ?? "", right.diagnosticCode ?? ""));
   const result: ArchiveDiffResult = { baseline: "archive", assets: [...candidate.assets.keys()].sort(compareUtf8), companions: [...candidate.companions.keys()].sort(compareUtf8), changes, different: changes.length > 0 };
+  await verifyLoadedProjectSnapshot(project, "diff");
+  return result;
+}
+
+async function diffArchiveV2(project: LoadedProject, archivePath: string): Promise<ArchiveDiffResult> {
+  const provenanceBytes = project.snapshot.files.get(".tfsb/provenance.json")?.bytes;
+  if (provenanceBytes === undefined) {
+    const candidate = await loadArchiveCandidates(project, archivePath);
+    const currentAssets = new Map<string, AnyNormalizedAsset>(project.assets.map((asset) => [asset.id, asset]));
+    const changes: ArchiveSemanticChange[] = [];
+    for (const id of [...new Set([...currentAssets.keys(), ...candidate.assets.keys()])].sort(compareUtf8)) {
+      const before = currentAssets.get(id); const after = candidate.assets.get(id);
+      if (before === undefined || after === undefined) changes.push({ key: `asset:${id}`, category: "asset_addition_removal", location: `asset:${id}`, changeType: before === undefined ? "added" : "removed" });
+      else changes.push(...compareAsset(id, before, after));
+    }
+    for (const file of [...new Set([...project.companions.keys(), ...candidate.companions.keys()])].sort(compareUtf8)) {
+      const before = project.companions.get(file); const after = candidate.companions.get(file);
+      if (before !== undefined && after !== undefined && Buffer.from(before).equals(Buffer.from(after))) continue;
+      changes.push({ key: `companion:${file}`, category: "companion", location: `.tfsb/companions/${file}`, changeType: before === undefined ? "added" : after === undefined ? "removed" : "changed", ...(before === undefined ? {} : { before: computeRawSha256(before) }), ...(after === undefined ? {} : { after: computeRawSha256(after) }) });
+    }
+    changes.sort((left, right) => compareUtf8(left.key, right.key) || compareUtf8(left.category, right.category) || compareUtf8(left.location, right.location));
+    const sourceKeys = [...new Set([...candidate.assets.keys()].map((id) => `asset:${id}`).concat([...candidate.companions.keys()].map((file) => `companion:${file}`)))].sort(compareUtf8);
+    const sourceRelations: ArchiveSourceRelation[] = sourceKeys.map((key) => ({ key, rawRelation: "untracked", normalizationRelation: key.startsWith("asset:") ? "direct" : "not_applicable", semanticComparison: changes.some((change) => change.key === key) ? "changed" : "unchanged" }));
+    const result: ArchiveDiffResult = { baseline: "archive", assets: [...candidate.assets.keys()].sort(compareUtf8), companions: [...candidate.companions.keys()].sort(compareUtf8), changes, sourceRelations, different: changes.length > 0 };
+    await verifyLoadedProjectSnapshot(project, "diff");
+    return result;
+  }
+  const provenance = provenanceBytes === undefined ? undefined : unwrapProvenanceV2(parseImportProvenanceV2(Buffer.from(provenanceBytes).toString("utf8"), ".tfsb/provenance.json"));
+  const normalizedKeys = new Set((provenance?.records ?? []).flatMap((record) => record.type === "asset" && record.normalizationPolicy !== null ? [`asset:${record.assetId}`] : []));
+  const planned = await planSchema2Reconciliation(project, { archive: archivePath });
+  const currentAssets = new Map<string, AnyNormalizedAsset>(project.assets.map((asset) => [asset.id, asset]));
+  const candidateAssets = new Map<string, AnyNormalizedAsset>();
+  for (const [path, bytes] of planned.nextFiles) {
+    if (!path.startsWith(".tfsb/assets/")) continue;
+    const parsed = unwrap(parseAssetTomlV2(Buffer.from(bytes).toString("utf8"), path));
+    candidateAssets.set(parsed.id, parsed);
+  }
+  const sourceRelations: ArchiveSourceRelation[] = planned.records.map((record) => {
+    const rawRelation: ArchiveSourceRelation["rawRelation"] = record.classification === "ARCHIVE_OMISSION" ? "omitted"
+      : record.classification === "NEW_ASSET" || record.classification === "NEW_COMPANION" ? "new"
+        : record.classification === "UNCHANGED" || record.classification === "UNCHANGED_ACCEPTED_DIVERGENCE" ? "unchanged"
+          : record.classification === "CONFLICT" ? "conflict" : "changed";
+    const normalizationRelation: ArchiveSourceRelation["normalizationRelation"] = record.classification === "POLICY_AUTHORITY_REQUIRED" ? "authority_required"
+      : record.classification === "UNCHANGED_ACCEPTED_DIVERGENCE" ? "accepted_migration_divergence"
+        : record.kind === "companion" ? "not_applicable"
+          : normalizedKeys.has(record.key) ? "normalized" : "direct";
+    const semanticComparison: ArchiveSourceRelation["semanticComparison"] = record.classification === "POLICY_AUTHORITY_REQUIRED" ? "unavailable"
+      : ["UNCHANGED", "UNCHANGED_ACCEPTED_DIVERGENCE", "ARCHIVE_OMISSION"].includes(record.classification) ? "unchanged" : "changed";
+    return { key: record.key, rawRelation, normalizationRelation, semanticComparison };
+  }).sort((left, right) => compareUtf8(left.key, right.key));
+  const unavailable = new Set(sourceRelations.filter((record) => record.semanticComparison === "unavailable").map((record) => record.key));
+  const changes: ArchiveSemanticChange[] = [];
+  for (const id of [...new Set([...currentAssets.keys(), ...candidateAssets.keys()])].sort(compareUtf8)) {
+    if (unavailable.has(`asset:${id}`)) continue;
+    const before = currentAssets.get(id); const after = candidateAssets.get(id);
+    if (before === undefined || after === undefined) changes.push({ key: `asset:${id}`, category: "asset_addition_removal", location: `asset:${id}`, changeType: before === undefined ? "added" : "removed" });
+    else changes.push(...compareAsset(id, before, after));
+  }
+  const candidateCompanions = new Map<string, Uint8Array>();
+  for (const [path, bytes] of planned.nextFiles) if (path.startsWith(".tfsb/companions/")) candidateCompanions.set(path.slice(".tfsb/companions/".length), bytes);
+  for (const file of [...new Set([...project.companions.keys(), ...candidateCompanions.keys()])].sort(compareUtf8)) {
+    const before = project.companions.get(file); const after = candidateCompanions.get(file);
+    if (before !== undefined && after !== undefined && Buffer.from(before).equals(Buffer.from(after))) continue;
+    changes.push({ key: `companion:${file}`, category: "companion", location: `.tfsb/companions/${file}`, changeType: before === undefined ? "added" : after === undefined ? "removed" : "changed", ...(before === undefined ? {} : { before: computeRawSha256(before) }), ...(after === undefined ? {} : { after: computeRawSha256(after) }) });
+  }
+  changes.sort((left, right) => compareUtf8(left.key, right.key) || compareUtf8(left.category, right.category) || compareUtf8(left.location, right.location));
+  const result: ArchiveDiffResult = {
+    baseline: "archive",
+    assets: [...new Set(planned.records.filter((record) => record.kind === "asset").map((record) => record.key.slice("asset:".length)))].sort(compareUtf8),
+    companions: [...new Set(planned.records.filter((record) => record.kind === "companion").map((record) => record.key.slice("companion:".length)))].sort(compareUtf8),
+    changes,
+    sourceRelations,
+    different: changes.length > 0 || sourceRelations.some((record) => record.rawRelation !== "unchanged" && record.rawRelation !== "omitted"),
+  };
   await verifyLoadedProjectSnapshot(project, "diff");
   return result;
 }

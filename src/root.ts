@@ -90,7 +90,9 @@ function overlaps(first: string, second: string): boolean {
   return containsPath(first, second) || containsPath(second, first);
 }
 
-export function validateProjectPathLayout(project: NormalizedProject): void {
+export function validateProjectPathLayout(
+  project: Pick<NormalizedProject, "buildDirectory" | "installs" | "companions">,
+): void {
   const ctx = context("validate");
   const build = project.buildDirectory;
   for (const protectedTree of PROTECTED_TREES) {
@@ -146,7 +148,10 @@ export function validateProjectPathLayout(project: NormalizedProject): void {
   }
 }
 
-export function validatePreviewOutputLayout(project: NormalizedProject, output: string): void {
+export function validatePreviewOutputLayout(
+  project: Pick<NormalizedProject, "buildDirectory" | "installs" | "companions">,
+  output: string,
+): void {
   const ctx = context("preview");
   for (const protectedTree of PROTECTED_TREES) {
     if (protectedTree === ".tfsb-preview" && output === ".tfsb-preview") continue;
