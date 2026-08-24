@@ -1,15 +1,21 @@
 import { isAllowedCompanionFilename } from "./archive.js";
 import { DiagnosticError, fail, type DiagnosticContext } from "./diagnostics.js";
 import { resolveConfinedPath, validateProjectPathLayout } from "./root.js";
+import {
+  parseAssetTomlVersioned,
+  parseProjectTomlVersioned,
+  type AnyNormalizedAsset,
+  type AnyNormalizedProject,
+} from "./schema-dispatch.js";
+import { serializeSvgV2 } from "./schema2-svg.js";
 import { serializeSvg } from "./svg.js";
-import { parseAssetToml, parseProjectToml } from "./toml.js";
 import { snapshotCanonicalTree, snapshotsEqual, type CanonicalSnapshot } from "./transaction.js";
-import type { NormalizedAsset, NormalizedProject, Result } from "./types.js";
+import type { Result } from "./types.js";
 
 export interface LoadedProject {
   readonly root: string;
-  readonly project: NormalizedProject;
-  readonly assets: readonly NormalizedAsset[];
+  readonly project: AnyNormalizedProject;
+  readonly assets: readonly AnyNormalizedAsset[];
   readonly companions: ReadonlyMap<string, Uint8Array>;
   readonly canonicalFiles: ReadonlyMap<string, Uint8Array>;
   readonly outputs: ReadonlyMap<string, Uint8Array>;
@@ -87,13 +93,13 @@ async function decodeCanonicalProjectSnapshot(
   const projectBytes = snapshot.files.get(".tfsb/project.toml")?.bytes;
   if (projectBytes === undefined) fail(ctx, "ROOT_NOT_FOUND", "Canonical .tfsb/project.toml could not be read.", ".tfsb/project.toml");
   canonicalFiles.set(".tfsb/project.toml", projectBytes);
-  const project = unwrap(parseProjectToml(Buffer.from(projectBytes).toString("utf8"), ".tfsb/project.toml"));
+  const project = unwrap(parseProjectTomlVersioned(Buffer.from(projectBytes).toString("utf8"), ".tfsb/project.toml"));
   validateProjectPathLayout(project);
 
   if (!snapshot.directories.includes(".tfsb/assets")) {
     fail(ctx, "PROJECT_ASSETS_MISSING", "Canonical .tfsb/assets must be a non-symlink directory.", ".tfsb/assets");
   }
-  const assets: NormalizedAsset[] = [];
+  const assets: AnyNormalizedAsset[] = [];
   const ids = new Map<string, string>();
   const filenames = new Map<string, string>();
   const assetPaths = [...snapshot.files.keys()]
@@ -103,7 +109,7 @@ async function decodeCanonicalProjectSnapshot(
     const entryName = relativePath.slice(".tfsb/assets/".length);
     const bytes = snapshot.files.get(relativePath)!.bytes;
     canonicalFiles.set(relativePath, bytes);
-    const asset = unwrap(parseAssetToml(Buffer.from(bytes).toString("utf8"), relativePath));
+    const asset = unwrap(parseAssetTomlVersioned(Buffer.from(bytes).toString("utf8"), project.schemaVersion, relativePath));
     if (entryName !== `${asset.id}.toml`) {
       fail(
         ctx,
@@ -168,7 +174,11 @@ async function decodeCanonicalProjectSnapshot(
 
   const outputs = new Map<string, Uint8Array>();
   for (const asset of assets) {
-    const serialized = unwrap(serializeSvg(asset.svg, `.tfsb/assets/${asset.id}.toml`));
+    const serialized = unwrap(
+      asset.schemaVersion === 1
+        ? serializeSvg(asset.svg, `.tfsb/assets/${asset.id}.toml`)
+        : serializeSvgV2(asset.svg, `.tfsb/assets/${asset.id}.toml`),
+    );
     outputs.set(asset.filename, Buffer.from(serialized, "utf8"));
   }
   const buildDirectory = await resolveConfinedPath(root, project.buildDirectory, operation);

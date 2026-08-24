@@ -1,0 +1,39 @@
+schema_version = 2
+id = "synthetic-orbit"
+filename = "synthetic-orbit.svg"
+
+[canvas]
+width = 24
+height = 24
+view_box = "0 0 24 24"
+
+[accessibility]
+mode = "consumer_labelled"
+
+[presentation]
+fill = "none"
+stroke = "currentColor"
+stroke_width = 2
+stroke_linecap = "round"
+stroke_linejoin = "round"
+
+[[elements]]
+type = "circle"
+cx = 12
+cy = 12
+r = 8
+
+[[elements]]
+type = "line"
+x1 = 4
+y1 = 12
+x2 = 20
+y2 = 12
+
+[[elements]]
+type = "rect"
+x = 9
+y = 9
+width = 6
+height = 6
+corner_radius = 1

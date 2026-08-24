@@ -34,7 +34,7 @@ async function createPreviewFixture(): Promise<PreviewFixture> {
   for (const name of await readdir(PRODUCTION_FIXTURE_DIRECTORY)) archiveEntries[name] = await readFile(join(PRODUCTION_FIXTURE_DIRECTORY, name));
   const archive = join(root, "terminal-nova-production.zip");
   await writeFile(archive, zipSync(archiveEntries, { level: 6, mtime: new Date("1980-01-02T00:00:00Z") }));
-  const imported = await importProject({ archive, root, companions: ["brand-README.md"], recordProvenance: true });
+  const imported = await importProject({ archive, root, schema: 1, companions: ["brand-README.md"], recordProvenance: true });
   const favicon = imported.assets.find((asset) => asset.filename === "favicon-on-dark.svg")!;
   const projectPath = join(root, ".tfsb/project.toml");
   await writeFile(projectPath, `${await readFile(projectPath, "utf8")}\n[[install]]\nasset = "${favicon.id}"\ndestinations = ["installed/${favicon.filename}"]\n\n[[companion]]\nfile = "brand-README.md"\ndestinations = ["installed/brand-README.md"]\n`);

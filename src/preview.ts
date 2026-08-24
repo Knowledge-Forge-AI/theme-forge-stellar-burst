@@ -25,7 +25,6 @@ import {
 import { compareUtf8 } from "./provenance.js";
 import { findProjectRoot, resolveConfinedPath, validatePreviewOutputLayout } from "./root.js";
 import { withCanonicalMutationLock } from "./transaction.js";
-import type { NormalizedAsset } from "./types.js";
 import { TOOL_VERSION } from "./version.js";
 
 export const PREVIEW_MARKER_FILENAME = ".tfsb-preview.json";
@@ -241,7 +240,7 @@ function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-function geometry(asset: NormalizedAsset): { profile: PreviewGeometryProfile; sizes: readonly number[] } {
+function geometry(asset: LoadedProject["assets"][number]): { profile: PreviewGeometryProfile; sizes: readonly number[] } {
   const ratio = asset.svg.canvas.viewBox[2] / asset.svg.canvas.viewBox[3];
   if (ratio >= 0.8 && ratio <= 1.25) return { profile: "near_square", sizes: Object.freeze([16, 24, 32, 48, 64, 128, 256]) };
   if (ratio > 1.25) return { profile: "wide", sizes: Object.freeze([160, 320, 640]) };
@@ -311,13 +310,23 @@ async function deriveEvidence(project: LoadedProject): Promise<{
 const SURFACES = ["white", "light-gray", "charcoal", "black", "checkerboard"] as const;
 
 function renderHtml(project: LoadedProject, assets: readonly PreviewAssetResult[], companions: readonly PreviewCompanionResult[], buildExtra: readonly string[]): string {
-  const byId = new Map<string, NormalizedAsset>(project.assets.map((asset) => [asset.id, asset]));
+  const byId = new Map<string, LoadedProject["assets"][number]>(project.assets.map((asset) => [asset.id, asset]));
   const cards = assets.map((item) => {
     const asset = byId.get(item.id)!;
+    const accessibility = asset.svg.accessibility;
+    const title = "mode" in accessibility
+      ? accessibility.mode === "labelled" ? accessibility.title : accessibility.mode === "decorative" ? "Decorative asset" : "Consumer-labelled asset"
+      : accessibility.title;
+    const description = "mode" in accessibility
+      ? accessibility.mode === "labelled" ? accessibility.description ?? "" : accessibility.mode === "decorative" ? "Declared decorative; no accessible prose." : "Host-provided accessible name required."
+      : accessibility.description;
+    const alt = "mode" in accessibility
+      ? accessibility.mode === "labelled" ? accessibility.title : accessibility.mode === "decorative" ? "" : "Host-provided accessible name required"
+      : accessibility.title;
     const url = `assets/${encodeURIComponent(item.filename)}`;
-    const surfaces = SURFACES.map((surface) => `<section class="surface surface-${surface}"><h3>${surface.replace("-", " ")}</h3><div class="size-strip">${item.sizes.map((size) => `<figure class="sample sample-${item.geometryProfile} size-${item.geometryProfile}-${size}"><img src="${url}" alt="${escapeHtml(asset.svg.accessibility.title)}" loading="lazy" decoding="async"><figcaption>${size} px</figcaption></figure>`).join("")}</div></section>`).join("");
+    const surfaces = SURFACES.map((surface) => `<section class="surface surface-${surface}"><h3>${surface.replace("-", " ")}</h3><div class="size-strip">${item.sizes.map((size) => `<figure class="sample sample-${item.geometryProfile} size-${item.geometryProfile}-${size}"><img src="${url}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async"><figcaption>${size} px</figcaption></figure>`).join("")}</div></section>`).join("");
     const destinations = item.destinations.length === 0 ? "<li>Install: no destinations</li>" : item.destinations.map((destination) => `<li>Install ${escapeHtml(destination.path)}: ${escapeHtml(destination.status)}</li>`).join("");
-    return `<article class="asset-card"><header><h2>${escapeHtml(item.id)}</h2><p class="filename">${escapeHtml(item.filename)}</p></header><p>${escapeHtml(asset.svg.accessibility.description)}</p><dl><dt>Title</dt><dd class="asset-title">${escapeHtml(asset.svg.accessibility.title)}</dd><dt>ViewBox</dt><dd>${escapeHtml(asset.svg.canvas.viewBox.join(" "))}</dd><dt>Geometry</dt><dd class="geometry-profile">${escapeHtml(item.geometryProfile)}</dd><dt>Build</dt><dd class="build-status">${escapeHtml(item.buildStatus)}</dd><dt>Install</dt><dd class="install-status">${escapeHtml(item.installStatus)}</dd></dl><ul class="destination-status">${destinations}</ul>${surfaces}</article>`;
+    return `<article class="asset-card"><header><h2>${escapeHtml(item.id)}</h2><p class="filename">${escapeHtml(item.filename)}</p></header><p>${escapeHtml(description)}</p><dl><dt>Title</dt><dd class="asset-title">${escapeHtml(title)}</dd><dt>ViewBox</dt><dd>${escapeHtml(asset.svg.canvas.viewBox.join(" "))}</dd><dt>Geometry</dt><dd class="geometry-profile">${escapeHtml(item.geometryProfile)}</dd><dt>Build</dt><dd class="build-status">${escapeHtml(item.buildStatus)}</dd><dt>Install</dt><dd class="install-status">${escapeHtml(item.installStatus)}</dd></dl><ul class="destination-status">${destinations}</ul>${surfaces}</article>`;
   }).join("");
   const companionList = companions.length === 0 ? "<li>None</li>" : companions.map((item) => `<li><span class="companion-file">${escapeHtml(item.file)}</span> <code>${escapeHtml(item.sha256)}</code> <span>${escapeHtml(item.installStatus)}</span></li>`).join("");
   const extras = buildExtra.length === 0 ? "none" : buildExtra.map(escapeHtml).join(", ");

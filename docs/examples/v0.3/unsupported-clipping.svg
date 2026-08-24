@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <clipPath id="crop">
+      <circle cx="12" cy="12" r="8"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="20" height="20" clip-path="url(#crop)"/>
+</svg>

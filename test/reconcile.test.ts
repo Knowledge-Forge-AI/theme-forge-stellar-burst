@@ -47,7 +47,7 @@ async function imported(recordProvenance = true, names: readonly string[] = [mar
   const files: Record<string, Uint8Array> = {};
   for (const name of names) files[name] = await production(name);
   const source = await archive(projectRoot, "source.zip", files);
-  await importProject({ archive: source, root: projectRoot, recordProvenance });
+  await importProject({ archive: source, root: projectRoot, schema: 1, recordProvenance });
   return { projectRoot, source, files };
 }
 
@@ -206,7 +206,7 @@ describe("bounded reconciliation", () => {
     const companion = await production("brand-README.md");
     const svg = await production(markName);
     const source = await archive(projectRoot, "source.zip", { [markName]: svg, "README.md": companion });
-    await importProject({ archive: source, root: projectRoot, companions: ["README.md"], recordProvenance: true });
+    await importProject({ archive: source, root: projectRoot, schema: 1, companions: ["README.md"], recordProvenance: true });
     const projectPath = join(projectRoot, ".tfsb/project.toml");
     await writeFile(projectPath, `${await readFile(projectPath, "utf8")}\n[[companion]]\nfile = "README.md"\ndestinations = ["docs/vendor-README.md"]\n`);
     await mkdir(join(projectRoot, "docs"));
@@ -243,7 +243,7 @@ describe("bounded reconciliation", () => {
     const companion = await production("brand-README.md");
     const svg = await production(markName);
     const source = await archive(projectRoot, "source.zip", { [markName]: svg, "README.md": companion });
-    await importProject({ archive: source, root: projectRoot, companions: ["README.md"] });
+    await importProject({ archive: source, root: projectRoot, schema: 1, companions: ["README.md"] });
     const path = join(projectRoot, ".tfsb/companions/README.md");
     const before = await readFile(path);
     const result = await reconcileProject({ archive: source, root: projectRoot, companions: ["README.md"], apply: true });
@@ -373,7 +373,7 @@ describe("bounded reconciliation", () => {
     const companion = await production("brand-README.md");
     const svg = await production(markName);
     const source = await archive(projectRoot, "source.zip", { [markName]: svg, "README.md": companion });
-    await importProject({ archive: source, root: projectRoot, companions: ["README.md"], recordProvenance: true });
+    await importProject({ archive: source, root: projectRoot, schema: 1, companions: ["README.md"], recordProvenance: true });
     const projectPath = join(projectRoot, ".tfsb/project.toml");
     await writeFile(projectPath, `${await readFile(projectPath, "utf8")}\n[[companion]]\nfile = "README.md"\ndestinations = ["docs/vendor-README.md"]\n`);
     await mkdir(join(projectRoot, "docs"));
@@ -399,7 +399,7 @@ describe("bounded reconciliation", () => {
       "README.md": companion,
     });
     await importProject({
-      archive: source, root: projectRoot, companions: ["README.md"], recordProvenance: true,
+      archive: source, root: projectRoot, schema: 1, companions: ["README.md"], recordProvenance: true,
     });
 
     // Candidate archive only contains favicon-on-light.svg; mark and README.md were dropped by upstream

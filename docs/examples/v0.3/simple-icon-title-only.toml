@@ -1,0 +1,14 @@
+schema_version = 2
+id = "synthetic-brand-mark"
+filename = "synthetic-brand-mark.svg"
+
+[canvas]
+view_box = "0 0 24 24"
+
+[accessibility]
+mode = "labelled"
+title = "Synthetic brand mark"
+
+[[elements]]
+type = "path"
+d = "M12 2L22 22H2Z"

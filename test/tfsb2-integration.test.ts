@@ -45,7 +45,7 @@ async function initializedProject(): Promise<{ root: string; archive: string }> 
   const root = await mkdtemp(join(tmpdir(), "tfsb-project-"));
   roots.push(root);
   const archive = await fixtureArchive(root);
-  await importProject({ archive, root });
+  await importProject({ archive, root, schema: 1 });
   return { root, archive };
 }
 
@@ -77,12 +77,12 @@ describe("TFSB2 import/build/install/check/list integration", () => {
     const root = await mkdtemp(join(tmpdir(), "tfsb-project-"));
     roots.push(root);
     const archive = await fixtureArchive(root);
-    const firstDryRun = await planImport({ archive, root, dryRun: true });
-    const secondDryRun = await planImport({ archive, root, dryRun: true });
+    const firstDryRun = await planImport({ archive, root, schema: 1, dryRun: true });
+    const secondDryRun = await planImport({ archive, root, schema: 1, dryRun: true });
     expect([...secondDryRun.files]).toEqual([...firstDryRun.files]);
     await expect(access(join(root, ".tfsb"))).rejects.toMatchObject({ code: "ENOENT" });
 
-    const imported = await importProject({ archive, root });
+    const imported = await importProject({ archive, root, schema: 1 });
     expect(imported.assets).toHaveLength(6);
     expect(await readdir(join(root, ".tfsb"))).toEqual(["assets", "project.toml"]);
     expect(await readdir(join(root, ".tfsb/assets"))).toHaveLength(6);
@@ -298,7 +298,7 @@ describe("TFSB2 import/build/install/check/list integration", () => {
         { level: 0, mtime: new Date("1980-01-02T00:00:00Z") },
       ),
     );
-    await expect(importProject({ archive, root })).rejects.toMatchObject({
+    await expect(importProject({ archive, root, schema: 1 })).rejects.toMatchObject({
       diagnostic: { code: "ARCHIVE_COLLISION" },
     });
     await expect(access(join(root, ".tfsb"))).rejects.toMatchObject({ code: "ENOENT" });
@@ -319,7 +319,7 @@ describe("TFSB2 import/build/install/check/list integration", () => {
     }
     const archive = join(root, "tftn-prod.zip");
     await writeFile(archive, zipSync(files, { level: 6, mtime: new Date("1980-01-02T00:00:00Z") }));
-    const plan = await importProject({ archive, root, companions: ["README.md"] });
+    const plan = await importProject({ archive, root, schema: 1, companions: ["README.md"] });
     expect(plan.assets).toHaveLength(10);
     expect(plan.companions).toHaveLength(1);
     expect(await readFile(join(root, ".tfsb/companions/README.md"))).toEqual(brandReadmeBytes);
@@ -426,14 +426,14 @@ destinations = ["README-BRAND.md"]
     await writeFile(archive, zipSync(files, { level: 6, mtime: new Date("1980-01-02T00:00:00Z") }));
 
     // Default import extracts all 10 SVGs and ignores non-SVG members
-    const plan = await importProject({ archive, root });
+    const plan = await importProject({ archive, root, schema: 1 });
     expect(plan.assets).toHaveLength(10);
 
     // Explicit select of non-SVG fails
     const root2 = await mkdtemp(join(tmpdir(), "tfsb-mixed-select-"));
     roots.push(root2);
     await expect(
-      importProject({ archive, root: root2, selections: ["tools/generate.py"] }),
+      importProject({ archive, root: root2, schema: 1, selections: ["tools/generate.py"] }),
     ).rejects.toMatchObject({
       diagnostic: { code: "ARCHIVE_SELECTION_UNSUPPORTED" },
     });
@@ -442,7 +442,7 @@ destinations = ["README-BRAND.md"]
     const root3 = await mkdtemp(join(tmpdir(), "tfsb-mixed-companion-"));
     roots.push(root3);
     await expect(
-      importProject({ archive, root: root3, companions: ["tools/generate.py"] }),
+      importProject({ archive, root: root3, schema: 1, companions: ["tools/generate.py"] }),
     ).rejects.toMatchObject({
       diagnostic: { code: "ARCHIVE_COMPANION_UNSUPPORTED" },
     });
@@ -476,7 +476,7 @@ destinations = ["README-BRAND.md"]
     await writeFile(archive, zipSync(files, { level: 6, mtime: new Date("1980-01-02T00:00:00Z") }));
 
     // Import with companion
-    const plan = await importProject({ archive, root, companions: ["NOTICE.txt"] });
+    const plan = await importProject({ archive, root, schema: 1, companions: ["NOTICE.txt"] });
     expect(plan.companions).toHaveLength(1);
     expect(plan.companions[0]?.filename).toBe("NOTICE.txt");
 

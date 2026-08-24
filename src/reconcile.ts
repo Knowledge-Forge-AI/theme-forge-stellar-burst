@@ -21,6 +21,9 @@ import {
 } from "./transaction.js";
 import type { AssetId, NormalizedAsset, NormalizedProject, ProjectRelativePath, Result, SvgFilename } from "./types.js";
 import { TOOL_VERSION } from "./version.js";
+import { planSchema2Reconciliation } from "./reconcile2.js";
+import type { NormalizationLedgerV1 } from "./normalization-ledger.js";
+import type { NormalizationPolicyIdentityV1 } from "./normalization-policy.js";
 
 export type ReconciliationClassification = PairedCheckpointClassification
   | "COMPANION_CHANGED"
@@ -28,7 +31,8 @@ export type ReconciliationClassification = PairedCheckpointClassification
   | "RENAMED"
   | "COMPANION_RENAMED"
   | "REMOVED"
-  | "COMPANION_REMOVED";
+  | "COMPANION_REMOVED"
+  | "POLICY_AUTHORITY_REQUIRED";
 
 export type ReconcilePlannedAction =
   | "none"
@@ -64,6 +68,8 @@ export interface ReconcileOptions {
   readonly removals?: readonly string[];
   readonly companionRemovals?: readonly string[];
   readonly apply?: boolean;
+  readonly normalize?: "exact-common";
+  readonly normalizationMap?: string;
 }
 
 const planBrand: unique symbol = Symbol("tfsb-reconciliation-plan");
@@ -76,6 +82,7 @@ interface ReconciliationPlanInternals {
   readonly changed: boolean;
   readonly pending: boolean;
   readonly blocked: boolean;
+  readonly verifyExternalState?: () => Promise<void>;
 }
 
 interface ReconciliationPlanningHooks {
@@ -89,6 +96,8 @@ export interface ReconciliationPlan {
   readonly changed: boolean;
   readonly pending: boolean;
   readonly blocked: boolean;
+  readonly normalizationPolicy?: NormalizationPolicyIdentityV1;
+  readonly normalizationLedger?: NormalizationLedgerV1;
   readonly [planBrand]: true;
 }
 
@@ -98,6 +107,8 @@ export interface ReconciliationResult {
   readonly pending: boolean;
   readonly blocked: boolean;
   readonly applied: boolean;
+  readonly normalizationPolicy?: NormalizationPolicyIdentityV1;
+  readonly normalizationLedger?: NormalizationLedgerV1;
 }
 
 interface CandidateAsset {
@@ -340,6 +351,13 @@ async function planReconciliationInternal(
   const canonicalSnapshot = await snapshotCanonicalTree(root);
   await hooks.afterCanonicalSnapshot?.();
   const project = await loadCanonicalProjectFromSnapshot(canonicalSnapshot, "reconcile");
+  if (project.project.schemaVersion === 2) {
+    const material = await planSchema2Reconciliation(project, options);
+    const publicRecords = Object.freeze(material.records.map((record) => Object.freeze(record)));
+    const plan: ReconciliationPlan = Object.freeze({ records: publicRecords, changed: material.changed, pending: material.pending, blocked: material.blocked, ...(material.normalizationPolicy === undefined ? {} : { normalizationPolicy: Object.freeze(material.normalizationPolicy), normalizationLedger: Object.freeze({ schemaVersion: 1 as const, entries: Object.freeze(material.normalizationLedger!.entries.map((entry) => Object.freeze(entry))) }) }), [planBrand]: true as const });
+    reconciliationPlanInternals.set(plan, { root, nextFiles: material.nextFiles, canonicalSnapshot, archiveSnapshot: material.archiveSnapshot, changed: material.changed, pending: material.pending, blocked: material.blocked, ...(material.verifyExternalState === undefined ? {} : { verifyExternalState: material.verifyExternalState }) });
+    return plan;
+  }
   const provenanceBytes = canonicalSnapshot.files.get(".tfsb/provenance.json")?.bytes;
   const provenance: ImportProvenanceV1 = provenanceBytes === undefined
     ? { kind: "tfsb-import-provenance", schemaVersion: 1, records: [] }
@@ -420,7 +438,11 @@ async function planReconciliationInternal(
     candidateCompanionsByFilename.set(filename, candidate);
   }
 
-  const currentAssets = new Map<string, NormalizedAsset>(project.assets.map((asset) => [asset.id, asset]));
+  const currentAssets = new Map<string, NormalizedAsset>();
+  for (const asset of project.assets) {
+    if (asset.schemaVersion !== 1) throw new Error("Schema homogeneity was lost after reconcile dispatch.");
+    currentAssets.set(asset.id, asset);
+  }
   const currentAssetDigests = new Map<string, Sha256Digest>(project.assets.map((asset) => [asset.id, computeAssetSemanticDigest(asset)]));
   const nextFiles = new Map<string, Uint8Array>([...canonicalSnapshot.files].map(([path, file]) => [path, file.bytes]));
   const nextProvenance = new Map<string, ProvenanceRecordV1>();
@@ -690,6 +712,7 @@ export async function executeReconciliationPlan(plan: ReconciliationPlan): Promi
   await executeCanonicalTransaction({
     root: internals.root, nextFiles: internals.nextFiles, expectedSnapshot: internals.canonicalSnapshot,
     archiveSnapshot: internals.archiveSnapshot,
+    ...(internals.verifyExternalState === undefined ? {} : { verifyExternalState: internals.verifyExternalState }),
   });
 }
 
@@ -701,5 +724,5 @@ export async function reconcileProject(options: ReconcileOptions): Promise<Recon
     await executeReconciliationPlan(plan);
     applied = internals.changed;
   }
-  return { records: plan.records, changed: plan.changed, pending: plan.pending, blocked: plan.blocked, applied };
+  return { records: plan.records, changed: plan.changed, pending: plan.pending, blocked: plan.blocked, applied, ...(plan.normalizationPolicy === undefined ? {} : { normalizationPolicy: plan.normalizationPolicy, normalizationLedger: plan.normalizationLedger! }) };
 }

@@ -4,6 +4,7 @@ import { lstat, open, type FileHandle } from "node:fs/promises";
 
 import { inflateSync } from "fflate";
 
+import { ARCHIVE_LIMITS, mutationAggregateBytesExceedsLimit, mutationSvgCountExceedsLimit } from "./archive-limits.js";
 import { DiagnosticError, fail, type DiagnosticContext } from "./diagnostics.js";
 import { computeRawSha256, type Sha256Digest } from "./digests.js";
 import {
@@ -14,15 +15,7 @@ import {
 } from "./manifest.js";
 import type { AssetId } from "./types.js";
 
-export const ARCHIVE_LIMITS = {
-  totalEntries: 1_024,
-  selectedSvgEntries: 128,
-  selectedEntryBytes: 8 * 1024 * 1024,
-  selectedAggregateBytes: 32 * 1024 * 1024,
-  expansionRatio: 100,
-  centralDirectoryBytes: 64 * 1024 * 1024,
-  archiveFileBytes: 128 * 1024 * 1024,
-} as const;
+export { ARCHIVE_LIMITS } from "./archive-limits.js";
 
 export const ALLOWED_COMPANION_EXTENSIONS = [".md", ".markdown", ".txt"] as const;
 export const ALLOWED_COMPANION_BASE_NAMES = new Set([
@@ -232,8 +225,9 @@ async function readEntry(
   entry: CentralEntry,
   fileSize: number,
   ctx: DiagnosticContext,
+  entryLimit = ARCHIVE_LIMITS.selectedEntryBytes,
 ): Promise<Uint8Array> {
-  if (entry.compressedSize > ARCHIVE_LIMITS.selectedEntryBytes) {
+  if (entry.compressedSize > entryLimit) {
     fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", `Selected entry '${entry.name}' exceeds archive limits.`, entry.name);
   }
   if (entry.localHeaderOffset + 30 > fileSize) {
@@ -258,7 +252,7 @@ async function readEntry(
     if (entry.method === 0) inflated = compressed;
     else if (entry.method === 8) {
       inflated = inflateSync(compressed, {
-        out: new Uint8Array(Math.min(entry.uncompressedSize + 1, ARCHIVE_LIMITS.selectedEntryBytes + 1)),
+        out: new Uint8Array(Math.min(entry.uncompressedSize + 1, entryLimit + 1)),
       });
     } else {
       fail(
@@ -274,7 +268,7 @@ async function readEntry(
   }
   if (
     inflated.length !== entry.uncompressedSize ||
-    inflated.length > ARCHIVE_LIMITS.selectedEntryBytes
+    inflated.length > entryLimit
   ) {
     fail(
       ctx,
@@ -300,14 +294,30 @@ export interface ArchiveReadResult {
   readonly companions: readonly SelectedArchiveCompanion[];
   readonly archiveDigest: Sha256Digest;
   readonly snapshot: ArchiveSnapshot;
+  readonly entryCount: number;
+  readonly fileCount: number;
 }
 
 export interface ArchiveReadOptions {
   readonly selectAllSvgs?: boolean;
   readonly selectAllCompanions?: boolean;
   readonly allowNoSvgs?: boolean;
-  readonly operation?: "import" | "reconcile" | "diff";
+  readonly operation?: "import" | "reconcile" | "diff" | "analyze";
   readonly hooks?: ArchiveReadHooks;
+  readonly limits?: ArchiveReadLimits;
+  readonly retainSelectedSvgs?: boolean;
+  readonly onSelectedSvg?: (svg: SelectedArchiveSvg) => void | Promise<void>;
+}
+
+export interface ArchiveReadLimits {
+  readonly totalEntries: number;
+  readonly selectedSvgEntries: number;
+  readonly selectedEntryBytes: number;
+  readonly selectedAggregateBytes: number;
+  readonly declaredAggregateBytes?: number;
+  readonly expansionRatio: number;
+  readonly centralDirectoryBytes: number;
+  readonly archiveFileBytes: number;
 }
 
 export interface ArchiveReadHooks {
@@ -356,11 +366,22 @@ async function hashOpenArchive(
   return `sha256:${hash.digest("hex")}`;
 }
 
-export async function verifyArchiveSnapshot(snapshot: ArchiveSnapshot, operation: DiagnosticContext["operation"] = "reconcile"): Promise<void> {
-  const ctx = archiveContext(snapshot.path, operation);
+export async function verifyArchiveSnapshot(
+  snapshot: ArchiveSnapshot,
+  operation: DiagnosticContext["operation"] = "reconcile",
+): Promise<void> {
   const stat = await lstat(snapshot.path).catch(() => undefined);
-  if (stat === undefined || stat.isSymbolicLink() || !stat.isFile() || !sameSnapshot(snapshot, archiveSnapshot(snapshot.path, stat))) {
-    fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed after candidate inspection.");
+  if (
+    stat === undefined ||
+    stat.isSymbolicLink() ||
+    !stat.isFile() ||
+    !sameSnapshot(snapshot, archiveSnapshot(snapshot.path, stat))
+  ) {
+    fail(
+      archiveContext(snapshot.path, operation),
+      "ARCHIVE_CHANGED_DURING_PLAN",
+      "Archive changed between planning and extraction.",
+    );
   }
 }
 
@@ -371,6 +392,7 @@ export async function readArchive(
   options: ArchiveReadOptions = {},
 ): Promise<ArchiveReadResult> {
   const ctx = archiveContext(archivePath, options.operation ?? "import");
+  const limits: ArchiveReadLimits = options.limits ?? ARCHIVE_LIMITS;
   let handle: FileHandle | undefined;
   try {
     const pathStat = await lstat(archivePath);
@@ -383,7 +405,10 @@ export async function readArchive(
     if (!sameSnapshot(snapshot, archiveSnapshot(archivePath, pathStat))) {
       fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed while it was opened.");
     }
-    if (stat.size > ARCHIVE_LIMITS.archiveFileBytes) {
+    if (stat.size > limits.archiveFileBytes) {
+      if (options.operation === "analyze") {
+        fail(ctx, "ANALYZE_ARCHIVE_BYTE_LIMIT_EXCEEDED", "The ZIP exceeds the fixed 512 MiB raw archive limit.");
+      }
       fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive exceeds the fixed 128 MiB raw-file limit.");
     }
     const tailLength = Math.min(stat.size, 65_557);
@@ -406,10 +431,13 @@ export async function readArchive(
     if (eocd + 22 + commentLength !== tail.length || disk !== 0 || centralDisk !== 0 || diskEntries !== totalEntries) {
       invalid(ctx, "Unsupported multi-disk or malformed ZIP archive.");
     }
-    if (totalEntries > ARCHIVE_LIMITS.totalEntries) {
+    if (totalEntries > limits.totalEntries) {
+      if (options.operation === "analyze") {
+        fail(ctx, "ANALYZE_CANDIDATE_LIMIT_EXCEEDED", "The input exceeds the fixed 100,000-candidate limit.");
+      }
       fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive contains more than 1,024 entries.");
     }
-    if (centralSize > ARCHIVE_LIMITS.centralDirectoryBytes || centralOffset + centralSize > stat.size) {
+    if (centralSize > limits.centralDirectoryBytes || centralOffset + centralSize > stat.size) {
       fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "ZIP central directory exceeds the bounded importer limit.");
     }
     const entries = parseCentralDirectory(
@@ -434,10 +462,14 @@ export async function readArchive(
             }
             return entry;
           });
+    if (options.operation === "analyze") selectedSvgEntries.sort((left, right) => Buffer.compare(Buffer.from(left.name, "utf8"), Buffer.from(right.name, "utf8")));
     if (selectedSvgEntries.length === 0 && options.allowNoSvgs !== true) {
       fail(ctx, "ARCHIVE_SELECTION_EMPTY", "Archive selection contains no SVG entries.");
     }
-    if (selectedSvgEntries.length > ARCHIVE_LIMITS.selectedSvgEntries) {
+    if (options.operation === "analyze" ? selectedSvgEntries.length > limits.selectedSvgEntries : mutationSvgCountExceedsLimit(selectedSvgEntries.length)) {
+      if (options.operation === "analyze") {
+        fail(ctx, "ANALYZE_SVG_FILE_LIMIT_EXCEEDED", "The input exceeds the fixed 50,000-SVG limit.");
+      }
       fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive selects more than 128 SVG entries.");
     }
 
@@ -462,46 +494,65 @@ export async function readArchive(
         });
 
     const allSelected = [...selectedSvgEntries, ...selectedCompanionEntries];
-    let declaredAggregate = 0;
-    for (const entry of allSelected) {
-      declaredAggregate += entry.uncompressedSize;
-      if (
-        entry.compressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
-        entry.uncompressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
-        (entry.compressedSize === 0
-          ? entry.uncompressedSize !== 0
-          : entry.uncompressedSize > entry.compressedSize * ARCHIVE_LIMITS.expansionRatio)
-      ) {
-        fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", `Selected entry '${entry.name}' exceeds archive limits.`, entry.name);
+    if (options.operation === "analyze") {
+      const declaredEntries = entries.filter((entry) => !entry.directory);
+      let declaredAggregate = 0;
+      for (const entry of declaredEntries) {
+        declaredAggregate += entry.uncompressedSize;
+        if (entry.compressedSize === 0 ? entry.uncompressedSize !== 0 : entry.uncompressedSize > entry.compressedSize * limits.expansionRatio) {
+          fail(ctx, "ANALYZE_ARCHIVE_COMPRESSION_RATIO_EXCEEDED", "A ZIP entry exceeds the fixed 100:1 expansion ratio.", entry.name);
+        }
       }
-    }
-    if (declaredAggregate > ARCHIVE_LIMITS.selectedAggregateBytes) {
-      fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Selected entries exceed the 32 MiB aggregate limit.");
+      if (declaredAggregate > (limits.declaredAggregateBytes ?? limits.selectedAggregateBytes)) {
+        fail(ctx, "ANALYZE_ARCHIVE_DECLARED_BYTE_LIMIT_EXCEEDED", "The ZIP exceeds the fixed 1 GiB declared-byte limit.");
+      }
+    } else {
+      let declaredAggregate = 0;
+      for (const entry of allSelected) {
+        declaredAggregate += entry.uncompressedSize;
+        if (
+          entry.compressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
+          entry.uncompressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
+          (entry.compressedSize === 0
+            ? entry.uncompressedSize !== 0
+            : entry.uncompressedSize > entry.compressedSize * ARCHIVE_LIMITS.expansionRatio)
+        ) {
+          fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", `Selected entry '${entry.name}' exceeds archive limits.`, entry.name);
+        }
+      }
+      if (mutationAggregateBytesExceedsLimit(declaredAggregate)) {
+        fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Selected entries exceed the 32 MiB aggregate limit.");
+      }
     }
 
     const svgs: SelectedArchiveSvg[] = [];
     let actualAggregate = 0;
     await options.hooks?.beforeSelectedEntryInspection?.();
     for (const entry of selectedSvgEntries) {
-      const bytes = await readEntry(handle, entry, stat.size, ctx);
+      const bytes = await readEntry(handle, entry, stat.size, ctx, limits.selectedEntryBytes);
       actualAggregate += bytes.length;
-      if (actualAggregate > ARCHIVE_LIMITS.selectedAggregateBytes) {
+      if (options.operation === "analyze" ? actualAggregate > limits.selectedAggregateBytes : mutationAggregateBytesExceedsLimit(actualAggregate)) {
+        if (options.operation === "analyze") {
+          fail(ctx, "ANALYZE_AGGREGATE_BYTE_LIMIT_EXCEEDED", "The input exceeds the fixed 512 MiB aggregate SVG limit.");
+        }
         fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Inflated entries exceed the 32 MiB aggregate limit.");
       }
-      svgs.push({
+      const selected = {
         entryName: entry.name,
         bytes,
         compressedSize: entry.compressedSize,
         uncompressedSize: bytes.length,
-      });
+      };
+      await options.onSelectedSvg?.(selected);
+      if (options.retainSelectedSvgs !== false) svgs.push(selected);
     }
 
     const companions: SelectedArchiveCompanion[] = [];
     const seenCompanionFilenames = new Map<string, string>();
     for (const entry of selectedCompanionEntries) {
-      const bytes = await readEntry(handle, entry, stat.size, ctx);
+      const bytes = await readEntry(handle, entry, stat.size, ctx, limits.selectedEntryBytes);
       actualAggregate += bytes.length;
-      if (actualAggregate > ARCHIVE_LIMITS.selectedAggregateBytes) {
+      if (options.operation === "analyze" ? actualAggregate > limits.selectedAggregateBytes : mutationAggregateBytesExceedsLimit(actualAggregate)) {
         fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Inflated entries exceed the 32 MiB aggregate limit.");
       }
       try {
@@ -534,7 +585,7 @@ export async function readArchive(
       fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed during candidate inspection.");
     }
     await verifyArchiveSnapshot(snapshot, options.operation ?? "import");
-    return { svgs, companions, archiveDigest, snapshot };
+    return { svgs, companions, archiveDigest, snapshot, entryCount: entries.length, fileCount: entries.filter((entry) => !entry.directory).length };
   } catch (error) {
     if (error instanceof DiagnosticError) throw error;
     if (error instanceof Error && typeof (error as NodeJS.ErrnoException).code === "string") {
@@ -687,7 +738,7 @@ export async function readManifestArchive(
         fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", `Selected entry '${entry.name}' exceeds archive limits.`, entry.name);
       }
     }
-    if (declaredAggregate > ARCHIVE_LIMITS.selectedAggregateBytes) {
+    if (mutationAggregateBytesExceedsLimit(declaredAggregate)) {
       fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Selected entries exceed the 32 MiB aggregate limit.");
     }
 
@@ -757,7 +808,7 @@ export async function readManifestArchive(
     if (svgs.length === 0 && options.allowNoSvgs !== true) {
       fail(ctx, "ARCHIVE_SELECTION_EMPTY", "Archive selection contains no SVG entries.");
     }
-    if (svgs.length > ARCHIVE_LIMITS.selectedSvgEntries) {
+    if (mutationSvgCountExceedsLimit(svgs.length)) {
       fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive selects more than 128 SVG assets.");
     }
 

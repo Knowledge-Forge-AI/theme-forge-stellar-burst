@@ -12,7 +12,7 @@ import type {
 
 const NUMBER_SOURCE = String.raw`[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?`;
 const NUMBER_PATTERN = new RegExp(`^${NUMBER_SOURCE}$`);
-const LOCAL_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
+export const LOCAL_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
 const ASSET_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SVG_FILENAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*\.svg$/;
 const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
@@ -135,6 +135,10 @@ export function parseLocalId(
   return value as LocalId;
 }
 
+export function isLocalId(value: string): boolean {
+  return LOCAL_ID_PATTERN.test(value);
+}
+
 export function parseSvgFilename(
   value: unknown,
   context: DiagnosticContext,
@@ -233,11 +237,11 @@ export function parsePaint(
     }
     return { type: "solid", color: value.toUpperCase() as HexColor };
   }
-  const match = /^url\(#([A-Za-z_][A-Za-z0-9_.-]*)\)$/.exec(value);
+  const match = /^url\(#([^)]+)\)$/.exec(value);
   if (match === null) {
     fail(context, invalidPaintCode, "Paint must be none, #RRGGBB, or url(#local-id).", location);
   }
-  const reference = match[1] as LocalId;
+  const reference = parseLocalId(match[1], context, location);
   return {
     type: "linear-gradient",
     reference,
@@ -252,11 +256,11 @@ export function parseSvgPaint(
   context: DiagnosticContext,
   location: string,
 ): Paint {
-  const match = /^url\(#([A-Za-z_][A-Za-z0-9_.-]*)\)(?:\s+(#[0-9A-Fa-f]{6}))?$/.exec(value);
+  const match = /^url\(#([^)]+)\)(?:[\t\n\r ]+(#[0-9A-Fa-f]{6}))?$/.exec(value);
   if (match !== null) {
     return {
       type: "linear-gradient",
-      reference: match[1] as LocalId,
+      reference: parseLocalId(match[1], context, location),
       ...(match[2] === undefined
         ? {}
         : { fallback: match[2].toUpperCase() as HexColor }),

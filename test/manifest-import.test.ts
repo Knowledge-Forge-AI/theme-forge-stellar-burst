@@ -67,6 +67,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     const plan = await importProject({
       archive: bundlePath,
       root: targetDir,
+      schema: 1,
       manifest: true,
     });
 
@@ -125,6 +126,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     const plan = await importProject({
       archive: customZipPath,
       root: targetDir,
+      schema: 1,
       manifest: true,
       recordProvenance: true,
     });
@@ -148,7 +150,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     writeFileSync(badZip, zipBytes);
 
     await expect(
-      importProject({ archive: badZip, root: targetDir, manifest: true }),
+      importProject({ archive: badZip, root: targetDir, schema: 1, manifest: true }),
     ).rejects.toThrow(/Archive lacks required root tfsb-manifest\.json/);
 
     expect(existsSync(join(targetDir, ".tfsb"))).toBe(false);
@@ -171,7 +173,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     writeFileSync(badZip, zipSync(zipData as any));
 
     await expect(
-      importProject({ archive: badZip, root: targetDir, manifest: true }),
+      importProject({ archive: badZip, root: targetDir, schema: 1, manifest: true }),
     ).rejects.toThrow(/Archive contains undeclared entry/);
   });
 
@@ -198,7 +200,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     writeFileSync(badZip, zipSync(zipData as any));
 
     await expect(
-      importProject({ archive: badZip, root: targetDir, manifest: true }),
+      importProject({ archive: badZip, root: targetDir, schema: 1, manifest: true }),
     ).rejects.toThrow(/Digest mismatch for entry/);
   });
 
@@ -211,6 +213,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     const plan = await importProject({
       archive: join(sourceDir, "bundle.zip"),
       root: targetDir,
+      schema: 1,
       manifest: true,
       selections: ["brand-mark.svg"],
     });
@@ -237,7 +240,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     writeFileSync(zipPath, zipSync(zipData as any));
 
     await expect(
-      importProject({ archive: zipPath, root: targetDir, manifest: true }),
+      importProject({ archive: zipPath, root: targetDir, schema: 1, manifest: true }),
     ).rejects.toThrow(/Directory entry 'folder\/' is not allowed in manifest-assisted archives/);
   });
 
@@ -250,7 +253,7 @@ d = "M 0 0 H 50 V 50 H 0 Z"
     writeFileSync(zipPath, zipSync(zipData as any));
 
     await expect(
-      importProject({ archive: zipPath, root: targetDir, manifest: true }),
+      importProject({ archive: zipPath, root: targetDir, schema: 1, manifest: true }),
     ).rejects.toThrow(/Archive lacks required root tfsb-manifest\.json/);
   });
 });

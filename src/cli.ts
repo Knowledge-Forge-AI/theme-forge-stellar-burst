@@ -6,6 +6,9 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { buildProject } from "./build.js";
+import { createAnalyzeEnvelope, executeCompleteAnalysis, renderAnalyzeHuman } from "./analyze.js";
+import { planAnalyzeDetails, publishAnalyzeDetails } from "./analyze-details.js";
+import { inspectAnalyzeInput } from "./analyze-source.js";
 import { bundleProject } from "./bundle.js";
 import { checkProject } from "./check.js";
 import { DiagnosticError } from "./diagnostics.js";
@@ -15,19 +18,20 @@ import { importProject } from "./importer.js";
 import { installProject } from "./install.js";
 import { createJsonEnvelope, mapCheckJson, mapListJson, mapMachineDiagnostic, mapReconcileJson, serializeJsonEnvelope, type BundleJsonData, type JsonCommand, type JsonExitCode, type JsonStatus } from "./json.js";
 import { listProject } from "./list.js";
+import { migrateProject, type MigrationResult } from "./migration.js";
 import { previewProject } from "./preview.js";
 import { reconcileProject } from "./reconcile.js";
 import { findProjectRoot } from "./root.js";
 import { TOOL_VERSION } from "./version.js";
 
 export const HUMAN_DISPLAY_THRESHOLD = 50;
-const JSON_COMMANDS = new Set<JsonCommand>(["check", "list", "reconcile", "diff", "bundle", "fmt", "preview"]);
-const COMMANDS = ["import", "bundle", "reconcile", "build", "install", "check", "list", "diff", "fmt", "preview"] as const;
+const JSON_COMMANDS = new Set<JsonCommand>(["check", "list", "reconcile", "diff", "bundle", "fmt", "preview", "analyze", "migrate"]);
+const COMMANDS = ["import", "bundle", "reconcile", "build", "install", "check", "list", "diff", "fmt", "preview", "analyze", "migrate"] as const;
 
 const USAGE = `Usage:
-  tfsb import <archive> --root <project-root> [--manifest] [--select <entry> ...] [--companion <entry> ...] [--record-provenance] [--dry-run]
+  tfsb import <archive> --root <project-root> [--schema 1|2] [--manifest] [--select <entry> ...] [--companion <entry> ...] [--record-provenance] [--normalize exact-common] [--normalization-map <file>] [--dry-run]
   tfsb bundle [--root <path>] --output <project-relative.zip> [--asset <asset-id> ...] [--companion <file> ...] [--force] [--dry-run] [--json]
-  tfsb reconcile <archive> [--root <path>] [--dry-run | --apply] [--select <entry> ...] [--companion <entry> ...] [--resolve <key>=canonical|archive ...] [--rename <old-id>=<entry> ...] [--rename-companion <old-file>=<entry> ...] [--remove <asset-id> ...] [--remove-companion <file> ...] [--json]
+  tfsb reconcile <archive> [--root <path>] [--dry-run | --apply] [--normalize exact-common] [--normalization-map <file>] [--select <entry> ...] [--companion <entry> ...] [--resolve <key>=canonical|archive ...] [--rename <old-id>=<entry> ...] [--rename-companion <old-file>=<entry> ...] [--remove <asset-id> ...] [--remove-companion <file> ...] [--json]
   tfsb diff [--root <path>] [--provenance | --archive <archive> | --build | --install] [--json]
   tfsb fmt [--root <path>] [--check] [--json]
   tfsb preview [--root <path>] [--output <project-relative-directory>] [--open] [--json]
@@ -35,12 +39,15 @@ const USAGE = `Usage:
   tfsb install [--root <path>] [--dry-run]
   tfsb check [--root <path>] [--json]
   tfsb list [--root <path>] [--json]
+  tfsb analyze <directory-or-archive> [--json] [--details <output.ndjson>]
+  tfsb migrate [--root <path>] [--check] [--json]
 
 Options:
   -h, --help            Show this help and exit
   -v, --version         Show the package version and exit
   --root <path>         Use an explicit project root
   --json                Emit one versioned machine-result envelope
+  --details <path>      Publish a transactional analyze details NDJSON report
   --check               Check formatting without writing
   --provenance          Compare with paired provenance checkpoints (default diff)
   --archive <archive>   Compare with a safely validated archive
@@ -54,6 +61,9 @@ Options:
   --dry-run             Plan without writing (default for reconcile)
   --apply               Apply one complete reconciliation plan
   --record-provenance   Record aligned provenance during initial import
+  --schema <1|2>        Select schema for a new project (default: 2)
+  --normalize <policy>  Authorize the exact-common normalization policy
+  --normalization-map <file>  Supply explicit accessibility authority
   --select <entry>      Select an exact archive SVG entry; repeatable
   --companion <entry>   Select an opaque companion document; repeatable`;
 
@@ -64,16 +74,18 @@ function parseCommandArgs(args: readonly string[], command: string) {
   const allowsDryRun = ["import", "build", "install", "reconcile", "bundle"].includes(command);
   const json = JSON_COMMANDS.has(command as JsonCommand);
   const options = {
-    root: { type: "string" as const },
+    ...(command === "analyze" ? {} : { root: { type: "string" as const } }),
     ...(json ? { json: { type: "boolean" as const } } : {}),
     ...(allowsSelect ? { select: { type: "string" as const, multiple: true }, companion: { type: "string" as const, multiple: true } } : {}),
     ...(allowsDryRun ? { "dry-run": { type: "boolean" as const } } : {}),
-    ...(command === "import" ? { "record-provenance": { type: "boolean" as const }, manifest: { type: "boolean" as const } } : {}),
+    ...(command === "import" ? { "record-provenance": { type: "boolean" as const }, manifest: { type: "boolean" as const }, schema: { type: "string" as const }, normalize: { type: "string" as const }, "normalization-map": { type: "string" as const } } : {}),
+    ...(command === "reconcile" ? { normalize: { type: "string" as const }, "normalization-map": { type: "string" as const } } : {}),
     ...(command === "bundle" ? { output: { type: "string" as const }, asset: { type: "string" as const, multiple: true }, companion: { type: "string" as const, multiple: true }, force: { type: "boolean" as const } } : {}),
     ...(command === "preview" ? { output: { type: "string" as const }, open: { type: "boolean" as const } } : {}),
     ...(command === "reconcile" ? { apply: { type: "boolean" as const }, resolve: { type: "string" as const, multiple: true }, rename: { type: "string" as const, multiple: true }, "rename-companion": { type: "string" as const, multiple: true }, remove: { type: "string" as const, multiple: true }, "remove-companion": { type: "string" as const, multiple: true } } : {}),
     ...(command === "diff" ? { provenance: { type: "boolean" as const }, archive: { type: "string" as const }, build: { type: "boolean" as const }, install: { type: "boolean" as const } } : {}),
-    ...(command === "fmt" ? { check: { type: "boolean" as const } } : {}),
+    ...(command === "fmt" || command === "migrate" ? { check: { type: "boolean" as const } } : {}),
+    ...(command === "analyze" ? { details: { type: "string" as const } } : {}),
   };
   return parseArgs({ args: [...args], options, allowPositionals: true, strict: true });
 }
@@ -82,7 +94,8 @@ function displayProjectPath(root: string, path: string): string { return relativ
 function emitJson(io: CliIo, command: JsonCommand, status: JsonStatus, exitCode: JsonExitCode, summary: string, data: unknown, diagnostics = [] as readonly ReturnType<typeof mapMachineDiagnostic>[]): number { io.stdout(serializeJsonEnvelope(createJsonEnvelope(command, status, exitCode, summary, diagnostics, data))); return exitCode; }
 function writeDrift(io: CliIo, layer: "build" | "install", groups: readonly { readonly name: string; readonly paths: readonly string[] }[]): void { if (groups.every((group) => group.paths.length === 0)) { io.stdout(`${layer}: clean\n`); return; } io.stdout(`${layer}: drift\n`); for (const group of groups) if (group.paths.length > 0) io.stdout(`  ${group.name}: ${group.paths.join(", ")}\n`); }
 function displayBounded<T>(io: CliIo, values: readonly T[], render: (value: T) => string): void { const shown = values.slice(0, HUMAN_DISPLAY_THRESHOLD); for (const value of shown) io.stdout(render(value)); if (shown.length < values.length) io.stdout(`Summary: ${values.length} total, ${shown.length} displayed, ${values.length - shown.length} omitted; use --json for complete output.\n`); }
-function diffHumanLines(result: DiffResult): readonly string[] { if (result.baseline === "provenance") return result.records.map((item) => `${item.key}: ${item.relation}\n`); if (result.baseline === "archive") return result.changes.map((item) => `${item.key}: ${item.category} ${item.changeType} at ${item.location}\n`); if (result.baseline === "build") return [...result.canonicalSources.map((item) => `source: ${item.changeType} ${item.path}\n`), ...result.outputs.map((item) => `output: ${item.changeType} ${item.path}\n`), ...result.policyChanges.map((item) => `policy: ${item.kind} ${item.changeType} ${item.key}${item.destination === undefined ? "" : ` -> ${item.destination}`}\n`)]; return result.destinations.filter((item) => item.state !== "clean").map((item) => `${item.key}: ${item.state} ${item.destination}\n`); }
+function diffHumanLines(result: DiffResult): readonly string[] { if (result.baseline === "provenance") return result.records.map((item) => `${item.key}: ${item.relation}\n`); if (result.baseline === "archive") return [...(result.sourceRelations ?? []).map((item) => `${item.key}: raw=${item.rawRelation} normalization=${item.normalizationRelation} semantic=${item.semanticComparison}\n`), ...result.changes.map((item) => `${item.key}: ${item.category} ${item.changeType} at ${item.location}\n`)]; if (result.baseline === "build") return [...result.canonicalSources.map((item) => `source: ${item.changeType} ${item.path}\n`), ...result.outputs.map((item) => `output: ${item.changeType} ${item.path}\n`), ...result.policyChanges.map((item) => `policy: ${item.kind} ${item.changeType} ${item.key}${item.destination === undefined ? "" : ` -> ${item.destination}`}\n`)]; return result.destinations.filter((item) => item.state !== "clean").map((item) => `${item.key}: ${item.state} ${item.destination}\n`); }
+function migrationJsonData(result: MigrationResult): Omit<MigrationResult, "root"> { const { root: _root, ...data } = result; return data; }
 
 export async function runCli(argv: readonly string[], cwd = process.cwd(), io: CliIo = { stdout: (text) => process.stdout.write(text), stderr: (text) => process.stderr.write(text) }): Promise<number> {
   const [command, ...rest] = argv;
@@ -99,10 +112,34 @@ export async function runCli(argv: readonly string[], cwd = process.cwd(), io: C
     const usage = (message: string): number => jsonMode && JSON_COMMANDS.has(command as JsonCommand)
       ? emitJson(io, command as JsonCommand, "error", 1, "Invalid command arguments.", null, [{ code: "USAGE_ERROR", severity: "error", operation: command, domain: "cli", message }])
       : (io.stderr(`USAGE_ERROR: ${message}\n${USAGE}\n`), 1);
+    if (command === "analyze") {
+      if (parsed.positionals.length !== 1) return usage("analyze requires exactly one directory or ZIP path.");
+      for (const option of ["--json", "--details"]) if (rest.filter((item) => item === option || item.startsWith(`${option}=`)).length > 1) return usage(`${option} cannot be repeated.`);
+      const inputPlan = await inspectAnalyzeInput(parsed.positionals[0] ?? "", cwd);
+      const result = await executeCompleteAnalysis(inputPlan);
+      if (typeof parsed.values.details === "string") await publishAnalyzeDetails(await planAnalyzeDetails(inputPlan, parsed.values.details), result);
+      if (jsonMode) { io.stdout(serializeJsonEnvelope(createAnalyzeEnvelope(result))); return result.exitCode; }
+      io.stdout(renderAnalyzeHuman(result)); return result.exitCode;
+    }
+    if (command === "migrate") {
+      if (parsed.positionals.length !== 0) return usage("migrate does not accept positional arguments.");
+      const check = parsed.values.check === true;
+      const result = await migrateProject({ ...(rootValue === undefined ? {} : { root: rootValue }), check });
+      const exit: JsonExitCode = check && result.migrationNeeded ? 2 : 0;
+      const status: JsonStatus = exit === 2 ? "drift" : "ok";
+      const summary = result.migrationNeeded ? check ? "A valid schema-2 migration is available." : "Schema migration was applied." : "Project is already schema 2.";
+      if (jsonMode) return emitJson(io, "migrate", status, exit, summary, migrationJsonData(result));
+      io.stdout(`${result.migrationNeeded ? check ? "Migration required" : "Migrated" : "Migration not required"}: schema ${result.fromSchemaVersion} -> ${result.toSchemaVersion}; ${result.assetCount} asset(s), ${result.companionCount} companion(s), ${result.svgEquivalentCount} SVG-equivalent.\n`);
+      displayBounded(io, result.files, (file) => `  ${file.path}: ${file.beforeBasis} -> ${file.afterBasis}; ${file.svgOutputDigest}\n`);
+      return exit;
+    }
     if (command === "import") {
       if (parsed.positionals.length !== 1) return usage("import requires exactly one archive path.");
-      const plan = await importProject({ archive: parsed.positionals[0] ?? "", ...(rootValue === undefined ? {} : { root: rootValue }), selections: strings(parsed.values.select), companions: strings(parsed.values.companion), dryRun, recordProvenance: parsed.values["record-provenance"] === true, manifest: parsed.values.manifest === true });
-      io.stdout(`${dryRun ? "Import dry-run" : "Imported"}: ${plan.assets.length} asset(s)${plan.companions.length > 0 ? `, ${plan.companions.length} companion(s)` : ""}\n`); for (const name of plan.files.keys()) io.stdout(`  ${name}\n`); return 0;
+      const rawSchema = parsed.values.schema;
+      if (rawSchema !== undefined && rawSchema !== "1" && rawSchema !== "2") return usage("--schema must be 1 or 2.");
+      if (parsed.values.normalize !== undefined && parsed.values.normalize !== "exact-common") return usage("--normalize must be exact-common.");
+      const plan = await importProject({ archive: parsed.positionals[0] ?? "", ...(rootValue === undefined ? {} : { root: rootValue }), selections: strings(parsed.values.select), companions: strings(parsed.values.companion), dryRun, recordProvenance: parsed.values["record-provenance"] === true, manifest: parsed.values.manifest === true, ...(rawSchema === undefined ? {} : { schema: Number(rawSchema) as 1 | 2 }), ...(parsed.values.normalize === "exact-common" ? { normalize: "exact-common" as const } : {}), ...(typeof parsed.values["normalization-map"] === "string" ? { normalizationMap: parsed.values["normalization-map"] } : {}) });
+      io.stdout(`${dryRun ? "Import dry-run" : "Imported"}: ${plan.assets.length} asset(s)${plan.companions.length > 0 ? `, ${plan.companions.length} companion(s)` : ""} (schema ${plan.project.schemaVersion})\n`); for (const name of plan.files.keys()) io.stdout(`  ${name}\n`); if (plan.normalizationLedger !== undefined) displayBounded(io, plan.normalizationLedger.entries, (item) => `${item.source}: normalization=${item.disposition}; operations=${item.operations.join(",") || "none"}; policy=${item.policyDigest}\n`); return 0;
     }
     if (command === "bundle") {
       if (parsed.positionals.length !== 0) return usage("bundle does not accept positional arguments.");
@@ -113,10 +150,11 @@ export async function runCli(argv: readonly string[], cwd = process.cwd(), io: C
     if (command === "reconcile") {
       if (parsed.positionals.length !== 1) return usage("reconcile requires exactly one archive path.");
       const apply = parsed.values.apply === true; if (apply && dryRun) return usage("--dry-run and --apply conflict.");
-      const result = await reconcileProject({ archive: parsed.positionals[0] ?? "", ...(rootValue === undefined ? {} : { root: rootValue }), selections: strings(parsed.values.select), companions: strings(parsed.values.companion), resolutions: strings(parsed.values.resolve), renames: strings(parsed.values.rename), companionRenames: strings(parsed.values["rename-companion"]), removals: strings(parsed.values.remove), companionRemovals: strings(parsed.values["remove-companion"]), apply });
+      if (parsed.values.normalize !== undefined && parsed.values.normalize !== "exact-common") return usage("--normalize must be exact-common.");
+      const result = await reconcileProject({ archive: parsed.positionals[0] ?? "", ...(rootValue === undefined ? {} : { root: rootValue }), selections: strings(parsed.values.select), companions: strings(parsed.values.companion), resolutions: strings(parsed.values.resolve), renames: strings(parsed.values.rename), companionRenames: strings(parsed.values["rename-companion"]), removals: strings(parsed.values.remove), companionRemovals: strings(parsed.values["remove-companion"]), apply, ...(parsed.values.normalize === "exact-common" ? { normalize: "exact-common" as const } : {}), ...(typeof parsed.values["normalization-map"] === "string" ? { normalizationMap: parsed.values["normalization-map"] } : {}) });
       const exit: JsonExitCode = apply ? (result.blocked ? 2 : 0) : (result.pending ? 2 : 0); const status: JsonStatus = result.blocked ? "conflict" : exit === 2 ? "drift" : "ok";
       if (jsonMode) return emitJson(io, "reconcile", status, exit, result.applied ? "Reconciliation was applied." : result.blocked ? "Reconciliation has unresolved conflicts." : result.pending ? "Reconciliation has pending changes." : "Reconciliation is clean.", mapReconcileJson(result));
-      displayBounded(io, result.records, (item) => `${item.key}: ${item.classification} - ${item.action}\n`); io.stdout(`Reconciliation status: ${result.records.length} active, ${result.records.filter((item) => item.blocker).length} blocker(s), mutation ${result.applied ? "applied" : "none"}\n`); return exit;
+      displayBounded(io, result.records, (item) => `${item.key}: ${item.classification} - ${item.action}\n`); if (result.normalizationLedger !== undefined) displayBounded(io, result.normalizationLedger.entries, (item) => `${item.source}: normalization=${item.disposition}; operations=${item.operations.join(",") || "none"}; policy=${item.policyDigest}\n`); io.stdout(`Reconciliation status: ${result.records.length} active, ${result.records.filter((item) => item.blocker).length} blocker(s), mutation ${result.applied ? "applied" : "none"}\n`); return exit;
     }
     if (command === "preview") {
       if (parsed.positionals.length !== 0) return usage("preview does not accept positional arguments.");

@@ -6,6 +6,7 @@ import { strToU8, zipSync, type Zippable } from "fflate";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { ARCHIVE_LIMITS, readArchive, readSvgArchive } from "../src/archive.js";
+import { mutationAggregateBytesExceedsLimit, mutationSvgCountExceedsLimit } from "../src/archive-limits.js";
 import { computeSha256 } from "../src/digests.js";
 
 const roots: string[] = [];
@@ -151,6 +152,19 @@ describe("bounded ZIP archive inspection", () => {
     await expect(readSvgArchive(await archive(aggregate))).rejects.toMatchObject({
       diagnostic: { code: "ARCHIVE_LIMIT_EXCEEDED" },
     });
+  });
+
+  it("accepts exact 128-entry and 32 MiB selected boundaries and rejects one over", async () => {
+    const exactCount: Zippable = {};
+    for (let index = 0; index < 128; index += 1) exactCount[`${index}.svg`] = strToU8("x");
+    expect(await readSvgArchive(await archive(exactCount))).toHaveLength(128);
+    exactCount["128.svg"] = strToU8("x");
+    await expect(readSvgArchive(await archive(exactCount))).rejects.toMatchObject({ diagnostic: { code: "ARCHIVE_LIMIT_EXCEEDED" } });
+
+    expect(mutationSvgCountExceedsLimit(128)).toBe(false);
+    expect(mutationSvgCountExceedsLimit(129)).toBe(true);
+    expect(mutationAggregateBytesExceedsLimit(32 * 1024 * 1024)).toBe(false);
+    expect(mutationAggregateBytesExceedsLimit(32 * 1024 * 1024 + 1)).toBe(true);
   });
 
   it("rejects an oversized sparse file before structure validation or hashing", async () => {

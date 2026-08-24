@@ -1,0 +1,112 @@
+{
+  "schema": "tfsb-v0.3-analyze-contract",
+  "schemaVersion": 1,
+  "profiles": {
+    "schema1": {
+      "profile": "tfsb-svg-schema-1",
+      "classifications": [
+        "directly_importable",
+        "unsupported",
+        "unsafe"
+      ],
+      "normalizations": false
+    },
+    "commonV03": {
+      "profile": "tfsb-svg-common-v0.3",
+      "classifications": [
+        "directly_importable",
+        "importable_with_normalization",
+        "unsupported",
+        "unsafe"
+      ],
+      "normalizations": true
+    }
+  },
+  "statusBasis": "commonV03",
+  "envelopeCases": [
+    {
+      "case": "complete_direct",
+      "status": "ok",
+      "exitCode": 0,
+      "data": "complete",
+      "scanCompleted": true
+    },
+    {
+      "case": "complete_drift",
+      "status": "drift",
+      "exitCode": 2,
+      "data": "complete",
+      "scanCompleted": true
+    },
+    {
+      "case": "complete_unsafe",
+      "status": "error",
+      "exitCode": 1,
+      "data": "complete",
+      "scanCompleted": true
+    },
+    {
+      "case": "incomplete_scan",
+      "status": "error",
+      "exitCode": 1,
+      "data": "null",
+      "scanCompleted": null
+    }
+  ],
+  "diagnostics": [
+    { "code": "ANALYZE_UNSAFE_XML_DECLARATION", "domain": "unsafe", "classification": "unsafe", "data": "complete", "scanImpact": "unsafe_dominates" },
+    { "code": "ANALYZE_UNSAFE_ACTIVE_ELEMENT", "domain": "unsafe", "classification": "unsafe", "data": "complete", "scanImpact": "unsafe_dominates" },
+    { "code": "ANALYZE_UNSAFE_ACTIVE_ATTRIBUTE", "domain": "unsafe", "classification": "unsafe", "data": "complete", "scanImpact": "unsafe_dominates" },
+    { "code": "ANALYZE_UNSAFE_EXTERNAL_REFERENCE", "domain": "unsafe", "classification": "unsafe", "data": "complete", "scanImpact": "unsafe_dominates" },
+    { "code": "ANALYZE_UNSUPPORTED_ELEMENT", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_UNSUPPORTED_ATTRIBUTE", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_UNSUPPORTED_CSS_CLASS", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_UNSUPPORTED_VERSION", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_UNSUPPORTED_NAMESPACE", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_UNSUPPORTED_PAINT", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_UNSUPPORTED_TRANSFORM", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_UNSUPPORTED_XML_NODE", "domain": "unsupported", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_ROOT", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_MISSING_ARTWORK", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_VIEWBOX", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_CANVAS_DIMENSION", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_ID", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_GEOMETRY", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_PATH_DATA", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_ACCESSIBILITY", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_REFERENCE", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_SHAPE_RENDERING", "domain": "invalid", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_SYNTAX_ERROR", "domain": "syntax", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_INVALID_UTF8", "domain": "syntax", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_FILE_BYTE_LIMIT_EXCEEDED", "domain": "file_resource", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_FILE_ELEMENT_LIMIT_EXCEEDED", "domain": "file_resource", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_PROFILE_ELEMENT_LIMIT_EXCEEDED", "domain": "profile_resource", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_PROFILE_DEPTH_LIMIT_EXCEEDED", "domain": "profile_resource", "classification": "unsupported", "data": "complete", "scanImpact": "drift_candidate" },
+    { "code": "ANALYZE_CANDIDATE_LIMIT_EXCEEDED", "domain": "scan_resource", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_SVG_FILE_LIMIT_EXCEEDED", "domain": "scan_resource", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_AGGREGATE_BYTE_LIMIT_EXCEEDED", "domain": "scan_resource", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_ANALYSIS_ELEMENT_LIMIT_EXCEEDED", "domain": "scan_resource", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_ARCHIVE_BYTE_LIMIT_EXCEEDED", "domain": "archive_resource", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_ARCHIVE_DECLARED_BYTE_LIMIT_EXCEEDED", "domain": "archive_resource", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_ARCHIVE_COMPRESSION_RATIO_EXCEEDED", "domain": "archive_resource", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_ARCHIVE_INVALID", "domain": "archive", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_INPUT_INVALID", "domain": "input", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_SOURCE_CHANGED", "domain": "snapshot", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_SNAPSHOT_FAILED", "domain": "snapshot", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_DETAILS_TARGET_INVALID", "domain": "details_output", "classification": null, "data": "null", "scanImpact": "scan_abort" },
+    { "code": "ANALYZE_DETAILS_WRITE_FAILED", "domain": "details_output", "classification": null, "data": "null", "scanImpact": "scan_abort" }
+  ],
+  "normalizations": [
+    { "id": "accessibility_authority_required", "authority": "intentional_semantic" },
+    { "id": "canonicalize_definition_order", "authority": "exact_semantic" },
+    { "id": "canonicalize_svg_version", "authority": "exact_semantic" },
+    { "id": "declare_decorative", "authority": "intentional_semantic" },
+    { "id": "geometry_defaults_expanded", "authority": "exact_semantic" },
+    { "id": "labelled_ids_and_references", "authority": "exact_semantic" },
+    { "id": "promote_root_presentation", "authority": "exact_semantic" },
+    { "id": "rect_corner_completion", "authority": "exact_semantic" },
+    { "id": "title_only_to_labelled", "authority": "exact_semantic" },
+    { "id": "xlink_href_to_href", "authority": "exact_semantic" },
+    { "id": "xlink_namespace_to_svg2_href", "authority": "exact_semantic" }
+  ]
+}

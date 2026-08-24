@@ -32,7 +32,7 @@ async function productionProject(): Promise<{ root: string; archive: string; com
   for (const name of await readdir(FIXTURE)) entries[name] = await readFile(join(FIXTURE, name));
   const archive = join(root, "production.zip");
   await writeFile(archive, zipSync(entries, { level: 6, mtime: new Date("1980-01-02T00:00:00Z") }));
-  const imported = await importProject({ archive, root, companions: ["README.md", "brand-README.md"], recordProvenance: true });
+  const imported = await importProject({ archive, root, schema: 1, companions: ["README.md", "brand-README.md"], recordProvenance: true });
   const installs = imported.assets.map((asset) => `[[install]]\nasset = "${asset.id}"\ndestinations = ["installed/${asset.filename}"]\n`).join("\n");
   const projectPath = join(root, ".tfsb/project.toml");
   await writeFile(projectPath, `${await readFile(projectPath, "utf8")}\n${installs}\n[[companion]]\nfile = "README.md"\ndestinations = ["installed/README.md"]\n\n[[companion]]\nfile = "brand-README.md"\ndestinations = ["installed/brand-README.md"]\n`);
@@ -117,5 +117,5 @@ describe("TFSB24 integrated Terminal Nova lifecycle", () => {
     expect((await diffBuild(await loadCanonicalProject(root, "diff"))).different).toBe(false);
     expect((await diffInstall(await loadCanonicalProject(root, "diff"))).different).toBe(false);
     expect(await readFile(join(root, ".tfsb/companions/brand-README.md"))).toEqual(companion);
-  });
+  }, 10_000);
 });

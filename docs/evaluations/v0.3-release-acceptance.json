@@ -1,0 +1,268 @@
+{
+  "kind": "tfsb-v0.3-release-acceptance",
+  "schemaVersion": 1,
+  "packageVersion": "0.3.0",
+  "releaseStatus": "release-candidate",
+  "dogfoodAggregateDigest": "sha256:18abd3eed070b1c10244bfb1696b44eaea9c282fa260761f75e6a3c25df486b8",
+  "verification": {
+    "typecheck": "passed",
+    "vitestFiles": 37,
+    "vitestTests": 534,
+    "playwrightTests": 117,
+    "productionVulnerabilities": 0,
+    "packageEntries": 103,
+    "dogfoodQualificationRuns": 2,
+    "dogfoodRunsByteIdentical": true,
+    "gitDiffCheck": "passed"
+  },
+  "summary": {
+    "qualified": 19,
+    "blocked": 0,
+    "docsOnly": 0,
+    "total": 19
+  },
+  "rows": [
+    {
+      "feature": "analyze",
+      "adr": "0006",
+      "implementation": [
+        "src/analyze.ts",
+        "src/analyze-scanner.ts"
+      ],
+      "tests": [
+        "test/analyze.test.ts",
+        "test/analyze-parity.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "schema 2",
+      "adr": "0005",
+      "implementation": [
+        "src/schema2-toml.ts",
+        "src/schema2-svg.ts"
+      ],
+      "tests": [
+        "test/schema2-core.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "accessibility modes",
+      "adr": "0005",
+      "implementation": [
+        "src/schema2-svg.ts",
+        "src/normalizer.ts"
+      ],
+      "tests": [
+        "test/schema2-core.test.ts",
+        "test/normalized-import.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "presentation and currentColor",
+      "adr": "0005",
+      "implementation": [
+        "src/schema2-svg.ts"
+      ],
+      "tests": [
+        "test/analyze-parity.test.ts",
+        "test/tfsb34-cross-feature.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "primitives",
+      "adr": "0005",
+      "implementation": [
+        "src/primitives.ts"
+      ],
+      "tests": [
+        "test/schema2-core.test.ts",
+        "test/normalized-import.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "transforms groups references",
+      "adr": "0005",
+      "implementation": [
+        "src/schema2-validation.ts",
+        "src/schema2-svg.ts"
+      ],
+      "tests": [
+        "test/analyze-parity.test.ts",
+        "test/tfsb34-cross-feature.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "direct import",
+      "adr": "0006",
+      "implementation": [
+        "src/importer.ts"
+      ],
+      "tests": [
+        "test/schema2-core.test.ts",
+        "test/normalized-import.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "exact-common normalization",
+      "adr": "0006",
+      "implementation": [
+        "src/normalizer.ts"
+      ],
+      "tests": [
+        "test/normalized-import.test.ts",
+        "test/tfsb34-cross-feature.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "normalization map and policy digest",
+      "adr": "0006",
+      "implementation": [
+        "src/normalization-map.ts",
+        "src/normalization-policy.ts"
+      ],
+      "tests": [
+        "test/normalization-policy.test.ts",
+        "test/provenance2.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "provenance2",
+      "adr": "0007",
+      "implementation": [
+        "src/provenance2.ts"
+      ],
+      "tests": [
+        "test/provenance2.test.ts",
+        "test/migration.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "migration",
+      "adr": "0007",
+      "implementation": [
+        "src/migration.ts"
+      ],
+      "tests": [
+        "test/migration.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "schema-2 reconcile",
+      "adr": "0007",
+      "implementation": [
+        "src/reconcile2.ts",
+        "src/reconcile.ts"
+      ],
+      "tests": [
+        "test/reconcile2.test.ts",
+        "test/tfsb34-cross-feature.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "archive diff",
+      "adr": "0007",
+      "implementation": [
+        "src/diff.ts"
+      ],
+      "tests": [
+        "test/reconcile2.test.ts",
+        "test/tfsb34-cross-feature.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "bundle and manifest",
+      "adr": "v0.3",
+      "implementation": [
+        "src/bundle.ts",
+        "src/manifest.ts"
+      ],
+      "tests": [
+        "test/bundle.test.ts",
+        "test/manifest-import.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "fmt build install check list",
+      "adr": "v0.3",
+      "implementation": [
+        "src/fmt.ts",
+        "src/build.ts",
+        "src/install.ts",
+        "src/check.ts",
+        "src/list.ts"
+      ],
+      "tests": [
+        "test/lifecycle-qualification.test.ts",
+        "test/schema2-core.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "preview",
+      "adr": "v0.3",
+      "implementation": [
+        "src/preview.ts"
+      ],
+      "tests": [
+        "test/tfsb24.test.ts",
+        "test/visual/preview.spec.ts",
+        "test/visual/dogfood-shards.spec.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "schema-1 frozen compatibility",
+      "adr": "0007",
+      "implementation": [
+        "src/schema-dispatch.ts",
+        "src/svg.ts"
+      ],
+      "tests": [
+        "test/schema2-core.test.ts",
+        "test/migration.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "limits security transaction",
+      "adr": "v0.3",
+      "implementation": [
+        "src/archive-limits.ts",
+        "src/schema2-validation.ts",
+        "src/transaction.ts"
+      ],
+      "tests": [
+        "test/archive.test.ts",
+        "test/transaction.test.ts",
+        "test/tfsb34-cross-feature.test.ts"
+      ],
+      "disposition": "qualified"
+    },
+    {
+      "feature": "package payload and dependency policy",
+      "adr": "v0.3",
+      "implementation": [
+        "package.json",
+        "src/index.ts"
+      ],
+      "tests": [
+        "test/tfsb34-cross-feature.test.ts"
+      ],
+      "disposition": "qualified"
+    }
+  ]
+}

@@ -27,13 +27,13 @@ TFSB brings software-engineering discipline to vector asset pipelines:
 Install globally via npm:
 
 ```sh
-npm install --global @knowledge-forge-ai/theme-forge-stellar-burst@0.2.0
+npm install --global @knowledge-forge-ai/theme-forge-stellar-burst@0.3.0
 ```
 
 Or add as a project development dependency:
 
 ```sh
-npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst@0.2.0
+npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst@0.3.0
 ```
 
 Node.js `22.0.0` or later is required.
@@ -174,6 +174,45 @@ tfsb reconcile revised-brand-assets.zip --apply
 - **Conflicts need exact per-record authority:** When upstream changes conflict with local canonical edits, exact flags (`--resolve <id>=archive|canonical`, `--rename <from>=<to>`, `--remove <id>`) are required to authorize the change.
 - **Renames/removals are explicit:** All renames and removals require operator confirmation.
 
+### Unreleased v0.3 migration and normalization surface
+
+The development branch adds an explicit schema-1 to schema-2 migration. This
+does not change the published package version or make a v0.3 release claim.
+
+```sh
+# Read-only: exit 2 when a complete valid migration is available
+tfsb migrate --check
+tfsb migrate --check --json
+
+# Transactionally replace one homogeneous schema-1 tree with schema 2
+tfsb migrate
+tfsb migrate --json
+```
+
+Migration reparses the complete proposed tree and requires every schema-1 and
+schema-2 canonical SVG output to be byte-identical. Companions and an existing
+build receipt are left untouched; the receipt naturally reports source drift
+until the next explicit build.
+
+Noncanonical common-v0.3 sources require explicit normalization authority:
+
+```sh
+tfsb import source.zip --root . \
+  --normalize exact-common \
+  --normalization-map normalization-map.toml \
+  --record-provenance
+
+tfsb reconcile revised.zip --dry-run \
+  --normalize exact-common \
+  --normalization-map normalization-map.toml
+```
+
+Canonical direct schema-2 input remains direct and needs no normalization
+flag. The map is required only where source accessibility intent cannot be
+derived safely. Reconciliation of changed normalized source accepts only the
+stored policy identity or a formatting-equivalent map with the same canonical
+digest; unavailable or semantically changed authority blocks the operation.
+
 ## Portable bundles
 
 Export your canonical project into a portable, reproducible ZIP bundle:
@@ -223,7 +262,7 @@ tfsb check --json
 
 ### Automation & machine results
 
-Commands supporting `--json` (`check`, `list`, `reconcile`, `diff`, `bundle`, `fmt`, `preview`) emit a single envelope matching JSON schema version 1 with deterministic key sorting:
+Commands supporting `--json` (`check`, `list`, `migrate`, `reconcile`, `diff`, `bundle`, `fmt`, `preview`) emit a single envelope matching JSON schema version 1 with deterministic key sorting:
 
 - **Exit code `0`:** Clean / success.
 - **Exit code `1`:** Invalid / failed operation.
@@ -246,6 +285,7 @@ TFSB is built with a defense-in-depth safety architecture:
 - **Local ZIPs only:** Processes only local archives provided by the operator; no arbitrary network access.
 - **Fail-closed SVG subset:** Supports a safe declarative subset (paths, groups, linear gradients, use references, accessibility tags). Scripts, CSS `<style>` blocks, external resources, foreign objects, and unparsed XML fail closed.
 - **No scripts/external resources:** Scripts (`.js`, `.ts`, `.py`, `.sh`) and executable companion files are rejected immediately.
+- **Explicit normalization only:** `exact-common` performs a closed set of typed operations. It never repairs arbitrary IDs, CSS, external references, or unsafe/unsupported content.
 - **Path/symlink confinement:** Absolute paths, `..` traversal, and symlink traversals fail closed across all read, write, build, and install operations.
 - **Exact companion allowlist:** Only text documentation (`*.md`, `*.markdown`, `*.txt`) and well-known legal documents (`LICENSE`, `NOTICE`, `COPYING`, `COPYRIGHT`) are permitted as companions.
 - **Limits:** Maximum 1,024 archive entries, maximum 128 selected/mutating SVG assets, 8 MiB per selected entry, 32 MiB selected aggregate, and 128 MiB raw archive size.

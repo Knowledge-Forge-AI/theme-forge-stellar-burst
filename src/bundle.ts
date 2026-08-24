@@ -17,9 +17,9 @@ import {
 import { loadCanonicalProjectFromSnapshot, type LoadedProject } from "./project.js";
 import { compareUtf8 } from "./provenance.js";
 import { defaultProjectName, findProjectRoot, resolveConfinedPath, validateProjectPathLayout } from "./root.js";
-import { serializeSvg } from "./svg.js";
+import type { AnyNormalizedAsset } from "./schema-dispatch.js";
 import { snapshotCanonicalTree, snapshotsEqual, type CanonicalSnapshot } from "./transaction.js";
-import type { AssetId, NormalizedAsset, ProjectRelativePath, Result, SvgFilename } from "./types.js";
+import type { AssetId, ProjectRelativePath, Result, SvgFilename } from "./types.js";
 import { TOOL_VERSION } from "./version.js";
 
 export const BUNDLE_LIMITS = {
@@ -238,7 +238,7 @@ export async function planBundle(options: BundleOptions): Promise<BundlePlan> {
 
   const canonicalAssetsById = new Map(canonicalAssets.map((asset) => [asset.id, asset]));
 
-  let selectedAssets: NormalizedAsset[] = [];
+  let selectedAssets: AnyNormalizedAsset[] = [];
   let selectedCompanions = new Map<string, Uint8Array>();
 
   if (isSubset) {
@@ -310,8 +310,8 @@ export async function planBundle(options: BundleOptions): Promise<BundlePlan> {
     }
     seenPortableKeys.set(portableKey, rawName);
 
-    const serializedSvg = unwrap(serializeSvg(asset.svg, rawName));
-    const svgBytes = Buffer.from(serializedSvg, "utf8");
+    const svgBytes = project.outputs.get(asset.filename);
+    if (svgBytes === undefined) throw new Error(`Canonical output '${asset.filename}' is missing.`);
 
     if (svgBytes.length > BUNDLE_LIMITS.selectedEntryBytes) {
       fail(ctx, "RESOURCE_LIMIT_EXCEEDED", `Asset '${rawName}' exceeds 8 MiB entry limit.`, rawName);

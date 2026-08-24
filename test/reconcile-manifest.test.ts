@@ -88,6 +88,7 @@ describe("manifest identity and reconciliation integration", () => {
     await importProject({
       archive: bundlePath,
       root: projDir,
+      schema: 1,
       manifest: true,
       recordProvenance: true,
     });
@@ -121,6 +122,7 @@ describe("manifest identity and reconciliation integration", () => {
     await importProject({
       archive: bundleV1,
       root: projDir,
+      schema: 1,
       manifest: true,
       recordProvenance: true,
     });
@@ -157,6 +159,7 @@ describe("manifest identity and reconciliation integration", () => {
     await importProject({
       archive: bundleV1,
       root: projDir,
+      schema: 1,
       manifest: true,
       recordProvenance: true,
     });
@@ -197,6 +200,7 @@ describe("manifest identity and reconciliation integration", () => {
     await importProject({
       archive: bundleV1,
       root: projDir,
+      schema: 1,
       manifest: true,
       recordProvenance: true,
     });

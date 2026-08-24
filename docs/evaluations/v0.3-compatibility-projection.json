@@ -1,0 +1,3390 @@
+{
+  "authority": {
+    "authoritativeProducer": "tfsb-analyze-v1",
+    "constraintsNotEvaluated": [
+      "complete_accessibility_and_element_placement",
+      "complete_id_grammar",
+      "complete_path_data_grammar",
+      "complete_presentation_numeric_and_enum_values",
+      "complete_transform_arguments_and_arity",
+      "definition_authority_and_reference_cycles",
+      "gradient_and_local_paint_reference_contracts",
+      "profile_group_depth_and_modeled_element_bounds"
+    ],
+    "counts": "provisional_projection_bounds",
+    "discrepancyDisposition": "stop_and_update_reviewed_architecture_and_projection"
+  },
+  "corpora": [
+    {
+      "combinedFeatureFiles": 2246,
+      "id": "lucide",
+      "identity": {
+        "assetIdCollisions": {
+          "affectedFiles": 33,
+          "groups": 11
+        },
+        "invalidAssetIdentities": 2,
+        "portablePathCollisions": {
+          "affectedFiles": 0,
+          "groups": 0
+        }
+      },
+      "repository": {
+        "origin": "git@github.com:lucide-icons/lucide.git",
+        "revision": "33a44aa8b0b43d9b0ed14eb08860a1b5550a1573"
+      },
+      "source": {
+        "overPerFileLimit": 0,
+        "sourceBytes": 2731340,
+        "svgCount": 2256
+      },
+      "stages": [
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 18,
+            "SVG_ACTIVE_ELEMENT": 2,
+            "SVG_CANVAS_DIMENSION_INVALID": 1,
+            "SVG_INVALID_OR_DUPLICATE_ID": 3,
+            "SVG_TRANSFORM_INVALID": 13,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 42,
+            "SVG_UNSUPPORTED_CSS_CLASS": 13,
+            "SVG_UNSUPPORTED_ELEMENT": 27,
+            "SVG_UNSUPPORTED_NAMESPACE": 2,
+            "SVG_UNSUPPORTED_PAINT": 76,
+            "SVG_VIEWBOX_INVALID": 10,
+            "XML_UNSAFE_DECLARATION": 1,
+            "accessibility.ownership": 2147,
+            "definitions.forward_order": 2,
+            "element.circle": 472,
+            "element.ellipse": 27,
+            "element.line": 74,
+            "element.polygon": 2,
+            "element.polyline": 5,
+            "element.rect": 419,
+            "paint.currentColor": 2132,
+            "presentation.clip-rule": 4,
+            "presentation.fill-opacity": 1,
+            "presentation.fill-rule": 6,
+            "root-presentation.fill": 2146,
+            "root-presentation.stroke": 2132,
+            "root-presentation.stroke-linecap": 2132,
+            "root-presentation.stroke-linejoin": 2132,
+            "root-presentation.stroke-width": 2132
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "docs/.vitepress/lib/guideOGTemplate.svg",
+              "docs/.vitepress/lib/iconOGTemplate.svg",
+              "docs/images/2px-element-spacing-abrupt-cut.svg",
+              "docs/images/2px-element-spacing-connected.svg",
+              "docs/images/a11y/alttext-buttons.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "docs/public/favicon.svg",
+              "docs/public/framework-logos/go.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "docs/public/framework-logos/rails.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/centered-strokes.svg",
+              "docs/images/curvature-smooth.svg"
+            ],
+            "SVG_TRANSFORM_INVALID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "docs/images/package-logos/lucide-angular.svg",
+              "docs/images/package-logos/lucide-astro.svg",
+              "docs/images/package-logos/lucide-preact.svg",
+              "docs/images/package-logos/lucide-react-native.svg",
+              "docs/images/package-logos/lucide-react.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "docs/public/company-logos/open-collective-dark.svg",
+              "docs/public/company-logos/open-collective-light.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-element-spacing.svg",
+              "docs/images/2px-stroke.svg",
+              "docs/images/centered-strokes.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "docs/public/safari-pinned-tab.svg"
+            ],
+            "accessibility.ownership": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "definitions.forward_order": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ],
+            "element.circle": [
+              "icons/accessibility.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg",
+              "icons/alarm-clock.svg"
+            ],
+            "element.ellipse": [
+              "icons/cone.svg",
+              "icons/cylinder.svg",
+              "icons/database-arrow-down.svg",
+              "icons/database-arrow-up.svg",
+              "icons/database-backup.svg"
+            ],
+            "element.line": [
+              "icons/badge-alert.svg",
+              "icons/badge-info.svg",
+              "icons/badge-minus.svg",
+              "icons/badge-plus.svg",
+              "icons/badge-question-mark.svg"
+            ],
+            "element.polygon": [
+              "icons/navigation-2.svg",
+              "icons/navigation.svg"
+            ],
+            "element.polyline": [
+              "icons/album.svg",
+              "icons/inbox.svg",
+              "icons/mailbox.svg",
+              "icons/package.svg",
+              "icons/swords.svg"
+            ],
+            "element.rect": [
+              "icons/ad.svg",
+              "icons/album.svg",
+              "icons/align-end-horizontal.svg",
+              "icons/align-end-vertical.svg",
+              "icons/align-horizontal-distribute-center.svg"
+            ],
+            "paint.currentColor": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "presentation.clip-rule": [
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/library-logos/reflex-dark.svg",
+              "docs/public/library-logos/reflex-light.svg"
+            ],
+            "presentation.fill-opacity": [
+              "docs/public/company-logos/supabase-dark.svg"
+            ],
+            "presentation.fill-rule": [
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/framework-logos/laravel.svg",
+              "docs/public/framework-logos/web-components.svg",
+              "docs/public/library-logos/reflex-dark.svg"
+            ],
+            "root-presentation.fill": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "root-presentation.stroke": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "root-presentation.stroke-linecap": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "root-presentation.stroke-linejoin": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "root-presentation.stroke-width": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "schema-1",
+          "importableWithNormalization": 0,
+          "normalizationFiles": {},
+          "normalizationSamples": {},
+          "unsafe": 20,
+          "unsupported": 2236
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 18,
+            "SVG_ACTIVE_ELEMENT": 2,
+            "SVG_CANVAS_DIMENSION_INVALID": 1,
+            "SVG_INVALID_OR_DUPLICATE_ID": 3,
+            "SVG_TRANSFORM_INVALID": 13,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 42,
+            "SVG_UNSUPPORTED_CSS_CLASS": 13,
+            "SVG_UNSUPPORTED_ELEMENT": 27,
+            "SVG_UNSUPPORTED_NAMESPACE": 2,
+            "SVG_UNSUPPORTED_PAINT": 76,
+            "SVG_VIEWBOX_INVALID": 10,
+            "XML_UNSAFE_DECLARATION": 1,
+            "accessibility.ownership": 2147,
+            "definitions.forward_order": 2,
+            "element.circle": 472,
+            "element.ellipse": 27,
+            "element.line": 74,
+            "element.polygon": 2,
+            "element.polyline": 5,
+            "element.rect": 419,
+            "paint.currentColor": 2132,
+            "presentation.clip-rule": 4,
+            "presentation.fill-opacity": 1,
+            "presentation.fill-rule": 6,
+            "root-presentation.fill": 2146,
+            "root-presentation.stroke": 2132,
+            "root-presentation.stroke-linecap": 2132,
+            "root-presentation.stroke-linejoin": 2132,
+            "root-presentation.stroke-width": 2132
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "docs/.vitepress/lib/guideOGTemplate.svg",
+              "docs/.vitepress/lib/iconOGTemplate.svg",
+              "docs/images/2px-element-spacing-abrupt-cut.svg",
+              "docs/images/2px-element-spacing-connected.svg",
+              "docs/images/a11y/alttext-buttons.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "docs/public/favicon.svg",
+              "docs/public/framework-logos/go.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "docs/public/framework-logos/rails.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/centered-strokes.svg",
+              "docs/images/curvature-smooth.svg"
+            ],
+            "SVG_TRANSFORM_INVALID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "docs/images/package-logos/lucide-angular.svg",
+              "docs/images/package-logos/lucide-astro.svg",
+              "docs/images/package-logos/lucide-preact.svg",
+              "docs/images/package-logos/lucide-react-native.svg",
+              "docs/images/package-logos/lucide-react.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "docs/public/company-logos/open-collective-dark.svg",
+              "docs/public/company-logos/open-collective-light.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-element-spacing.svg",
+              "docs/images/2px-stroke.svg",
+              "docs/images/centered-strokes.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "docs/public/safari-pinned-tab.svg"
+            ],
+            "accessibility.ownership": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "definitions.forward_order": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ],
+            "element.circle": [
+              "icons/accessibility.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg",
+              "icons/alarm-clock.svg"
+            ],
+            "element.ellipse": [
+              "icons/cone.svg",
+              "icons/cylinder.svg",
+              "icons/database-arrow-down.svg",
+              "icons/database-arrow-up.svg",
+              "icons/database-backup.svg"
+            ],
+            "element.line": [
+              "icons/badge-alert.svg",
+              "icons/badge-info.svg",
+              "icons/badge-minus.svg",
+              "icons/badge-plus.svg",
+              "icons/badge-question-mark.svg"
+            ],
+            "element.polygon": [
+              "icons/navigation-2.svg",
+              "icons/navigation.svg"
+            ],
+            "element.polyline": [
+              "icons/album.svg",
+              "icons/inbox.svg",
+              "icons/mailbox.svg",
+              "icons/package.svg",
+              "icons/swords.svg"
+            ],
+            "element.rect": [
+              "icons/ad.svg",
+              "icons/album.svg",
+              "icons/align-end-horizontal.svg",
+              "icons/align-end-vertical.svg",
+              "icons/align-horizontal-distribute-center.svg"
+            ],
+            "paint.currentColor": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "presentation.clip-rule": [
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/library-logos/reflex-dark.svg",
+              "docs/public/library-logos/reflex-light.svg"
+            ],
+            "presentation.fill-opacity": [
+              "docs/public/company-logos/supabase-dark.svg"
+            ],
+            "presentation.fill-rule": [
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/framework-logos/laravel.svg",
+              "docs/public/framework-logos/web-components.svg",
+              "docs/public/library-logos/reflex-dark.svg"
+            ],
+            "root-presentation.fill": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "root-presentation.stroke": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "root-presentation.stroke-linecap": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "root-presentation.stroke-linejoin": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ],
+            "root-presentation.stroke-width": [
+              "docs/public/logo.svg",
+              "icons/a-arrow-down.svg",
+              "icons/a-arrow-up.svg",
+              "icons/a-large-small.svg",
+              "icons/accessibility.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "accessibility",
+          "importableWithNormalization": 0,
+          "normalizationFiles": {},
+          "normalizationSamples": {},
+          "unsafe": 20,
+          "unsupported": 2236
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 18,
+            "SVG_ACTIVE_ELEMENT": 2,
+            "SVG_CANVAS_DIMENSION_INVALID": 1,
+            "SVG_INVALID_OR_DUPLICATE_ID": 3,
+            "SVG_TRANSFORM_INVALID": 13,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 42,
+            "SVG_UNSUPPORTED_CSS_CLASS": 13,
+            "SVG_UNSUPPORTED_ELEMENT": 27,
+            "SVG_UNSUPPORTED_NAMESPACE": 2,
+            "SVG_UNSUPPORTED_PAINT": 76,
+            "SVG_VIEWBOX_INVALID": 10,
+            "XML_UNSAFE_DECLARATION": 1,
+            "accessibility.ownership": 917,
+            "definitions.forward_order": 2,
+            "element.circle": 472,
+            "element.ellipse": 27,
+            "element.line": 74,
+            "element.polygon": 2,
+            "element.polyline": 5,
+            "element.rect": 419,
+            "paint.currentColor": 915,
+            "presentation.fill-opacity": 1,
+            "root-presentation.fill": 917,
+            "root-presentation.stroke": 915,
+            "root-presentation.stroke-linecap": 915,
+            "root-presentation.stroke-linejoin": 915,
+            "root-presentation.stroke-width": 915
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "docs/.vitepress/lib/guideOGTemplate.svg",
+              "docs/.vitepress/lib/iconOGTemplate.svg",
+              "docs/images/2px-element-spacing-abrupt-cut.svg",
+              "docs/images/2px-element-spacing-connected.svg",
+              "docs/images/a11y/alttext-buttons.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "docs/public/favicon.svg",
+              "docs/public/framework-logos/go.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "docs/public/framework-logos/rails.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/centered-strokes.svg",
+              "docs/images/curvature-smooth.svg"
+            ],
+            "SVG_TRANSFORM_INVALID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "docs/images/package-logos/lucide-angular.svg",
+              "docs/images/package-logos/lucide-astro.svg",
+              "docs/images/package-logos/lucide-preact.svg",
+              "docs/images/package-logos/lucide-react-native.svg",
+              "docs/images/package-logos/lucide-react.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "docs/public/company-logos/open-collective-dark.svg",
+              "docs/public/company-logos/open-collective-light.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-element-spacing.svg",
+              "docs/images/2px-stroke.svg",
+              "docs/images/centered-strokes.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "docs/public/safari-pinned-tab.svg"
+            ],
+            "accessibility.ownership": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "icons/accessibility.svg",
+              "icons/ad.svg",
+              "icons/alarm-clock-check.svg"
+            ],
+            "definitions.forward_order": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ],
+            "element.circle": [
+              "icons/accessibility.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg",
+              "icons/alarm-clock.svg"
+            ],
+            "element.ellipse": [
+              "icons/cone.svg",
+              "icons/cylinder.svg",
+              "icons/database-arrow-down.svg",
+              "icons/database-arrow-up.svg",
+              "icons/database-backup.svg"
+            ],
+            "element.line": [
+              "icons/badge-alert.svg",
+              "icons/badge-info.svg",
+              "icons/badge-minus.svg",
+              "icons/badge-plus.svg",
+              "icons/badge-question-mark.svg"
+            ],
+            "element.polygon": [
+              "icons/navigation-2.svg",
+              "icons/navigation.svg"
+            ],
+            "element.polyline": [
+              "icons/album.svg",
+              "icons/inbox.svg",
+              "icons/mailbox.svg",
+              "icons/package.svg",
+              "icons/swords.svg"
+            ],
+            "element.rect": [
+              "icons/ad.svg",
+              "icons/album.svg",
+              "icons/align-end-horizontal.svg",
+              "icons/align-end-vertical.svg",
+              "icons/align-horizontal-distribute-center.svg"
+            ],
+            "paint.currentColor": [
+              "icons/accessibility.svg",
+              "icons/ad.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg"
+            ],
+            "presentation.fill-opacity": [
+              "docs/public/company-logos/supabase-dark.svg"
+            ],
+            "root-presentation.fill": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "icons/accessibility.svg",
+              "icons/ad.svg",
+              "icons/alarm-clock-check.svg"
+            ],
+            "root-presentation.stroke": [
+              "icons/accessibility.svg",
+              "icons/ad.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg"
+            ],
+            "root-presentation.stroke-linecap": [
+              "icons/accessibility.svg",
+              "icons/ad.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg"
+            ],
+            "root-presentation.stroke-linejoin": [
+              "icons/accessibility.svg",
+              "icons/ad.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg"
+            ],
+            "root-presentation.stroke-width": [
+              "icons/accessibility.svg",
+              "icons/ad.svg",
+              "icons/alarm-clock-check.svg",
+              "icons/alarm-clock-minus.svg",
+              "icons/alarm-clock-plus.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "document-presentation",
+          "importableWithNormalization": 1230,
+          "normalizationFiles": {
+            "accessibility_authority_required": 1230,
+            "promote_root_presentation": 1229
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/framework-logos/laravel.svg"
+            ],
+            "promote_root_presentation": [
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/framework-logos/laravel.svg"
+            ]
+          },
+          "unsafe": 20,
+          "unsupported": 1006
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 18,
+            "SVG_ACTIVE_ELEMENT": 2,
+            "SVG_CANVAS_DIMENSION_INVALID": 1,
+            "SVG_INVALID_OR_DUPLICATE_ID": 3,
+            "SVG_TRANSFORM_INVALID": 13,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 42,
+            "SVG_UNSUPPORTED_CSS_CLASS": 13,
+            "SVG_UNSUPPORTED_ELEMENT": 27,
+            "SVG_UNSUPPORTED_NAMESPACE": 2,
+            "SVG_UNSUPPORTED_PAINT": 76,
+            "SVG_VIEWBOX_INVALID": 10,
+            "XML_UNSAFE_DECLARATION": 1,
+            "accessibility.ownership": 2,
+            "definitions.forward_order": 2,
+            "presentation.fill-opacity": 1,
+            "root-presentation.fill": 2
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "docs/.vitepress/lib/guideOGTemplate.svg",
+              "docs/.vitepress/lib/iconOGTemplate.svg",
+              "docs/images/2px-element-spacing-abrupt-cut.svg",
+              "docs/images/2px-element-spacing-connected.svg",
+              "docs/images/a11y/alttext-buttons.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "docs/public/favicon.svg",
+              "docs/public/framework-logos/go.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "docs/public/framework-logos/rails.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/centered-strokes.svg",
+              "docs/images/curvature-smooth.svg"
+            ],
+            "SVG_TRANSFORM_INVALID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "docs/images/package-logos/lucide-angular.svg",
+              "docs/images/package-logos/lucide-astro.svg",
+              "docs/images/package-logos/lucide-preact.svg",
+              "docs/images/package-logos/lucide-react-native.svg",
+              "docs/images/package-logos/lucide-react.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "docs/public/company-logos/open-collective-dark.svg",
+              "docs/public/company-logos/open-collective-light.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-element-spacing.svg",
+              "docs/images/2px-stroke.svg",
+              "docs/images/centered-strokes.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "docs/public/safari-pinned-tab.svg"
+            ],
+            "accessibility.ownership": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ],
+            "definitions.forward_order": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ],
+            "presentation.fill-opacity": [
+              "docs/public/company-logos/supabase-dark.svg"
+            ],
+            "root-presentation.fill": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "basic-geometry",
+          "importableWithNormalization": 2145,
+          "normalizationFiles": {
+            "accessibility_authority_required": 2145,
+            "promote_root_presentation": 2144,
+            "rect_corner_completion": 366
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/framework-logos/laravel.svg"
+            ],
+            "promote_root_presentation": [
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg",
+              "docs/public/framework-logos/hyva.svg",
+              "docs/public/framework-logos/laravel.svg"
+            ],
+            "rect_corner_completion": [
+              "icons/ad.svg",
+              "icons/align-end-horizontal.svg",
+              "icons/align-end-vertical.svg",
+              "icons/align-horizontal-distribute-center.svg",
+              "icons/align-horizontal-distribute-end.svg"
+            ]
+          },
+          "unsafe": 20,
+          "unsupported": 91
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 18,
+            "SVG_ACTIVE_ELEMENT": 2,
+            "SVG_CANVAS_DIMENSION_INVALID": 1,
+            "SVG_INVALID_OR_DUPLICATE_ID": 3,
+            "SVG_TRANSFORM_INVALID": 13,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 42,
+            "SVG_UNSUPPORTED_CSS_CLASS": 13,
+            "SVG_UNSUPPORTED_ELEMENT": 27,
+            "SVG_UNSUPPORTED_NAMESPACE": 2,
+            "SVG_UNSUPPORTED_PAINT": 76,
+            "SVG_VIEWBOX_INVALID": 10,
+            "XML_UNSAFE_DECLARATION": 1
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "docs/.vitepress/lib/guideOGTemplate.svg",
+              "docs/.vitepress/lib/iconOGTemplate.svg",
+              "docs/images/2px-element-spacing-abrupt-cut.svg",
+              "docs/images/2px-element-spacing-connected.svg",
+              "docs/images/a11y/alttext-buttons.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "docs/public/favicon.svg",
+              "docs/public/framework-logos/go.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "docs/public/framework-logos/rails.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/centered-strokes.svg",
+              "docs/images/curvature-smooth.svg"
+            ],
+            "SVG_TRANSFORM_INVALID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "docs/images/package-logos/lucide-angular.svg",
+              "docs/images/package-logos/lucide-astro.svg",
+              "docs/images/package-logos/lucide-preact.svg",
+              "docs/images/package-logos/lucide-react-native.svg",
+              "docs/images/package-logos/lucide-react.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "docs/public/company-logos/open-collective-dark.svg",
+              "docs/public/company-logos/open-collective-light.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-element-spacing.svg",
+              "docs/images/2px-stroke.svg",
+              "docs/images/centered-strokes.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "docs/public/safari-pinned-tab.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "transforms-references",
+          "importableWithNormalization": 2147,
+          "normalizationFiles": {
+            "accessibility_authority_required": 2147,
+            "canonicalize_definition_order": 2,
+            "promote_root_presentation": 2146,
+            "rect_corner_completion": 366
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "canonicalize_definition_order": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ],
+            "promote_root_presentation": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "rect_corner_completion": [
+              "icons/ad.svg",
+              "icons/align-end-horizontal.svg",
+              "icons/align-end-vertical.svg",
+              "icons/align-horizontal-distribute-center.svg",
+              "icons/align-horizontal-distribute-end.svg"
+            ]
+          },
+          "unsafe": 20,
+          "unsupported": 89
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 18,
+            "SVG_ACTIVE_ELEMENT": 2,
+            "SVG_CANVAS_DIMENSION_INVALID": 1,
+            "SVG_INVALID_OR_DUPLICATE_ID": 3,
+            "SVG_TRANSFORM_INVALID": 13,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 42,
+            "SVG_UNSUPPORTED_CSS_CLASS": 13,
+            "SVG_UNSUPPORTED_ELEMENT": 27,
+            "SVG_UNSUPPORTED_NAMESPACE": 2,
+            "SVG_UNSUPPORTED_PAINT": 76,
+            "SVG_VIEWBOX_INVALID": 10,
+            "XML_UNSAFE_DECLARATION": 1
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "docs/.vitepress/lib/guideOGTemplate.svg",
+              "docs/.vitepress/lib/iconOGTemplate.svg",
+              "docs/images/2px-element-spacing-abrupt-cut.svg",
+              "docs/images/2px-element-spacing-connected.svg",
+              "docs/images/a11y/alttext-buttons.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "docs/public/favicon.svg",
+              "docs/public/framework-logos/go.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "docs/public/framework-logos/rails.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/centered-strokes.svg",
+              "docs/images/curvature-smooth.svg"
+            ],
+            "SVG_TRANSFORM_INVALID": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "docs/images/package-logos/lucide-angular.svg",
+              "docs/images/package-logos/lucide-astro.svg",
+              "docs/images/package-logos/lucide-preact.svg",
+              "docs/images/package-logos/lucide-react-native.svg",
+              "docs/images/package-logos/lucide-react.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "docs/public/company-logos/open-collective-dark.svg",
+              "docs/public/company-logos/open-collective-light.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "docs/images/1px-border-radius.svg",
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-border-radius.svg",
+              "docs/images/2px-element-spacing.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "docs/images/1px-padding.svg",
+              "docs/images/24px-24px.svg",
+              "docs/images/2px-element-spacing.svg",
+              "docs/images/2px-stroke.svg",
+              "docs/images/centered-strokes.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "docs/public/safari-pinned-tab.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "v0.3-profile",
+          "importableWithNormalization": 2147,
+          "normalizationFiles": {
+            "accessibility_authority_required": 2147,
+            "canonicalize_definition_order": 2,
+            "promote_root_presentation": 2146,
+            "rect_corner_completion": 366
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "canonicalize_definition_order": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg"
+            ],
+            "promote_root_presentation": [
+              "docs/public/company-logos/supabase-dark.svg",
+              "docs/public/framework-logos/angular.svg",
+              "docs/public/framework-logos/astro.svg",
+              "docs/public/framework-logos/flutter.svg",
+              "docs/public/framework-logos/hyva-dark.svg"
+            ],
+            "rect_corner_completion": [
+              "icons/ad.svg",
+              "icons/align-end-horizontal.svg",
+              "icons/align-end-vertical.svg",
+              "icons/align-horizontal-distribute-center.svg",
+              "icons/align-horizontal-distribute-end.svg"
+            ]
+          },
+          "unsafe": 20,
+          "unsupported": 89
+        }
+      ]
+    },
+    {
+      "combinedFeatureFiles": 0,
+      "id": "simple-icons",
+      "identity": {
+        "assetIdCollisions": {
+          "affectedFiles": 0,
+          "groups": 0
+        },
+        "invalidAssetIdentities": 0,
+        "portablePathCollisions": {
+          "affectedFiles": 0,
+          "groups": 0
+        }
+      },
+      "repository": {
+        "origin": "git@github.com:simple-icons/simple-icons",
+        "revision": "34c22501f9ac9f22b12f825677ccbab1fb22e14b"
+      },
+      "source": {
+        "overPerFileLimit": 0,
+        "sourceBytes": 4978575,
+        "svgCount": 3453
+      },
+      "stages": [
+        {
+          "diagnosticFiles": {
+            "accessibility.ownership": 3453
+          },
+          "diagnosticSamples": {
+            "accessibility.ownership": [
+              "icons/1001tracklists.svg",
+              "icons/1and1.svg",
+              "icons/1dot1dot1dot1.svg",
+              "icons/1panel.svg",
+              "icons/1password.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "schema-1",
+          "importableWithNormalization": 0,
+          "normalizationFiles": {},
+          "normalizationSamples": {},
+          "unsafe": 0,
+          "unsupported": 3453
+        },
+        {
+          "diagnosticFiles": {},
+          "diagnosticSamples": {},
+          "directlyImportable": 0,
+          "id": "accessibility",
+          "importableWithNormalization": 3453,
+          "normalizationFiles": {
+            "title_only_to_labelled": 3453
+          },
+          "normalizationSamples": {
+            "title_only_to_labelled": [
+              "icons/1001tracklists.svg",
+              "icons/1and1.svg",
+              "icons/1dot1dot1dot1.svg",
+              "icons/1panel.svg",
+              "icons/1password.svg"
+            ]
+          },
+          "unsafe": 0,
+          "unsupported": 0
+        },
+        {
+          "diagnosticFiles": {},
+          "diagnosticSamples": {},
+          "directlyImportable": 0,
+          "id": "document-presentation",
+          "importableWithNormalization": 3453,
+          "normalizationFiles": {
+            "title_only_to_labelled": 3453
+          },
+          "normalizationSamples": {
+            "title_only_to_labelled": [
+              "icons/1001tracklists.svg",
+              "icons/1and1.svg",
+              "icons/1dot1dot1dot1.svg",
+              "icons/1panel.svg",
+              "icons/1password.svg"
+            ]
+          },
+          "unsafe": 0,
+          "unsupported": 0
+        },
+        {
+          "diagnosticFiles": {},
+          "diagnosticSamples": {},
+          "directlyImportable": 0,
+          "id": "basic-geometry",
+          "importableWithNormalization": 3453,
+          "normalizationFiles": {
+            "title_only_to_labelled": 3453
+          },
+          "normalizationSamples": {
+            "title_only_to_labelled": [
+              "icons/1001tracklists.svg",
+              "icons/1and1.svg",
+              "icons/1dot1dot1dot1.svg",
+              "icons/1panel.svg",
+              "icons/1password.svg"
+            ]
+          },
+          "unsafe": 0,
+          "unsupported": 0
+        },
+        {
+          "diagnosticFiles": {},
+          "diagnosticSamples": {},
+          "directlyImportable": 0,
+          "id": "transforms-references",
+          "importableWithNormalization": 3453,
+          "normalizationFiles": {
+            "title_only_to_labelled": 3453
+          },
+          "normalizationSamples": {
+            "title_only_to_labelled": [
+              "icons/1001tracklists.svg",
+              "icons/1and1.svg",
+              "icons/1dot1dot1dot1.svg",
+              "icons/1panel.svg",
+              "icons/1password.svg"
+            ]
+          },
+          "unsafe": 0,
+          "unsupported": 0
+        },
+        {
+          "diagnosticFiles": {},
+          "diagnosticSamples": {},
+          "directlyImportable": 0,
+          "id": "v0.3-profile",
+          "importableWithNormalization": 3453,
+          "normalizationFiles": {
+            "title_only_to_labelled": 3453
+          },
+          "normalizationSamples": {
+            "title_only_to_labelled": [
+              "icons/1001tracklists.svg",
+              "icons/1and1.svg",
+              "icons/1dot1dot1dot1.svg",
+              "icons/1panel.svg",
+              "icons/1password.svg"
+            ]
+          },
+          "unsafe": 0,
+          "unsupported": 0
+        }
+      ]
+    },
+    {
+      "combinedFeatureFiles": 6410,
+      "id": "tabler-icons",
+      "identity": {
+        "assetIdCollisions": {
+          "affectedFiles": 2109,
+          "groups": 1054
+        },
+        "invalidAssetIdentities": 218,
+        "portablePathCollisions": {
+          "affectedFiles": 0,
+          "groups": 0
+        }
+      },
+      "repository": {
+        "origin": "git@github.com:tabler/tabler-icons.git",
+        "revision": "5a0fe38e97784d94279ce4eb1bf85f9a91bf027e"
+      },
+      "source": {
+        "overPerFileLimit": 0,
+        "sourceBytes": 18675570,
+        "svgCount": 6410
+      },
+      "stages": [
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 225,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1,
+            "SVG_UNSUPPORTED_CSS_CLASS": 1,
+            "SVG_UNSUPPORTED_PAINT": 1,
+            "accessibility.ownership": 6184,
+            "paint.currentColor": 6184,
+            "root-presentation.fill": 6184,
+            "root-presentation.stroke": 5130,
+            "root-presentation.stroke-linecap": 5130,
+            "root-presentation.stroke-linejoin": 5130,
+            "root-presentation.stroke-width": 5130
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              ".github/preview/icons-dark.svg",
+              ".github/preview/icons-filled-dark.svg",
+              ".github/preview/icons-filled.svg",
+              ".github/preview/icons-outline-dark.svg",
+              ".github/preview/icons-outline.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "accessibility.ownership": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "paint.currentColor": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "root-presentation.fill": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "root-presentation.stroke": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ],
+            "root-presentation.stroke-linecap": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ],
+            "root-presentation.stroke-linejoin": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ],
+            "root-presentation.stroke-width": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "schema-1",
+          "importableWithNormalization": 0,
+          "normalizationFiles": {},
+          "normalizationSamples": {},
+          "unsafe": 225,
+          "unsupported": 6185
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 225,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1,
+            "SVG_UNSUPPORTED_CSS_CLASS": 1,
+            "SVG_UNSUPPORTED_PAINT": 1,
+            "accessibility.ownership": 6184,
+            "paint.currentColor": 6184,
+            "root-presentation.fill": 6184,
+            "root-presentation.stroke": 5130,
+            "root-presentation.stroke-linecap": 5130,
+            "root-presentation.stroke-linejoin": 5130,
+            "root-presentation.stroke-width": 5130
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              ".github/preview/icons-dark.svg",
+              ".github/preview/icons-filled-dark.svg",
+              ".github/preview/icons-filled.svg",
+              ".github/preview/icons-outline-dark.svg",
+              ".github/preview/icons-outline.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "accessibility.ownership": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "paint.currentColor": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "root-presentation.fill": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "root-presentation.stroke": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ],
+            "root-presentation.stroke-linecap": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ],
+            "root-presentation.stroke-linejoin": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ],
+            "root-presentation.stroke-width": [
+              "icons/outline/a-b-2.svg",
+              "icons/outline/a-b-off.svg",
+              "icons/outline/a-b.svg",
+              "icons/outline/abacus-off.svg",
+              "icons/outline/abacus.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "accessibility",
+          "importableWithNormalization": 0,
+          "normalizationFiles": {},
+          "normalizationSamples": {},
+          "unsafe": 225,
+          "unsupported": 6185
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 225,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1,
+            "SVG_UNSUPPORTED_CSS_CLASS": 1,
+            "SVG_UNSUPPORTED_PAINT": 1
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              ".github/preview/icons-dark.svg",
+              ".github/preview/icons-filled-dark.svg",
+              ".github/preview/icons-filled.svg",
+              ".github/preview/icons-outline-dark.svg",
+              ".github/preview/icons-outline.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "test/test-preact/src/assets/preact.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "document-presentation",
+          "importableWithNormalization": 6184,
+          "normalizationFiles": {
+            "accessibility_authority_required": 6184,
+            "promote_root_presentation": 6184
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "promote_root_presentation": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ]
+          },
+          "unsafe": 225,
+          "unsupported": 1
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 225,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1,
+            "SVG_UNSUPPORTED_CSS_CLASS": 1,
+            "SVG_UNSUPPORTED_PAINT": 1
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              ".github/preview/icons-dark.svg",
+              ".github/preview/icons-filled-dark.svg",
+              ".github/preview/icons-filled.svg",
+              ".github/preview/icons-outline-dark.svg",
+              ".github/preview/icons-outline.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "test/test-preact/src/assets/preact.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "basic-geometry",
+          "importableWithNormalization": 6184,
+          "normalizationFiles": {
+            "accessibility_authority_required": 6184,
+            "promote_root_presentation": 6184
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "promote_root_presentation": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ]
+          },
+          "unsafe": 225,
+          "unsupported": 1
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 225,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1,
+            "SVG_UNSUPPORTED_CSS_CLASS": 1,
+            "SVG_UNSUPPORTED_PAINT": 1
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              ".github/preview/icons-dark.svg",
+              ".github/preview/icons-filled-dark.svg",
+              ".github/preview/icons-filled.svg",
+              ".github/preview/icons-outline-dark.svg",
+              ".github/preview/icons-outline.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "test/test-preact/src/assets/preact.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "transforms-references",
+          "importableWithNormalization": 6184,
+          "normalizationFiles": {
+            "accessibility_authority_required": 6184,
+            "promote_root_presentation": 6184
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "promote_root_presentation": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ]
+          },
+          "unsafe": 225,
+          "unsupported": 1
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACTIVE_ATTRIBUTE": 225,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1,
+            "SVG_UNSUPPORTED_CSS_CLASS": 1,
+            "SVG_UNSUPPORTED_PAINT": 1
+          },
+          "diagnosticSamples": {
+            "SVG_ACTIVE_ATTRIBUTE": [
+              ".github/preview/icons-dark.svg",
+              ".github/preview/icons-filled-dark.svg",
+              ".github/preview/icons-filled.svg",
+              ".github/preview/icons-outline-dark.svg",
+              ".github/preview/icons-outline.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "test/test-preact/src/assets/preact.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "test/test-preact/src/assets/preact.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "v0.3-profile",
+          "importableWithNormalization": 6184,
+          "normalizationFiles": {
+            "accessibility_authority_required": 6184,
+            "promote_root_presentation": 6184
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ],
+            "promote_root_presentation": [
+              "icons/filled/accessible.svg",
+              "icons/filled/ad-circle.svg",
+              "icons/filled/ad.svg",
+              "icons/filled/adjustments-horizontal.svg",
+              "icons/filled/adjustments.svg"
+            ]
+          },
+          "unsafe": 225,
+          "unsupported": 1
+        }
+      ]
+    },
+    {
+      "combinedFeatureFiles": 7637,
+      "id": "thesvg",
+      "identity": {
+        "assetIdCollisions": {
+          "affectedFiles": 12444,
+          "groups": 17
+        },
+        "invalidAssetIdentities": 0,
+        "portablePathCollisions": {
+          "affectedFiles": 0,
+          "groups": 0
+        }
+      },
+      "repository": {
+        "origin": "git@github.com:glincker/thesvg.git",
+        "revision": "df53f7020a3a0345918abc9924ef5eda82e28038"
+      },
+      "source": {
+        "overPerFileLimit": 0,
+        "sourceBytes": 28183953,
+        "svgCount": 12457
+      },
+      "stages": [
+        {
+          "diagnosticFiles": {
+            "SVG_ACCESSIBILITY_INVALID": 1,
+            "SVG_ACTIVE_ATTRIBUTE": 601,
+            "SVG_ACTIVE_ELEMENT": 355,
+            "SVG_CANVAS_DIMENSION_INVALID": 1676,
+            "SVG_EXTERNAL_REFERENCE": 6,
+            "SVG_GEOMETRY_INVALID": 3,
+            "SVG_INVALID_OR_DUPLICATE_ID": 25,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1113,
+            "SVG_UNSUPPORTED_CSS_CLASS": 36,
+            "SVG_UNSUPPORTED_ELEMENT": 473,
+            "SVG_UNSUPPORTED_NAMESPACE": 113,
+            "SVG_UNSUPPORTED_PAINT": 1333,
+            "SVG_UNSUPPORTED_TRANSFORM": 36,
+            "SVG_UNSUPPORTED_VERSION": 99,
+            "SVG_VIEWBOX_INVALID": 84,
+            "XML_UNSAFE_DECLARATION": 21,
+            "accessibility.ownership": 8031,
+            "definitions.forward_order": 60,
+            "element.circle": 48,
+            "element.ellipse": 15,
+            "element.line": 6,
+            "element.polygon": 25,
+            "element.rect": 51,
+            "group.mixed_or_nested_children": 88,
+            "namespace.xlink": 9,
+            "paint.currentColor": 504,
+            "presentation.clip-rule": 224,
+            "presentation.fill-opacity": 30,
+            "presentation.fill-rule": 596,
+            "presentation.stroke-opacity": 1,
+            "reference.xlink_local": 1,
+            "root-presentation.clip-rule": 1,
+            "root-presentation.fill": 3713,
+            "root-presentation.fill-rule": 413,
+            "root-presentation.stroke": 8,
+            "root-presentation.stroke-linecap": 7,
+            "root-presentation.stroke-linejoin": 8,
+            "root-presentation.stroke-miterlimit": 1,
+            "root-presentation.stroke-width": 7,
+            "transform.rotate": 12
+          },
+          "diagnosticSamples": {
+            "SVG_ACCESSIBILITY_INVALID": [
+              "public/icons/alivecor/default.svg"
+            ],
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "public/icons/5dive/default.svg",
+              "public/icons/5dive/mono.svg",
+              "public/icons/5dive/wordmark.svg",
+              "public/icons/accountantos/dark.svg",
+              "public/icons/accountantos/default.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "public/icons/abn-amro/wordmark.svg",
+              "public/icons/act/default.svg",
+              "public/icons/aero/mono.svg",
+              "public/icons/aero/wordmark-dark.svg",
+              "public/icons/aero/wordmark.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/apache-kafka/light.svg",
+              "public/icons/authy/default.svg",
+              "public/icons/aws-amazon-appflow/16.svg",
+              "public/icons/aws-amazon-appflow/32.svg"
+            ],
+            "SVG_EXTERNAL_REFERENCE": [
+              "public/icons/azure-disk-encryption-sets/default.svg",
+              "public/icons/azure-maintenance-configuration/default.svg",
+              "public/icons/azure-service-catalog-mad/default.svg",
+              "public/icons/microsoft-viva-engage/default.svg",
+              "public/icons/microsoft-viva-glint/default.svg"
+            ],
+            "SVG_GEOMETRY_INVALID": [
+              "public/icons/tooljet/default.svg",
+              "public/icons/uwsgi/default.svg",
+              "public/icons/uwsgi/mono.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/aws-aws-snowball-edge/32.svg",
+              "public/icons/aws-aws-snowball-edge/default.svg",
+              "public/icons/dis-chem-pharmacies/default.svg",
+              "public/icons/dis-chem-pharmacies/wordmark.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "public/icons/abacatepay/wordmark.svg",
+              "public/icons/anker/default.svg",
+              "public/icons/cityflo/default.svg",
+              "public/icons/dynamodb/default.svg",
+              "public/icons/eli-lilly/default.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "public/icons/affinity-designer/default.svg",
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/affinity-publisher/default.svg",
+              "public/icons/amazon-kindle/default.svg",
+              "public/icons/amazon-web-services/dark.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/302dotai/color.svg",
+              "public/icons/302dotai/default.svg"
+            ],
+            "SVG_UNSUPPORTED_TRANSFORM": [
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/azure-azure-database-postgresql-server-group/default.svg",
+              "public/icons/azure-azure-token-service/default.svg",
+              "public/icons/bazarr/default.svg",
+              "public/icons/citibank/default.svg"
+            ],
+            "SVG_UNSUPPORTED_VERSION": [
+              "public/icons/abn-amro/default.svg",
+              "public/icons/abn-amro/mono.svg",
+              "public/icons/adnoc/default.svg",
+              "public/icons/avanza/default.svg",
+              "public/icons/avanza/light.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "public/icons/amazon-music/default.svg",
+              "public/icons/bbc/default.svg",
+              "public/icons/charles-schwab/default.svg",
+              "public/icons/citibank/default.svg",
+              "public/icons/espn/default.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "public/icons/air-algerie/default.svg",
+              "public/icons/apache-kafka/dark.svg",
+              "public/icons/clastix/default.svg",
+              "public/icons/cvs/default.svg",
+              "public/icons/devtron/default.svg"
+            ],
+            "accessibility.ownership": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg"
+            ],
+            "definitions.forward_order": [
+              "public/icons/antgroup/color.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-azure-a/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-dcs-controller/default.svg"
+            ],
+            "element.circle": [
+              "public/icons/airflow/default.svg",
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-azure-monitors-for-sap-solutions/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg"
+            ],
+            "element.ellipse": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg"
+            ],
+            "element.line": [
+              "public/icon-legacy.svg",
+              "public/icons/thesvg-legacy/dark.svg",
+              "public/icons/thesvg-legacy/default.svg",
+              "public/logo-legacy.svg",
+              "public/logo.svg"
+            ],
+            "element.polygon": [
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-azure-blockchain-service/default.svg",
+              "public/icons/azure-azure-compute-galleries/default.svg",
+              "public/icons/azure-azure-firewall-manager/default.svg"
+            ],
+            "element.rect": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/azure-auto-scale/default.svg"
+            ],
+            "group.mixed_or_nested_children": [
+              "public/icons/alpha-vantage/default.svg",
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg"
+            ],
+            "namespace.xlink": [
+              "public/icons/chime/default.svg",
+              "public/icons/glide/light.svg",
+              "public/icons/mediawiki/wordmark-light.svg",
+              "public/icons/towergit/mono.svg",
+              "public/icons/valibot/default.svg"
+            ],
+            "paint.currentColor": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/11x/default.svg",
+              "public/icons/11x/mono.svg"
+            ],
+            "presentation.clip-rule": [
+              "public/icons/302dotai/mono.svg",
+              "public/icons/ag-ui/default.svg",
+              "public/icons/ag-ui/mono.svg",
+              "public/icons/ai360-360/color.svg",
+              "public/icons/ai360-360/default.svg"
+            ],
+            "presentation.fill-opacity": [
+              "public/icons/302dotai/mono.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/askverdict-ai/mono.svg"
+            ],
+            "presentation.fill-rule": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/11x/default.svg",
+              "public/icons/11x/mono.svg"
+            ],
+            "presentation.stroke-opacity": [
+              "public/icons/nubjs/default.svg"
+            ],
+            "reference.xlink_local": [
+              "public/icons/towergit/mono.svg"
+            ],
+            "root-presentation.clip-rule": [
+              "public/icons/coursera/default.svg"
+            ],
+            "root-presentation.fill": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg"
+            ],
+            "root-presentation.fill-rule": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/11x/default.svg",
+              "public/icons/11x/mono.svg"
+            ],
+            "root-presentation.stroke": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/openrouter/light.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg"
+            ],
+            "root-presentation.stroke-linecap": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg",
+              "public/icons/thesvg/light.svg"
+            ],
+            "root-presentation.stroke-linejoin": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/coursera/default.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg"
+            ],
+            "root-presentation.stroke-miterlimit": [
+              "public/icons/coursera/default.svg"
+            ],
+            "root-presentation.stroke-width": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg",
+              "public/icons/thesvg/light.svg"
+            ],
+            "transform.rotate": [
+              "public/icons/azure-arc-data-services/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-arc-machines/default.svg",
+              "public/icons/azure-arc-sql-managed-instance/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "schema-1",
+          "importableWithNormalization": 0,
+          "normalizationFiles": {},
+          "normalizationSamples": {},
+          "unsafe": 792,
+          "unsupported": 11665
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACCESSIBILITY_INVALID": 1,
+            "SVG_ACTIVE_ATTRIBUTE": 601,
+            "SVG_ACTIVE_ELEMENT": 355,
+            "SVG_CANVAS_DIMENSION_INVALID": 1676,
+            "SVG_EXTERNAL_REFERENCE": 6,
+            "SVG_GEOMETRY_INVALID": 3,
+            "SVG_INVALID_OR_DUPLICATE_ID": 25,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1113,
+            "SVG_UNSUPPORTED_CSS_CLASS": 36,
+            "SVG_UNSUPPORTED_ELEMENT": 473,
+            "SVG_UNSUPPORTED_NAMESPACE": 113,
+            "SVG_UNSUPPORTED_PAINT": 1333,
+            "SVG_UNSUPPORTED_TRANSFORM": 36,
+            "SVG_UNSUPPORTED_VERSION": 99,
+            "SVG_VIEWBOX_INVALID": 84,
+            "XML_UNSAFE_DECLARATION": 21,
+            "accessibility.ownership": 3998,
+            "definitions.forward_order": 60,
+            "element.circle": 48,
+            "element.ellipse": 15,
+            "element.line": 6,
+            "element.polygon": 25,
+            "element.rect": 51,
+            "group.mixed_or_nested_children": 88,
+            "namespace.xlink": 9,
+            "paint.currentColor": 504,
+            "presentation.clip-rule": 224,
+            "presentation.fill-opacity": 30,
+            "presentation.fill-rule": 596,
+            "presentation.stroke-opacity": 1,
+            "reference.xlink_local": 1,
+            "root-presentation.clip-rule": 1,
+            "root-presentation.fill": 3713,
+            "root-presentation.fill-rule": 413,
+            "root-presentation.stroke": 8,
+            "root-presentation.stroke-linecap": 7,
+            "root-presentation.stroke-linejoin": 8,
+            "root-presentation.stroke-miterlimit": 1,
+            "root-presentation.stroke-width": 7,
+            "transform.rotate": 12
+          },
+          "diagnosticSamples": {
+            "SVG_ACCESSIBILITY_INVALID": [
+              "public/icons/alivecor/default.svg"
+            ],
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "public/icons/5dive/default.svg",
+              "public/icons/5dive/mono.svg",
+              "public/icons/5dive/wordmark.svg",
+              "public/icons/accountantos/dark.svg",
+              "public/icons/accountantos/default.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "public/icons/abn-amro/wordmark.svg",
+              "public/icons/act/default.svg",
+              "public/icons/aero/mono.svg",
+              "public/icons/aero/wordmark-dark.svg",
+              "public/icons/aero/wordmark.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/apache-kafka/light.svg",
+              "public/icons/authy/default.svg",
+              "public/icons/aws-amazon-appflow/16.svg",
+              "public/icons/aws-amazon-appflow/32.svg"
+            ],
+            "SVG_EXTERNAL_REFERENCE": [
+              "public/icons/azure-disk-encryption-sets/default.svg",
+              "public/icons/azure-maintenance-configuration/default.svg",
+              "public/icons/azure-service-catalog-mad/default.svg",
+              "public/icons/microsoft-viva-engage/default.svg",
+              "public/icons/microsoft-viva-glint/default.svg"
+            ],
+            "SVG_GEOMETRY_INVALID": [
+              "public/icons/tooljet/default.svg",
+              "public/icons/uwsgi/default.svg",
+              "public/icons/uwsgi/mono.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/aws-aws-snowball-edge/32.svg",
+              "public/icons/aws-aws-snowball-edge/default.svg",
+              "public/icons/dis-chem-pharmacies/default.svg",
+              "public/icons/dis-chem-pharmacies/wordmark.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "public/icons/abacatepay/wordmark.svg",
+              "public/icons/anker/default.svg",
+              "public/icons/cityflo/default.svg",
+              "public/icons/dynamodb/default.svg",
+              "public/icons/eli-lilly/default.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "public/icons/affinity-designer/default.svg",
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/affinity-publisher/default.svg",
+              "public/icons/amazon-kindle/default.svg",
+              "public/icons/amazon-web-services/dark.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/302dotai/color.svg",
+              "public/icons/302dotai/default.svg"
+            ],
+            "SVG_UNSUPPORTED_TRANSFORM": [
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/azure-azure-database-postgresql-server-group/default.svg",
+              "public/icons/azure-azure-token-service/default.svg",
+              "public/icons/bazarr/default.svg",
+              "public/icons/citibank/default.svg"
+            ],
+            "SVG_UNSUPPORTED_VERSION": [
+              "public/icons/abn-amro/default.svg",
+              "public/icons/abn-amro/mono.svg",
+              "public/icons/adnoc/default.svg",
+              "public/icons/avanza/default.svg",
+              "public/icons/avanza/light.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "public/icons/amazon-music/default.svg",
+              "public/icons/bbc/default.svg",
+              "public/icons/charles-schwab/default.svg",
+              "public/icons/citibank/default.svg",
+              "public/icons/espn/default.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "public/icons/air-algerie/default.svg",
+              "public/icons/apache-kafka/dark.svg",
+              "public/icons/clastix/default.svg",
+              "public/icons/cvs/default.svg",
+              "public/icons/devtron/default.svg"
+            ],
+            "accessibility.ownership": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg"
+            ],
+            "definitions.forward_order": [
+              "public/icons/antgroup/color.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-azure-a/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-dcs-controller/default.svg"
+            ],
+            "element.circle": [
+              "public/icons/airflow/default.svg",
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-azure-monitors-for-sap-solutions/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg"
+            ],
+            "element.ellipse": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg"
+            ],
+            "element.line": [
+              "public/icon-legacy.svg",
+              "public/icons/thesvg-legacy/dark.svg",
+              "public/icons/thesvg-legacy/default.svg",
+              "public/logo-legacy.svg",
+              "public/logo.svg"
+            ],
+            "element.polygon": [
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-azure-blockchain-service/default.svg",
+              "public/icons/azure-azure-compute-galleries/default.svg",
+              "public/icons/azure-azure-firewall-manager/default.svg"
+            ],
+            "element.rect": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/azure-auto-scale/default.svg"
+            ],
+            "group.mixed_or_nested_children": [
+              "public/icons/alpha-vantage/default.svg",
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg"
+            ],
+            "namespace.xlink": [
+              "public/icons/chime/default.svg",
+              "public/icons/glide/light.svg",
+              "public/icons/mediawiki/wordmark-light.svg",
+              "public/icons/towergit/mono.svg",
+              "public/icons/valibot/default.svg"
+            ],
+            "paint.currentColor": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/11x/default.svg",
+              "public/icons/11x/mono.svg"
+            ],
+            "presentation.clip-rule": [
+              "public/icons/302dotai/mono.svg",
+              "public/icons/ag-ui/default.svg",
+              "public/icons/ag-ui/mono.svg",
+              "public/icons/ai360-360/color.svg",
+              "public/icons/ai360-360/default.svg"
+            ],
+            "presentation.fill-opacity": [
+              "public/icons/302dotai/mono.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/askverdict-ai/mono.svg"
+            ],
+            "presentation.fill-rule": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/11x/default.svg",
+              "public/icons/11x/mono.svg"
+            ],
+            "presentation.stroke-opacity": [
+              "public/icons/nubjs/default.svg"
+            ],
+            "reference.xlink_local": [
+              "public/icons/towergit/mono.svg"
+            ],
+            "root-presentation.clip-rule": [
+              "public/icons/coursera/default.svg"
+            ],
+            "root-presentation.fill": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg"
+            ],
+            "root-presentation.fill-rule": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/11x/default.svg",
+              "public/icons/11x/mono.svg"
+            ],
+            "root-presentation.stroke": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/openrouter/light.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg"
+            ],
+            "root-presentation.stroke-linecap": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg",
+              "public/icons/thesvg/light.svg"
+            ],
+            "root-presentation.stroke-linejoin": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/coursera/default.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg"
+            ],
+            "root-presentation.stroke-miterlimit": [
+              "public/icons/coursera/default.svg"
+            ],
+            "root-presentation.stroke-width": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/thesvg/dark.svg",
+              "public/icons/thesvg/default.svg",
+              "public/icons/thesvg/light.svg"
+            ],
+            "transform.rotate": [
+              "public/icons/azure-arc-data-services/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-arc-machines/default.svg",
+              "public/icons/azure-arc-sql-managed-instance/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "accessibility",
+          "importableWithNormalization": 4033,
+          "normalizationFiles": {
+            "accessibility_authority_required": 417,
+            "canonicalize_svg_version": 3,
+            "declare_decorative": 1,
+            "title_only_to_labelled": 3615
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "public/icons/100tb/default.svg",
+              "public/icons/aarch64/default.svg",
+              "public/icons/aarch64/line.svg",
+              "public/icons/aarch64/mono.svg",
+              "public/icons/aerospike/default.svg"
+            ],
+            "canonicalize_svg_version": [
+              "public/icons/codeac/default.svg",
+              "public/icons/pokerstars/default.svg",
+              "public/icons/warp/default.svg"
+            ],
+            "declare_decorative": [
+              "public/icons/atproto/default.svg"
+            ],
+            "title_only_to_labelled": [
+              "public/icons/1001tracklists/mono.svg",
+              "public/icons/1and1/mono.svg",
+              "public/icons/1dot1dot1dot1/mono.svg",
+              "public/icons/1panel/mono.svg",
+              "public/icons/1password/mono.svg"
+            ]
+          },
+          "unsafe": 792,
+          "unsupported": 7632
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACCESSIBILITY_INVALID": 1,
+            "SVG_ACTIVE_ATTRIBUTE": 601,
+            "SVG_ACTIVE_ELEMENT": 355,
+            "SVG_CANVAS_DIMENSION_INVALID": 1676,
+            "SVG_EXTERNAL_REFERENCE": 6,
+            "SVG_GEOMETRY_INVALID": 3,
+            "SVG_INVALID_OR_DUPLICATE_ID": 25,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1113,
+            "SVG_UNSUPPORTED_CSS_CLASS": 36,
+            "SVG_UNSUPPORTED_ELEMENT": 473,
+            "SVG_UNSUPPORTED_NAMESPACE": 113,
+            "SVG_UNSUPPORTED_PAINT": 1333,
+            "SVG_UNSUPPORTED_TRANSFORM": 36,
+            "SVG_UNSUPPORTED_VERSION": 99,
+            "SVG_VIEWBOX_INVALID": 84,
+            "XML_UNSAFE_DECLARATION": 21,
+            "accessibility.ownership": 210,
+            "definitions.forward_order": 60,
+            "element.circle": 48,
+            "element.ellipse": 15,
+            "element.line": 6,
+            "element.polygon": 25,
+            "element.rect": 51,
+            "group.mixed_or_nested_children": 88,
+            "namespace.xlink": 9,
+            "paint.currentColor": 18,
+            "presentation.clip-rule": 18,
+            "presentation.fill-opacity": 8,
+            "presentation.fill-rule": 36,
+            "presentation.stroke-opacity": 1,
+            "reference.xlink_local": 1,
+            "root-presentation.fill": 84,
+            "root-presentation.fill-rule": 9,
+            "transform.rotate": 12
+          },
+          "diagnosticSamples": {
+            "SVG_ACCESSIBILITY_INVALID": [
+              "public/icons/alivecor/default.svg"
+            ],
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "public/icons/5dive/default.svg",
+              "public/icons/5dive/mono.svg",
+              "public/icons/5dive/wordmark.svg",
+              "public/icons/accountantos/dark.svg",
+              "public/icons/accountantos/default.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "public/icons/abn-amro/wordmark.svg",
+              "public/icons/act/default.svg",
+              "public/icons/aero/mono.svg",
+              "public/icons/aero/wordmark-dark.svg",
+              "public/icons/aero/wordmark.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/apache-kafka/light.svg",
+              "public/icons/authy/default.svg",
+              "public/icons/aws-amazon-appflow/16.svg",
+              "public/icons/aws-amazon-appflow/32.svg"
+            ],
+            "SVG_EXTERNAL_REFERENCE": [
+              "public/icons/azure-disk-encryption-sets/default.svg",
+              "public/icons/azure-maintenance-configuration/default.svg",
+              "public/icons/azure-service-catalog-mad/default.svg",
+              "public/icons/microsoft-viva-engage/default.svg",
+              "public/icons/microsoft-viva-glint/default.svg"
+            ],
+            "SVG_GEOMETRY_INVALID": [
+              "public/icons/tooljet/default.svg",
+              "public/icons/uwsgi/default.svg",
+              "public/icons/uwsgi/mono.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/aws-aws-snowball-edge/32.svg",
+              "public/icons/aws-aws-snowball-edge/default.svg",
+              "public/icons/dis-chem-pharmacies/default.svg",
+              "public/icons/dis-chem-pharmacies/wordmark.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "public/icons/abacatepay/wordmark.svg",
+              "public/icons/anker/default.svg",
+              "public/icons/cityflo/default.svg",
+              "public/icons/dynamodb/default.svg",
+              "public/icons/eli-lilly/default.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "public/icons/affinity-designer/default.svg",
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/affinity-publisher/default.svg",
+              "public/icons/amazon-kindle/default.svg",
+              "public/icons/amazon-web-services/dark.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/302dotai/color.svg",
+              "public/icons/302dotai/default.svg"
+            ],
+            "SVG_UNSUPPORTED_TRANSFORM": [
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/azure-azure-database-postgresql-server-group/default.svg",
+              "public/icons/azure-azure-token-service/default.svg",
+              "public/icons/bazarr/default.svg",
+              "public/icons/citibank/default.svg"
+            ],
+            "SVG_UNSUPPORTED_VERSION": [
+              "public/icons/abn-amro/default.svg",
+              "public/icons/abn-amro/mono.svg",
+              "public/icons/adnoc/default.svg",
+              "public/icons/avanza/default.svg",
+              "public/icons/avanza/light.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "public/icons/amazon-music/default.svg",
+              "public/icons/bbc/default.svg",
+              "public/icons/charles-schwab/default.svg",
+              "public/icons/citibank/default.svg",
+              "public/icons/espn/default.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "public/icons/air-algerie/default.svg",
+              "public/icons/apache-kafka/dark.svg",
+              "public/icons/clastix/default.svg",
+              "public/icons/cvs/default.svg",
+              "public/icons/devtron/default.svg"
+            ],
+            "accessibility.ownership": [
+              "public/icon-legacy.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/airflow/default.svg",
+              "public/icons/alpha-vantage/default.svg"
+            ],
+            "definitions.forward_order": [
+              "public/icons/antgroup/color.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-azure-a/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-dcs-controller/default.svg"
+            ],
+            "element.circle": [
+              "public/icons/airflow/default.svg",
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-azure-monitors-for-sap-solutions/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg"
+            ],
+            "element.ellipse": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg"
+            ],
+            "element.line": [
+              "public/icon-legacy.svg",
+              "public/icons/thesvg-legacy/dark.svg",
+              "public/icons/thesvg-legacy/default.svg",
+              "public/logo-legacy.svg",
+              "public/logo.svg"
+            ],
+            "element.polygon": [
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-azure-blockchain-service/default.svg",
+              "public/icons/azure-azure-compute-galleries/default.svg",
+              "public/icons/azure-azure-firewall-manager/default.svg"
+            ],
+            "element.rect": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/azure-auto-scale/default.svg"
+            ],
+            "group.mixed_or_nested_children": [
+              "public/icons/alpha-vantage/default.svg",
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg"
+            ],
+            "namespace.xlink": [
+              "public/icons/chime/default.svg",
+              "public/icons/glide/light.svg",
+              "public/icons/mediawiki/wordmark-light.svg",
+              "public/icons/towergit/mono.svg",
+              "public/icons/valibot/default.svg"
+            ],
+            "paint.currentColor": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/british-council/mono.svg",
+              "public/icons/codeflicker/color.svg",
+              "public/icons/lobehub/mono.svg"
+            ],
+            "presentation.clip-rule": [
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-industrial-packaging-system/default.svg",
+              "public/icons/azure-defender-industrial-scale-system/default.svg",
+              "public/icons/azure-defender-meter/default.svg"
+            ],
+            "presentation.fill-opacity": [
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/microsoft-fabric/default.svg"
+            ],
+            "presentation.fill-rule": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-industrial-packaging-system/default.svg"
+            ],
+            "presentation.stroke-opacity": [
+              "public/icons/nubjs/default.svg"
+            ],
+            "reference.xlink_local": [
+              "public/icons/towergit/mono.svg"
+            ],
+            "root-presentation.fill": [
+              "public/icon-legacy.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg"
+            ],
+            "root-presentation.fill-rule": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/codeflicker/color.svg",
+              "public/icons/togetherdotai/color.svg",
+              "public/icons/togetherdotai/default.svg"
+            ],
+            "transform.rotate": [
+              "public/icons/azure-arc-data-services/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-arc-machines/default.svg",
+              "public/icons/azure-arc-sql-managed-instance/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "document-presentation",
+          "importableWithNormalization": 7821,
+          "normalizationFiles": {
+            "accessibility_authority_required": 681,
+            "canonicalize_svg_version": 5,
+            "declare_decorative": 1,
+            "promote_root_presentation": 3630,
+            "title_only_to_labelled": 7139
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/100tb/default.svg",
+              "public/icons/aarch64/default.svg",
+              "public/icons/aarch64/line.svg"
+            ],
+            "canonicalize_svg_version": [
+              "public/icons/angularjs/mono.svg",
+              "public/icons/bikanervala/default.svg",
+              "public/icons/codeac/default.svg",
+              "public/icons/pokerstars/default.svg",
+              "public/icons/warp/default.svg"
+            ],
+            "declare_decorative": [
+              "public/icons/atproto/default.svg"
+            ],
+            "promote_root_presentation": [
+              "public/icon-dark.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/1001tracklists/default.svg",
+              "public/icons/11x/default.svg"
+            ],
+            "title_only_to_labelled": [
+              "public/icons/01dotai/mono.svg",
+              "public/icons/1001tracklists/default.svg",
+              "public/icons/1001tracklists/mono.svg",
+              "public/icons/11x/default.svg",
+              "public/icons/11x/mono.svg"
+            ]
+          },
+          "unsafe": 792,
+          "unsupported": 3844
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACCESSIBILITY_INVALID": 1,
+            "SVG_ACTIVE_ATTRIBUTE": 601,
+            "SVG_ACTIVE_ELEMENT": 355,
+            "SVG_CANVAS_DIMENSION_INVALID": 1676,
+            "SVG_EXTERNAL_REFERENCE": 6,
+            "SVG_GEOMETRY_INVALID": 3,
+            "SVG_INVALID_OR_DUPLICATE_ID": 25,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1113,
+            "SVG_UNSUPPORTED_CSS_CLASS": 36,
+            "SVG_UNSUPPORTED_ELEMENT": 473,
+            "SVG_UNSUPPORTED_NAMESPACE": 113,
+            "SVG_UNSUPPORTED_PAINT": 1333,
+            "SVG_UNSUPPORTED_TRANSFORM": 36,
+            "SVG_UNSUPPORTED_VERSION": 99,
+            "SVG_VIEWBOX_INVALID": 84,
+            "XML_UNSAFE_DECLARATION": 21,
+            "accessibility.ownership": 152,
+            "definitions.forward_order": 60,
+            "element.circle": 21,
+            "element.ellipse": 7,
+            "element.polygon": 19,
+            "element.rect": 27,
+            "group.mixed_or_nested_children": 88,
+            "namespace.xlink": 9,
+            "paint.currentColor": 5,
+            "presentation.clip-rule": 15,
+            "presentation.fill-opacity": 5,
+            "presentation.fill-rule": 25,
+            "reference.xlink_local": 1,
+            "root-presentation.fill": 50,
+            "root-presentation.fill-rule": 1,
+            "transform.rotate": 12
+          },
+          "diagnosticSamples": {
+            "SVG_ACCESSIBILITY_INVALID": [
+              "public/icons/alivecor/default.svg"
+            ],
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "public/icons/5dive/default.svg",
+              "public/icons/5dive/mono.svg",
+              "public/icons/5dive/wordmark.svg",
+              "public/icons/accountantos/dark.svg",
+              "public/icons/accountantos/default.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "public/icons/abn-amro/wordmark.svg",
+              "public/icons/act/default.svg",
+              "public/icons/aero/mono.svg",
+              "public/icons/aero/wordmark-dark.svg",
+              "public/icons/aero/wordmark.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/apache-kafka/light.svg",
+              "public/icons/authy/default.svg",
+              "public/icons/aws-amazon-appflow/16.svg",
+              "public/icons/aws-amazon-appflow/32.svg"
+            ],
+            "SVG_EXTERNAL_REFERENCE": [
+              "public/icons/azure-disk-encryption-sets/default.svg",
+              "public/icons/azure-maintenance-configuration/default.svg",
+              "public/icons/azure-service-catalog-mad/default.svg",
+              "public/icons/microsoft-viva-engage/default.svg",
+              "public/icons/microsoft-viva-glint/default.svg"
+            ],
+            "SVG_GEOMETRY_INVALID": [
+              "public/icons/tooljet/default.svg",
+              "public/icons/uwsgi/default.svg",
+              "public/icons/uwsgi/mono.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/aws-aws-snowball-edge/32.svg",
+              "public/icons/aws-aws-snowball-edge/default.svg",
+              "public/icons/dis-chem-pharmacies/default.svg",
+              "public/icons/dis-chem-pharmacies/wordmark.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "public/icons/abacatepay/wordmark.svg",
+              "public/icons/anker/default.svg",
+              "public/icons/cityflo/default.svg",
+              "public/icons/dynamodb/default.svg",
+              "public/icons/eli-lilly/default.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "public/icons/affinity-designer/default.svg",
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/affinity-publisher/default.svg",
+              "public/icons/amazon-kindle/default.svg",
+              "public/icons/amazon-web-services/dark.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/302dotai/color.svg",
+              "public/icons/302dotai/default.svg"
+            ],
+            "SVG_UNSUPPORTED_TRANSFORM": [
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/azure-azure-database-postgresql-server-group/default.svg",
+              "public/icons/azure-azure-token-service/default.svg",
+              "public/icons/bazarr/default.svg",
+              "public/icons/citibank/default.svg"
+            ],
+            "SVG_UNSUPPORTED_VERSION": [
+              "public/icons/abn-amro/default.svg",
+              "public/icons/abn-amro/mono.svg",
+              "public/icons/adnoc/default.svg",
+              "public/icons/avanza/default.svg",
+              "public/icons/avanza/light.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "public/icons/amazon-music/default.svg",
+              "public/icons/bbc/default.svg",
+              "public/icons/charles-schwab/default.svg",
+              "public/icons/citibank/default.svg",
+              "public/icons/espn/default.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "public/icons/air-algerie/default.svg",
+              "public/icons/apache-kafka/dark.svg",
+              "public/icons/clastix/default.svg",
+              "public/icons/cvs/default.svg",
+              "public/icons/devtron/default.svg"
+            ],
+            "accessibility.ownership": [
+              "public/icons/alpha-vantage/default.svg",
+              "public/icons/antgroup/color.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-applens/default.svg"
+            ],
+            "definitions.forward_order": [
+              "public/icons/antgroup/color.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-azure-a/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-dcs-controller/default.svg"
+            ],
+            "element.circle": [
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-azure-monitors-for-sap-solutions/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg",
+              "public/icons/azure-custom-vision/default.svg"
+            ],
+            "element.ellipse": [
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-arc-machines/default.svg"
+            ],
+            "element.polygon": [
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-azure-compute-galleries/default.svg",
+              "public/icons/azure-azure-firewall-manager/default.svg",
+              "public/icons/azure-azure-hybrid-center/default.svg"
+            ],
+            "element.rect": [
+              "public/icons/azure-auto-scale/default.svg",
+              "public/icons/azure-azure-compute-galleries/default.svg",
+              "public/icons/azure-azure-firewall-manager/default.svg",
+              "public/icons/azure-azure-managed-grafana/default.svg",
+              "public/icons/azure-backlog/default.svg"
+            ],
+            "group.mixed_or_nested_children": [
+              "public/icons/alpha-vantage/default.svg",
+              "public/icons/azure-abs-member/default.svg",
+              "public/icons/azure-applens/default.svg",
+              "public/icons/azure-aquila/default.svg",
+              "public/icons/azure-arc-data-services/default.svg"
+            ],
+            "namespace.xlink": [
+              "public/icons/chime/default.svg",
+              "public/icons/glide/light.svg",
+              "public/icons/mediawiki/wordmark-light.svg",
+              "public/icons/towergit/mono.svg",
+              "public/icons/valibot/default.svg"
+            ],
+            "paint.currentColor": [
+              "public/icons/codeflicker/color.svg",
+              "public/icons/microsoft-fabric/default.svg",
+              "public/icons/microsoft-fabric-data-science/default.svg",
+              "public/icons/microsoft-fabric-databases/default.svg",
+              "public/icons/towergit/mono.svg"
+            ],
+            "presentation.clip-rule": [
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-industrial-packaging-system/default.svg",
+              "public/icons/azure-defender-industrial-scale-system/default.svg",
+              "public/icons/azure-defender-meter/default.svg"
+            ],
+            "presentation.fill-opacity": [
+              "public/icons/authdotjs/default.svg",
+              "public/icons/microsoft-fabric/default.svg",
+              "public/icons/supabase/default.svg",
+              "public/icons/supabase/wordmark-light.svg",
+              "public/icons/towergit/mono.svg"
+            ],
+            "presentation.fill-rule": [
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-industrial-packaging-system/default.svg",
+              "public/icons/azure-defender-industrial-scale-system/default.svg",
+              "public/icons/azure-defender-meter/default.svg"
+            ],
+            "reference.xlink_local": [
+              "public/icons/towergit/mono.svg"
+            ],
+            "root-presentation.fill": [
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-azure-a/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-dcs-controller/default.svg",
+              "public/icons/azure-defender-engineering-station/default.svg"
+            ],
+            "root-presentation.fill-rule": [
+              "public/icons/codeflicker/color.svg"
+            ],
+            "transform.rotate": [
+              "public/icons/azure-arc-data-services/default.svg",
+              "public/icons/azure-arc-kubernetes/default.svg",
+              "public/icons/azure-arc-machines/default.svg",
+              "public/icons/azure-arc-sql-managed-instance/default.svg",
+              "public/icons/azure-bare-metal-infrastructure/default.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "basic-geometry",
+          "importableWithNormalization": 7879,
+          "normalizationFiles": {
+            "accessibility_authority_required": 711,
+            "canonicalize_svg_version": 5,
+            "declare_decorative": 1,
+            "geometry_defaults_expanded": 14,
+            "promote_root_presentation": 3664,
+            "rect_corner_completion": 15,
+            "title_only_to_labelled": 7167
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/100tb/default.svg",
+              "public/icons/aarch64/default.svg"
+            ],
+            "canonicalize_svg_version": [
+              "public/icons/angularjs/mono.svg",
+              "public/icons/bikanervala/default.svg",
+              "public/icons/codeac/default.svg",
+              "public/icons/pokerstars/default.svg",
+              "public/icons/warp/default.svg"
+            ],
+            "declare_decorative": [
+              "public/icons/atproto/default.svg"
+            ],
+            "geometry_defaults_expanded": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/discorddotjs/default.svg"
+            ],
+            "promote_root_presentation": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg"
+            ],
+            "rect_corner_completion": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/filagram/dark.svg"
+            ],
+            "title_only_to_labelled": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/1001tracklists/default.svg",
+              "public/icons/1001tracklists/mono.svg"
+            ]
+          },
+          "unsafe": 792,
+          "unsupported": 3786
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACCESSIBILITY_INVALID": 1,
+            "SVG_ACTIVE_ATTRIBUTE": 601,
+            "SVG_ACTIVE_ELEMENT": 355,
+            "SVG_CANVAS_DIMENSION_INVALID": 1676,
+            "SVG_EXTERNAL_REFERENCE": 6,
+            "SVG_GEOMETRY_INVALID": 3,
+            "SVG_INVALID_OR_DUPLICATE_ID": 25,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1113,
+            "SVG_UNSUPPORTED_CSS_CLASS": 36,
+            "SVG_UNSUPPORTED_ELEMENT": 473,
+            "SVG_UNSUPPORTED_NAMESPACE": 113,
+            "SVG_UNSUPPORTED_PAINT": 1333,
+            "SVG_UNSUPPORTED_TRANSFORM": 36,
+            "SVG_UNSUPPORTED_VERSION": 99,
+            "SVG_VIEWBOX_INVALID": 84,
+            "XML_UNSAFE_DECLARATION": 21
+          },
+          "diagnosticSamples": {
+            "SVG_ACCESSIBILITY_INVALID": [
+              "public/icons/alivecor/default.svg"
+            ],
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "public/icons/5dive/default.svg",
+              "public/icons/5dive/mono.svg",
+              "public/icons/5dive/wordmark.svg",
+              "public/icons/accountantos/dark.svg",
+              "public/icons/accountantos/default.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "public/icons/abn-amro/wordmark.svg",
+              "public/icons/act/default.svg",
+              "public/icons/aero/mono.svg",
+              "public/icons/aero/wordmark-dark.svg",
+              "public/icons/aero/wordmark.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/apache-kafka/light.svg",
+              "public/icons/authy/default.svg",
+              "public/icons/aws-amazon-appflow/16.svg",
+              "public/icons/aws-amazon-appflow/32.svg"
+            ],
+            "SVG_EXTERNAL_REFERENCE": [
+              "public/icons/azure-disk-encryption-sets/default.svg",
+              "public/icons/azure-maintenance-configuration/default.svg",
+              "public/icons/azure-service-catalog-mad/default.svg",
+              "public/icons/microsoft-viva-engage/default.svg",
+              "public/icons/microsoft-viva-glint/default.svg"
+            ],
+            "SVG_GEOMETRY_INVALID": [
+              "public/icons/tooljet/default.svg",
+              "public/icons/uwsgi/default.svg",
+              "public/icons/uwsgi/mono.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/aws-aws-snowball-edge/32.svg",
+              "public/icons/aws-aws-snowball-edge/default.svg",
+              "public/icons/dis-chem-pharmacies/default.svg",
+              "public/icons/dis-chem-pharmacies/wordmark.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "public/icons/abacatepay/wordmark.svg",
+              "public/icons/anker/default.svg",
+              "public/icons/cityflo/default.svg",
+              "public/icons/dynamodb/default.svg",
+              "public/icons/eli-lilly/default.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "public/icons/affinity-designer/default.svg",
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/affinity-publisher/default.svg",
+              "public/icons/amazon-kindle/default.svg",
+              "public/icons/amazon-web-services/dark.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/302dotai/color.svg",
+              "public/icons/302dotai/default.svg"
+            ],
+            "SVG_UNSUPPORTED_TRANSFORM": [
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/azure-azure-database-postgresql-server-group/default.svg",
+              "public/icons/azure-azure-token-service/default.svg",
+              "public/icons/bazarr/default.svg",
+              "public/icons/citibank/default.svg"
+            ],
+            "SVG_UNSUPPORTED_VERSION": [
+              "public/icons/abn-amro/default.svg",
+              "public/icons/abn-amro/mono.svg",
+              "public/icons/adnoc/default.svg",
+              "public/icons/avanza/default.svg",
+              "public/icons/avanza/light.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "public/icons/amazon-music/default.svg",
+              "public/icons/bbc/default.svg",
+              "public/icons/charles-schwab/default.svg",
+              "public/icons/citibank/default.svg",
+              "public/icons/espn/default.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "public/icons/air-algerie/default.svg",
+              "public/icons/apache-kafka/dark.svg",
+              "public/icons/clastix/default.svg",
+              "public/icons/cvs/default.svg",
+              "public/icons/devtron/default.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "transforms-references",
+          "importableWithNormalization": 8031,
+          "normalizationFiles": {
+            "accessibility_authority_required": 816,
+            "canonicalize_definition_order": 60,
+            "canonicalize_svg_version": 7,
+            "declare_decorative": 1,
+            "geometry_defaults_expanded": 23,
+            "promote_root_presentation": 3714,
+            "rect_corner_completion": 38,
+            "title_only_to_labelled": 7214,
+            "xlink_href_to_href": 1,
+            "xlink_namespace_to_svg2_href": 9
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/100tb/default.svg",
+              "public/icons/aarch64/default.svg"
+            ],
+            "canonicalize_definition_order": [
+              "public/icons/antgroup/color.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-azure-a/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-dcs-controller/default.svg"
+            ],
+            "canonicalize_svg_version": [
+              "public/icons/angularjs/mono.svg",
+              "public/icons/bikanervala/default.svg",
+              "public/icons/codeac/default.svg",
+              "public/icons/kakao-bank/default.svg",
+              "public/icons/ping-identity/default.svg"
+            ],
+            "declare_decorative": [
+              "public/icons/atproto/default.svg"
+            ],
+            "geometry_defaults_expanded": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/azure-azure-managed-grafana/default.svg"
+            ],
+            "promote_root_presentation": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg"
+            ],
+            "rect_corner_completion": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/azure-azure-compute-galleries/default.svg"
+            ],
+            "title_only_to_labelled": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/1001tracklists/default.svg",
+              "public/icons/1001tracklists/mono.svg"
+            ],
+            "xlink_href_to_href": [
+              "public/icons/towergit/mono.svg"
+            ],
+            "xlink_namespace_to_svg2_href": [
+              "public/icons/chime/default.svg",
+              "public/icons/glide/light.svg",
+              "public/icons/mediawiki/wordmark-light.svg",
+              "public/icons/towergit/mono.svg",
+              "public/icons/valibot/default.svg"
+            ]
+          },
+          "unsafe": 792,
+          "unsupported": 3634
+        },
+        {
+          "diagnosticFiles": {
+            "SVG_ACCESSIBILITY_INVALID": 1,
+            "SVG_ACTIVE_ATTRIBUTE": 601,
+            "SVG_ACTIVE_ELEMENT": 355,
+            "SVG_CANVAS_DIMENSION_INVALID": 1676,
+            "SVG_EXTERNAL_REFERENCE": 6,
+            "SVG_GEOMETRY_INVALID": 3,
+            "SVG_INVALID_OR_DUPLICATE_ID": 25,
+            "SVG_UNSUPPORTED_ATTRIBUTE": 1113,
+            "SVG_UNSUPPORTED_CSS_CLASS": 36,
+            "SVG_UNSUPPORTED_ELEMENT": 473,
+            "SVG_UNSUPPORTED_NAMESPACE": 113,
+            "SVG_UNSUPPORTED_PAINT": 1333,
+            "SVG_UNSUPPORTED_TRANSFORM": 36,
+            "SVG_UNSUPPORTED_VERSION": 99,
+            "SVG_VIEWBOX_INVALID": 84,
+            "XML_UNSAFE_DECLARATION": 21
+          },
+          "diagnosticSamples": {
+            "SVG_ACCESSIBILITY_INVALID": [
+              "public/icons/alivecor/default.svg"
+            ],
+            "SVG_ACTIVE_ATTRIBUTE": [
+              "public/icons/5dive/default.svg",
+              "public/icons/5dive/mono.svg",
+              "public/icons/5dive/wordmark.svg",
+              "public/icons/accountantos/dark.svg",
+              "public/icons/accountantos/default.svg"
+            ],
+            "SVG_ACTIVE_ELEMENT": [
+              "public/icons/abn-amro/wordmark.svg",
+              "public/icons/act/default.svg",
+              "public/icons/aero/mono.svg",
+              "public/icons/aero/wordmark-dark.svg",
+              "public/icons/aero/wordmark.svg"
+            ],
+            "SVG_CANVAS_DIMENSION_INVALID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/apache-kafka/light.svg",
+              "public/icons/authy/default.svg",
+              "public/icons/aws-amazon-appflow/16.svg",
+              "public/icons/aws-amazon-appflow/32.svg"
+            ],
+            "SVG_EXTERNAL_REFERENCE": [
+              "public/icons/azure-disk-encryption-sets/default.svg",
+              "public/icons/azure-maintenance-configuration/default.svg",
+              "public/icons/azure-service-catalog-mad/default.svg",
+              "public/icons/microsoft-viva-engage/default.svg",
+              "public/icons/microsoft-viva-glint/default.svg"
+            ],
+            "SVG_GEOMETRY_INVALID": [
+              "public/icons/tooljet/default.svg",
+              "public/icons/uwsgi/default.svg",
+              "public/icons/uwsgi/mono.svg"
+            ],
+            "SVG_INVALID_OR_DUPLICATE_ID": [
+              "public/icons/ant-design/default.svg",
+              "public/icons/aws-aws-snowball-edge/32.svg",
+              "public/icons/aws-aws-snowball-edge/default.svg",
+              "public/icons/dis-chem-pharmacies/default.svg",
+              "public/icons/dis-chem-pharmacies/wordmark.svg"
+            ],
+            "SVG_UNSUPPORTED_ATTRIBUTE": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_CSS_CLASS": [
+              "public/icons/abacatepay/wordmark.svg",
+              "public/icons/anker/default.svg",
+              "public/icons/cityflo/default.svg",
+              "public/icons/dynamodb/default.svg",
+              "public/icons/eli-lilly/default.svg"
+            ],
+            "SVG_UNSUPPORTED_ELEMENT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/acrobat-reader/default.svg",
+              "public/icons/acrobat-reader-grayscale-app-icon/default.svg"
+            ],
+            "SVG_UNSUPPORTED_NAMESPACE": [
+              "public/icons/affinity-designer/default.svg",
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/affinity-publisher/default.svg",
+              "public/icons/amazon-kindle/default.svg",
+              "public/icons/amazon-web-services/dark.svg"
+            ],
+            "SVG_UNSUPPORTED_PAINT": [
+              "public/icons/1password/dark.svg",
+              "public/icons/1password/default.svg",
+              "public/icons/1password/light.svg",
+              "public/icons/302dotai/color.svg",
+              "public/icons/302dotai/default.svg"
+            ],
+            "SVG_UNSUPPORTED_TRANSFORM": [
+              "public/icons/affinity-photo/default.svg",
+              "public/icons/azure-azure-database-postgresql-server-group/default.svg",
+              "public/icons/azure-azure-token-service/default.svg",
+              "public/icons/bazarr/default.svg",
+              "public/icons/citibank/default.svg"
+            ],
+            "SVG_UNSUPPORTED_VERSION": [
+              "public/icons/abn-amro/default.svg",
+              "public/icons/abn-amro/mono.svg",
+              "public/icons/adnoc/default.svg",
+              "public/icons/avanza/default.svg",
+              "public/icons/avanza/light.svg"
+            ],
+            "SVG_VIEWBOX_INVALID": [
+              "public/icons/amazon-music/default.svg",
+              "public/icons/bbc/default.svg",
+              "public/icons/charles-schwab/default.svg",
+              "public/icons/citibank/default.svg",
+              "public/icons/espn/default.svg"
+            ],
+            "XML_UNSAFE_DECLARATION": [
+              "public/icons/air-algerie/default.svg",
+              "public/icons/apache-kafka/dark.svg",
+              "public/icons/clastix/default.svg",
+              "public/icons/cvs/default.svg",
+              "public/icons/devtron/default.svg"
+            ]
+          },
+          "directlyImportable": 0,
+          "id": "v0.3-profile",
+          "importableWithNormalization": 8031,
+          "normalizationFiles": {
+            "accessibility_authority_required": 816,
+            "canonicalize_definition_order": 60,
+            "canonicalize_svg_version": 7,
+            "declare_decorative": 1,
+            "geometry_defaults_expanded": 23,
+            "promote_root_presentation": 3714,
+            "rect_corner_completion": 38,
+            "title_only_to_labelled": 7214,
+            "xlink_href_to_href": 1,
+            "xlink_namespace_to_svg2_href": 9
+          },
+          "normalizationSamples": {
+            "accessibility_authority_required": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/100tb/default.svg",
+              "public/icons/aarch64/default.svg"
+            ],
+            "canonicalize_definition_order": [
+              "public/icons/antgroup/color.svg",
+              "public/icons/authdotjs/default.svg",
+              "public/icons/azure-azure-a/default.svg",
+              "public/icons/azure-defender-cm-local-manager/default.svg",
+              "public/icons/azure-defender-dcs-controller/default.svg"
+            ],
+            "canonicalize_svg_version": [
+              "public/icons/angularjs/mono.svg",
+              "public/icons/bikanervala/default.svg",
+              "public/icons/codeac/default.svg",
+              "public/icons/kakao-bank/default.svg",
+              "public/icons/ping-identity/default.svg"
+            ],
+            "declare_decorative": [
+              "public/icons/atproto/default.svg"
+            ],
+            "geometry_defaults_expanded": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/azure-azure-managed-grafana/default.svg"
+            ],
+            "promote_root_presentation": [
+              "public/icon-dark.svg",
+              "public/icon-legacy.svg",
+              "public/icon.svg",
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg"
+            ],
+            "rect_corner_completion": [
+              "public/icon-legacy.svg",
+              "public/icons/askverdict-ai/dark.svg",
+              "public/icons/askverdict-ai/default.svg",
+              "public/icons/askverdict-ai/light.svg",
+              "public/icons/azure-azure-compute-galleries/default.svg"
+            ],
+            "title_only_to_labelled": [
+              "public/icons/01dotai/color.svg",
+              "public/icons/01dotai/default.svg",
+              "public/icons/01dotai/mono.svg",
+              "public/icons/1001tracklists/default.svg",
+              "public/icons/1001tracklists/mono.svg"
+            ],
+            "xlink_href_to_href": [
+              "public/icons/towergit/mono.svg"
+            ],
+            "xlink_namespace_to_svg2_href": [
+              "public/icons/chime/default.svg",
+              "public/icons/glide/light.svg",
+              "public/icons/mediawiki/wordmark-light.svg",
+              "public/icons/towergit/mono.svg",
+              "public/icons/valibot/default.svg"
+            ]
+          },
+          "unsafe": 792,
+          "unsupported": 3634
+        }
+      ]
+    }
+  ],
+  "profile": "tfsb-svg-common-v0.3",
+  "sampleLimit": 5,
+  "schema": "tfsb-v0.3-compatibility-projection",
+  "schemaVersion": 1,
+  "stages": [
+    {
+      "id": "schema-1",
+      "label": "schema 1 current behavior"
+    },
+    {
+      "id": "accessibility",
+      "label": "accessibility ownership union"
+    },
+    {
+      "id": "document-presentation",
+      "label": "root presentation and currentColor"
+    },
+    {
+      "id": "basic-geometry",
+      "label": "common basic geometry"
+    },
+    {
+      "id": "transforms-references",
+      "label": "selected transforms and local references"
+    },
+    {
+      "id": "v0.3-profile",
+      "label": "complete proposed v0.3 profile"
+    }
+  ]
+}

@@ -92,13 +92,13 @@ describe("tfsb CLI", () => {
     const { root, archive } = await fixtureProject();
     const dryRun = capture();
     expect(
-      await runCli(["import", archive, "--root", root, "--dry-run"], root, dryRun.io),
+      await runCli(["import", archive, "--root", root, "--schema", "1", "--dry-run"], root, dryRun.io),
     ).toBe(0);
     expect(dryRun.stdout()).toContain("  .tfsb/project.toml\n");
     expect(dryRun.stdout()).not.toContain("schema_version = 1");
     await expect(access(join(root, ".tfsb"))).rejects.toMatchObject({ code: "ENOENT" });
     const imported = capture();
-    expect(await runCli(["import", archive, "--root", root], root, imported.io)).toBe(0);
+    expect(await runCli(["import", archive, "--root", root, "--schema", "1"], root, imported.io)).toBe(0);
     expect(imported.stdout()).toContain("Imported: 1 asset(s)");
 
     const nested = join(root, "nested/path");
@@ -125,7 +125,7 @@ describe("tfsb CLI", () => {
     expect(usage.stderr()).toContain("USAGE_ERROR: build does not accept positional arguments.");
 
     const { root, archive } = await fixtureProject();
-    expect(await runCli(["import", archive, "--root", root], root, capture().io)).toBe(0);
+    expect(await runCli(["import", archive, "--root", root, "--schema", "1"], root, capture().io)).toBe(0);
     const drift = capture();
     expect(await runCli(["check", "--root", root], root, drift.io)).toBe(2);
     expect(drift.stdout()).toContain("source: changed");
@@ -135,9 +135,9 @@ describe("tfsb CLI", () => {
   it("keeps a six-asset import dry-run concise", async () => {
     const { root, archive } = await fullFixtureProject();
     const dryRun = capture();
-    expect(await runCli(["import", archive, "--root", root, "--dry-run"], root, dryRun.io)).toBe(0);
+    expect(await runCli(["import", archive, "--root", root, "--schema", "1", "--dry-run"], root, dryRun.io)).toBe(0);
     expect(dryRun.stdout().split("\n").filter(Boolean)).toHaveLength(8);
-    expect(dryRun.stdout()).toContain("Import dry-run: 6 asset(s)\n");
+    expect(dryRun.stdout()).toContain("Import dry-run: 6 asset(s) (schema 1)\n");
     expect(dryRun.stdout()).toContain("  .tfsb/assets/favicon.toml\n");
     expect(dryRun.stdout()).toContain("  .tfsb/assets/theme-forge-terminal-nova-stacked.toml\n");
     expect(dryRun.stdout()).not.toContain("schema_version = 1");
@@ -146,7 +146,7 @@ describe("tfsb CLI", () => {
 
   it("names missing, extra, and different build paths in check output", async () => {
     const { root, archive } = await fullFixtureProject();
-    expect(await runCli(["import", archive, "--root", root], root, capture().io)).toBe(0);
+    expect(await runCli(["import", archive, "--root", root, "--schema", "1"], root, capture().io)).toBe(0);
     expect(await runCli(["build", "--root", root], root, capture().io)).toBe(0);
     await rm(join(root, "brand/dist/favicon.svg"));
     await writeFile(join(root, "brand/dist/theme-forge-terminal-nova-mark.svg"), "tampered");
@@ -169,7 +169,7 @@ describe("tfsb CLI", () => {
 
   it("reports invalid canonical input as exit 1 rather than drift", async () => {
     const { root, archive } = await fixtureProject();
-    expect(await runCli(["import", archive, "--root", root], root, capture().io)).toBe(0);
+    expect(await runCli(["import", archive, "--root", root, "--schema", "1"], root, capture().io)).toBe(0);
     await writeFile(join(root, ".tfsb/project.toml"), "schema_version = [");
     const checked = capture();
     expect(await runCli(["check", "--root", root], root, checked.io)).toBe(1);
@@ -180,7 +180,7 @@ describe("tfsb CLI", () => {
   it("supports provenance import and deterministic reconcile exit behavior", async () => {
     const { root, archive } = await fixtureProject();
     const imported = capture();
-    expect(await runCli(["import", archive, "--root", root, "--record-provenance"], root, imported.io)).toBe(0);
+    expect(await runCli(["import", archive, "--root", root, "--schema", "1", "--record-provenance"], root, imported.io)).toBe(0);
     await access(join(root, ".tfsb/provenance.json"));
 
     const clean = capture();
@@ -232,7 +232,7 @@ describe("tfsb CLI", () => {
 
   it("supports bundle command with dry-run, output, selection, and force", async () => {
     const { root, archive } = await fullFixtureProject();
-    expect(await runCli(["import", archive, "--root", root], root, capture().io)).toBe(0);
+    expect(await runCli(["import", archive, "--root", root, "--schema", "1"], root, capture().io)).toBe(0);
 
     // Bundle dry-run
     const dryRun = capture();
@@ -263,7 +263,7 @@ describe("tfsb CLI", () => {
     const manifestImport = capture();
     expect(
       await runCli(
-        ["import", join(root, "dist.zip"), "--root", newRoot, "--manifest", "--record-provenance"],
+        ["import", join(root, "dist.zip"), "--root", newRoot, "--schema", "1", "--manifest", "--record-provenance"],
         newRoot,
         manifestImport.io,
       ),
@@ -272,4 +272,3 @@ describe("tfsb CLI", () => {
     await access(join(newRoot, ".tfsb/provenance.json"));
   });
 });
-

@@ -171,6 +171,7 @@ describe("Terminal Nova deterministic bundle and round-trip qualification", () =
     const importPlan = await importProject({
       archive: bundleZipPath,
       root: importedDir,
+      schema: 1,
       manifest: true,
     });
 
@@ -216,6 +217,7 @@ describe("Terminal Nova deterministic bundle and round-trip qualification", () =
     const plan = await importProject({
       archive: bundleZipPath,
       root: ordinaryDir,
+      schema: 1,
       companions: ["README.md"],
       manifest: false, // Default ordinary import
     });

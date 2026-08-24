@@ -3,8 +3,12 @@ import { isDeepStrictEqual } from "node:util";
 import { DiagnosticError, fail } from "./diagnostics.js";
 import { enforceMutationAssetLimit, loadCanonicalProjectFromSnapshot } from "./project.js";
 import { findProjectRoot } from "./root.js";
-import { parseAssetToml, parseProjectToml } from "./toml.js";
-import { serializeAssetToml, serializeProjectToml } from "./toml-writer.js";
+import {
+  parseAssetTomlVersioned,
+  parseProjectTomlVersioned,
+  serializeAssetTomlVersioned,
+  serializeProjectTomlVersioned,
+} from "./schema-dispatch.js";
 import {
   executeCanonicalTransaction,
   snapshotCanonicalTree,
@@ -62,9 +66,11 @@ export async function planFormat(rootInput?: string): Promise<FormatPlan> {
       ? project.project
       : project.assets.find((asset) => `.tfsb/assets/${asset.id}.toml` === path)!;
     const serialized = path === ".tfsb/project.toml"
-      ? serializeProjectToml(before as Parameters<typeof serializeProjectToml>[0])
-      : serializeAssetToml(before as Parameters<typeof serializeAssetToml>[0]);
-    const after = path === ".tfsb/project.toml" ? unwrap(parseProjectToml(serialized, path)) : unwrap(parseAssetToml(serialized, path));
+      ? serializeProjectTomlVersioned(project.project)
+      : serializeAssetTomlVersioned(before as (typeof project.assets)[number]);
+    const after = path === ".tfsb/project.toml"
+      ? unwrap(parseProjectTomlVersioned(serialized, path))
+      : unwrap(parseAssetTomlVersioned(serialized, project.project.schemaVersion, path));
     if (!isDeepStrictEqual(before, after)) throw new Error("Canonical formatting changed normalized project semantics.");
     const bytes = Buffer.from(serialized, "utf8");
     if (!Buffer.from(file.bytes).equals(bytes)) {

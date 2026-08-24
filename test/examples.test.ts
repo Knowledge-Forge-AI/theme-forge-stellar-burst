@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseAssetToml, parseProjectToml, parseSvg } from "../src/index.js";
+import { parseAssetToml, parseImportProvenanceV2, parseNormalizationMap, parseProjectToml, parseSvg, serializeNormalizationMap } from "../src/index.js";
 import { readRepoFile, unwrap } from "./helpers.js";
 
 const examples = [
@@ -23,6 +23,15 @@ describe("checked-in example language", () => {
     expect(value.kind).toBe("tfsb-import-provenance");
     expect(value.schemaVersion).toBe(1);
     expect(Array.isArray(value.records)).toBe(true);
+  });
+
+  it("validates the v0.3 normalization-map, provenance-2, and migration-result examples", () => {
+    const mapText = readRepoFile("docs/examples/v0.3/normalization-map-schema-1.toml");
+    const map = unwrap(parseNormalizationMap(mapText));
+    expect(serializeNormalizationMap(map)).toBe(mapText);
+    expect(map.entries).toEqual([{ source: "icons/action.svg", accessibility: "consumer_labelled" }]);
+    expect(unwrap(parseImportProvenanceV2(readRepoFile("docs/examples/v0.3/provenance-schema-2.json"))).schemaVersion).toBe(2);
+    expect(JSON.parse(readRepoFile("docs/examples/v0.3/migration-check-result.json"))).toMatchObject({ mode: "check", fromSchemaVersion: 1, toSchemaVersion: 2, migrationNeeded: true });
   });
 
   it("parses the v0.2 tfsb-manifest.json example", () => {

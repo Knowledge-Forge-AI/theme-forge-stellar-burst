@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "command": "analyze",
+  "status": "drift",
+  "exitCode": 2,
+  "summary": "1 SVG file(s) were scanned; normalization or unsupported compatibility drift was found.",
+  "diagnostics": [
+    {
+      "code": "ANALYZE_INVALID_ACCESSIBILITY",
+      "severity": "error",
+      "operation": "analyze",
+      "domain": "svg",
+      "modelLocation": "/svg/@role",
+      "message": "The SVG accessibility signals are invalid or contradictory."
+    },
+    {
+      "code": "ANALYZE_UNSUPPORTED_ATTRIBUTE",
+      "severity": "error",
+      "operation": "analyze",
+      "domain": "svg",
+      "modelLocation": "/svg/rect/@clip-path",
+      "message": "The selected SVG profile does not support this attribute."
+    },
+    {
+      "code": "ANALYZE_UNSUPPORTED_ELEMENT",
+      "severity": "error",
+      "operation": "analyze",
+      "domain": "svg",
+      "modelLocation": "/svg/defs/clipPath",
+      "message": "The selected SVG profile does not support this element."
+    }
+  ],
+  "data": {
+    "scanCompleted": true,
+    "input": {
+      "kind": "directory"
+    },
+    "totals": {
+      "files": 1,
+      "svgFiles": 1
+    },
+    "profiles": {
+      "schema1": {
+        "profile": "tfsb-svg-schema-1",
+        "counts": {
+          "directlyImportable": 0,
+          "importableWithNormalization": 0,
+          "unsupported": 1,
+          "unsafe": 0
+        },
+        "diagnosticCounts": {
+          "ANALYZE_INVALID_ACCESSIBILITY": 1
+        },
+        "featureCounts": {
+          "accessibility.unlabelled": 1,
+          "attribute.clip-path": 1,
+          "element.circle": 1,
+          "element.clipPath": 1,
+          "element.defs": 1,
+          "element.rect": 1,
+          "element.svg": 1,
+          "namespace.svg": 1,
+          "reference.local": 1,
+          "xml.declaration": 1
+        },
+        "normalizationCounts": {}
+      },
+      "commonV03": {
+        "profile": "tfsb-svg-common-v0.3",
+        "counts": {
+          "directlyImportable": 0,
+          "importableWithNormalization": 0,
+          "unsupported": 1,
+          "unsafe": 0
+        },
+        "diagnosticCounts": {
+          "ANALYZE_UNSUPPORTED_ATTRIBUTE": 1,
+          "ANALYZE_UNSUPPORTED_ELEMENT": 1
+        },
+        "featureCounts": {
+          "accessibility.unlabelled": 1,
+          "attribute.clip-path": 1,
+          "element.circle": 1,
+          "element.clipPath": 1,
+          "element.defs": 1,
+          "element.rect": 1,
+          "element.svg": 1,
+          "namespace.svg": 1,
+          "reference.local": 1,
+          "xml.declaration": 1
+        },
+        "normalizationCounts": {}
+      }
+    },
+    "resourceObservations": {
+      "sourceBytes": 273,
+      "maxFileBytes": 273,
+      "xmlElements": 5
+    },
+    "identity": {
+      "invalidAssetIdentities": 0,
+      "assetIdCollisions": {
+        "groups": 0,
+        "affectedFiles": 0
+      },
+      "portablePathCollisions": {
+        "groups": 0,
+        "affectedFiles": 0
+      }
+    },
+    "samples": {
+      "schema1": {
+        "ANALYZE_INVALID_ACCESSIBILITY": [
+          "unsupported-clipping.svg"
+        ]
+      },
+      "commonV03": {
+        "ANALYZE_UNSUPPORTED_ATTRIBUTE": [
+          "unsupported-clipping.svg"
+        ],
+        "ANALYZE_UNSUPPORTED_ELEMENT": [
+          "unsupported-clipping.svg"
+        ]
+      }
+    }
+  }
+}

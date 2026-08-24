@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title description" focusable="false" shape-rendering="crispEdges">
+  <title id="title">Schema 1 ordering</title>
+  <desc id="description">Synthetic serialization evidence</desc>
+  <defs>
+    <linearGradient id="z-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111111"/>
+      <stop offset="1" stop-color="#222222" stop-opacity="0.5"/>
+    </linearGradient>
+    <linearGradient id="a-gradient" x1="1" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#333333"/>
+      <stop offset="1" stop-color="#444444"/>
+    </linearGradient>
+    <g id="z-group" fill="#111111">
+      <path id="z-group-path" d="M1 1L2 2"/>
+    </g>
+    <g id="a-group" stroke="#222222">
+      <path id="a-group-path" d="M2 2L3 3"/>
+    </g>
+    <path id="z-path" d="M0 0L1 1"/>
+    <path id="a-path" d="M3 3L4 4"/>
+  </defs>
+  <g id="artwork" fill="#333333" stroke="#444444" opacity="0.5" transform="translate(1 2)">
+    <use id="instance" href="#z-path" x="2" y="3" fill="#555555" stroke="#666666" stroke-width="2" stroke-linecap="round" stroke-linejoin="bevel" stroke-miterlimit="5" opacity="0.75" aria-hidden="false" transform="translate(1 2) scale(0.5)"/>
+  </g>
+</svg>
