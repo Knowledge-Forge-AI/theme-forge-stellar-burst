@@ -1,0 +1,36 @@
+schema = "tfsb.brand-recipes"
+schema_version = 1
+
+[[recipes]]
+id = "monochrome-dark-from-light-mark"
+source_asset = "theme-forge-terminal-nova-mark-on-light"
+target_asset = "mark-monochrome-dark"
+
+[[recipes.operations]]
+operation = "monochrome"
+channels = ["fill"]
+color_token = "near-black"
+expected_occurrences = 7
+
+[[recipes.operations]]
+operation = "copy-accessibility"
+policy = "replace-explicit"
+title = "Theme Forge Terminal Nova monochrome mark for light surfaces"
+description = "Near Black monochrome Nova Ingot mark"
+
+[[recipes]]
+id = "monochrome-light-from-dark-mark"
+source_asset = "theme-forge-terminal-nova-mark-on-dark"
+target_asset = "mark-monochrome-light"
+
+[[recipes.operations]]
+operation = "monochrome"
+channels = ["fill"]
+color_token = "warm-white"
+expected_occurrences = 7
+
+[[recipes.operations]]
+operation = "copy-accessibility"
+policy = "replace-explicit"
+title = "Theme Forge Terminal Nova monochrome mark for dark surfaces"
+description = "Warm White monochrome Nova Ingot mark"

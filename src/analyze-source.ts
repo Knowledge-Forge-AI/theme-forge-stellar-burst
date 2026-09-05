@@ -24,6 +24,10 @@ export interface AnalyzeSourceResult {
   readonly maxFileBytes: number;
   readonly xmlElements: number;
 }
+export interface AnalyzeSourceHooks {
+  readonly checkCancelled?: () => void;
+  readonly onProgress?: (completed: number, total: number) => void;
+}
 
 function identity(stat: Stats): Identity { return { dev: stat.dev, ino: stat.ino, mode: stat.mode, size: stat.size, mtimeMs: stat.mtimeMs, ctimeMs: stat.ctimeMs }; }
 function sameIdentity(left: Identity, right: Identity): boolean { return left.dev === right.dev && left.ino === right.ino && left.mode === right.mode && left.size === right.size && left.mtimeMs === right.mtimeMs && left.ctimeMs === right.ctimeMs; }
@@ -40,7 +44,7 @@ async function validateInputComponents(path: string): Promise<void> {
   }
 }
 
-async function directorySnapshot(root: string): Promise<readonly DirectoryEntrySnapshot[]> {
+async function directorySnapshot(root: string, hooks: AnalyzeSourceHooks = {}): Promise<readonly DirectoryEntrySnapshot[]> {
   const snapshots: DirectoryEntrySnapshot[] = [];
   const walk = async (directory: string): Promise<void> => {
     let entries;
@@ -48,6 +52,7 @@ async function directorySnapshot(root: string): Promise<readonly DirectoryEntryS
     catch { sourceFail("ANALYZE_SNAPSHOT_FAILED", "The directory inventory could not be read safely."); }
     entries.sort((left, right) => compareUtf8(left.name, right.name));
     for (const entry of entries) {
+      hooks.checkCancelled?.();
       if (snapshots.length >= ANALYZE_LIMITS.candidateEntries) sourceFail("ANALYZE_CANDIDATE_LIMIT_EXCEEDED", "The input exceeds the fixed candidate limit.");
       const absolute = join(directory, entry.name);
       let stat;
@@ -69,21 +74,25 @@ async function hasZipSignature(path: string): Promise<boolean> {
   return false;
 }
 
-export async function inspectAnalyzeInput(input: string, invocationCwd = process.cwd()): Promise<AnalyzeInputPlan> {
+export async function inspectAnalyzeInput(input: string, invocationCwd = process.cwd(), hooks: AnalyzeSourceHooks = {}): Promise<AnalyzeInputPlan> {
+  hooks.checkCancelled?.();
   const inputPath = resolve(invocationCwd, input);
   await validateInputComponents(inputPath);
   let stat;
   try { stat = await lstat(inputPath); } catch { sourceFail("ANALYZE_INPUT_INVALID", "Analyze input does not exist or cannot be inspected."); }
   if (stat.isSymbolicLink()) sourceFail("ANALYZE_INPUT_INVALID", "Analyze input cannot be a symbolic link.");
-  if (stat.isDirectory()) return { kind: "directory", inputPath, invocationCwd: resolve(invocationCwd), directoryEntries: await directorySnapshot(inputPath) };
+  if (stat.isDirectory()) return { kind: "directory", inputPath, invocationCwd: resolve(invocationCwd), directoryEntries: await directorySnapshot(inputPath, hooks) };
   if (!stat.isFile() || !(await hasZipSignature(inputPath))) sourceFail("ANALYZE_INPUT_INVALID", "Analyze input must be a directory or a regular ZIP file identified by signature.");
   if (stat.size > ANALYZE_LIMITS.archiveBytes) sourceFail("ANALYZE_ARCHIVE_BYTE_LIMIT_EXCEEDED", "Analyze ZIP exceeds the fixed raw archive limit.");
   return { kind: "archive", inputPath, invocationCwd: resolve(invocationCwd), archiveIdentity: identity(stat) };
 }
 
-export async function verifyAnalyzeInputPlan(plan: AnalyzeInputPlan): Promise<void> {
+export async function verifyAnalyzeInputPlan(plan: AnalyzeInputPlan, hooks: AnalyzeSourceHooks = {}): Promise<void> {
+  hooks.checkCancelled?.();
   if (plan.kind === "directory") {
-    const current = await directorySnapshot(plan.inputPath).catch(() => undefined);
+    let current: readonly DirectoryEntrySnapshot[] | undefined;
+    try { current = await directorySnapshot(plan.inputPath, hooks); }
+    catch { hooks.checkCancelled?.(); current = undefined; }
     const before = plan.directoryEntries;
     if (current === undefined || before === undefined || current.length !== before.length || current.some((item, index) => { const expected = before[index]; return expected === undefined || item.path !== expected.path || item.kind !== expected.kind || !sameIdentity(item.identity, expected.identity); })) sourceFail("ANALYZE_SOURCE_CHANGED", "The directory input changed during analysis.");
     return;
@@ -110,8 +119,8 @@ async function readPlannedFile(plan: AnalyzeInputPlan, item: DirectoryEntrySnaps
   finally { await handle?.close(); }
 }
 
-export async function executeAnalyzeSource(plan: AnalyzeInputPlan): Promise<AnalyzeSourceResult> {
-  await verifyAnalyzeInputPlan(plan);
+export async function executeAnalyzeSource(plan: AnalyzeInputPlan, hooks: AnalyzeSourceHooks = {}): Promise<AnalyzeSourceResult> {
+  await verifyAnalyzeInputPlan(plan, hooks);
   const results: AnalyzeDetailsFile[] = [];
   let totalFiles = 0; let sourceBytes = 0; let maxFileBytes = 0; let xmlElements = 0;
   const consume = (path: string, bytes: Uint8Array): void => {
@@ -128,13 +137,17 @@ export async function executeAnalyzeSource(plan: AnalyzeInputPlan): Promise<Anal
     if (svgs.length > ANALYZE_LIMITS.svgFiles) sourceFail("ANALYZE_SVG_FILE_LIMIT_EXCEEDED", "The input exceeds the fixed SVG-file limit.");
     const declared = svgs.reduce((total, item) => total + item.identity.size, 0);
     if (declared > ANALYZE_LIMITS.aggregateSvgBytes) sourceFail("ANALYZE_AGGREGATE_BYTE_LIMIT_EXCEEDED", "The input exceeds the fixed aggregate SVG byte limit.");
-    for (const item of svgs) consume(item.path, await readPlannedFile(plan, item));
+    for (const [index, item] of svgs.entries()) {
+      hooks.checkCancelled?.();
+      consume(item.path, await readPlannedFile(plan, item));
+      hooks.onProgress?.(index + 1, svgs.length);
+    }
   } else {
     try {
       const archive = await readArchive(plan.inputPath, [], [], {
         operation: "analyze", selectAllSvgs: true, allowNoSvgs: true, retainSelectedSvgs: false,
         limits: { totalEntries: ANALYZE_LIMITS.candidateEntries, selectedSvgEntries: ANALYZE_LIMITS.svgFiles, selectedEntryBytes: ANALYZE_LIMITS.fileBytes, selectedAggregateBytes: ANALYZE_LIMITS.aggregateSvgBytes, declaredAggregateBytes: ANALYZE_LIMITS.archiveDeclaredBytes, expansionRatio: ANALYZE_LIMITS.compressionRatio, centralDirectoryBytes: 64 * 1024 * 1024, archiveFileBytes: ANALYZE_LIMITS.archiveBytes },
-        onSelectedSvg: (svg) => consume(svg.entryName, svg.bytes),
+        onSelectedSvg: (svg) => { hooks.checkCancelled?.(); consume(svg.entryName, svg.bytes); hooks.onProgress?.(results.length, results.length); },
       });
       totalFiles = archive.fileCount;
       if (plan.archiveIdentity === undefined || archive.snapshot.dev !== plan.archiveIdentity.dev || archive.snapshot.ino !== plan.archiveIdentity.ino || archive.snapshot.size !== plan.archiveIdentity.size || archive.snapshot.mtimeMs !== plan.archiveIdentity.mtimeMs || archive.snapshot.ctimeMs !== plan.archiveIdentity.ctimeMs) sourceFail("ANALYZE_SOURCE_CHANGED", "The archive changed between planning and analysis.");
@@ -147,7 +160,7 @@ export async function executeAnalyzeSource(plan: AnalyzeInputPlan): Promise<Anal
     }
   }
   results.sort((left, right) => compareUtf8(left.path, right.path));
-  await verifyAnalyzeInputPlan(plan);
+  await verifyAnalyzeInputPlan(plan, hooks);
   return { files: results, totalFiles, sourceBytes, maxFileBytes, xmlElements };
 }
 

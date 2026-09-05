@@ -14,6 +14,7 @@ export type DiagnosticOperation =
   | "validate"
   | "serialize"
   | "import"
+  | "edit"
   | "build"
   | "install"
   | "check"
@@ -24,7 +25,9 @@ export type DiagnosticOperation =
   | "fmt"
   | "preview"
   | "analyze"
-  | "migrate";
+  | "migrate"
+  | "export"
+  | "discover";
 export type DiagnosticDomain =
   | "project-toml"
   | "asset-toml"
@@ -36,7 +39,13 @@ export type DiagnosticDomain =
   | "provenance"
   | "transaction"
   | "manifest"
-  | "analyze";
+  | "analyze"
+  | "source-map"
+  | "source-identity"
+  | "workspace"
+  | "directory-snapshot"
+  | "brand"
+  | "brand-toml";
 
 export interface Diagnostic {
   readonly code: string;

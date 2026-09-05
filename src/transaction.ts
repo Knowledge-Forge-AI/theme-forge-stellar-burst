@@ -50,8 +50,18 @@ export interface CanonicalTransactionOptions {
   readonly expectedSnapshot: CanonicalSnapshot;
   readonly archiveSnapshot?: ArchiveSnapshot;
   readonly hooks?: TransactionHooks;
-  readonly operation?: "import" | "reconcile" | "fmt" | "migrate";
+  readonly operation?: "import" | "edit" | "reconcile" | "fmt" | "migrate" | "install";
+  /**
+   * Optional validator for the staged tree.
+   * Invoked immediately after stage creation and re-invoked in the final pre-promotion pass
+   * after `beforePromotion`. Validators must be repeatable and side-effect free.
+   */
   readonly validateStagedTree?: (stageRoot: string) => void | Promise<void>;
+  /**
+   * Optional validator for external state (such as an input archive or producer directory).
+   * Invoked at transaction start, post-stage-write, and in the final pre-promotion pass
+   * after `beforePromotion`. Validators must be repeatable and side-effect free.
+   */
   readonly verifyExternalState?: () => void | Promise<void>;
 }
 
@@ -104,8 +114,28 @@ async function optionalLstat(path: string): Promise<Stats | undefined> {
   });
 }
 
+import {
+  BRAND_BASELINE_DIR,
+  BRAND_BASELINE_MAX_AGGREGATE_BYTES,
+  BRAND_BASELINE_MAX_FILE_BYTES,
+  BRAND_BASELINE_MAX_FILES,
+  BRAND_RASTER_RECEIPT_DIR,
+  BRAND_RASTER_RECEIPT_MAX_FILE_BYTES,
+  BRAND_RASTER_RECEIPT_MAX_FILES,
+  getFixedBrandFile,
+  isBrandBaselinePath,
+  isDerivedReceiptPath,
+  isRasterReceiptPath,
+  isFixedBrandFilePath,
+} from "./brand/brand-files.js";
+import { DERIVED_RECEIPT_MAX_BYTES, DERIVED_RECEIPT_MAX_COUNT } from "./brand/derived-receipt.js";
+
 function supportedFile(path: string): boolean {
-  return path === ".tfsb/project.toml" || path === ".tfsb/provenance.json" ||
+  return path === ".tfsb/project.toml" || path === ".tfsb/provenance.json" || path === ".tfsb/brand.lock.json" ||
+    isFixedBrandFilePath(path) ||
+    isBrandBaselinePath(path) ||
+    isRasterReceiptPath(path) ||
+    isDerivedReceiptPath(path) ||
     /^\.tfsb\/assets\/[a-z0-9]+(?:-[a-z0-9]+)*\.toml$/.test(path) ||
     /^\.tfsb\/companions\/[^/]+$/.test(path);
 }
@@ -126,17 +156,34 @@ function fileIdentity(stat: Stats): FileIdentity {
 }
 
 export async function findRecoveryResidue(root: string): Promise<readonly string[]> {
-  const entries = await readDirectoryEntries(root);
-  return entries
-    .filter((entry) => entry.name.startsWith(".tfsb-stage-") || entry.name.startsWith(".tfsb-backup-"))
-    .map((entry) => entry.name)
-    .sort();
+  const residue: string[] = [];
+  const pending: { readonly absolute: string; readonly relative: string }[] = [{ absolute: root, relative: "" }];
+  let inspected = 0;
+  while (pending.length > 0) {
+    const directory = pending.pop()!;
+    for (const entry of await readDirectoryEntries(directory.absolute)) {
+      inspected++;
+      if (inspected > 100_000) fail(context(), "RESOURCE_LIMIT_EXCEEDED", "Recovery-residue inspection exceeded 100000 entries.");
+      const relative = directory.relative === "" ? entry.name : `${directory.relative}/${entry.name}`;
+      const isCanonicalResidue = directory.relative === "" && (entry.name.startsWith(".tfsb-stage-") || entry.name.startsWith(".tfsb-backup-"));
+      const isConsumerJournal = directory.relative === "" && /^\.tfsb-consumer-transaction-[a-f0-9]{32}\.json$/.test(entry.name);
+      const isConsumerStage = /^\..+\.tfsb-consumer-(?:stage|backup)-[a-f0-9]{32}$/.test(entry.name);
+      const isRasterJournal = directory.relative === "" && /^\.tfsb-raster-transaction-[a-f0-9]{32}\.json$/.test(entry.name);
+      const isRasterStage = /^\..+\.tfsb-raster-(?:stage|backup)-[a-f0-9]{32}$/.test(entry.name);
+      if (isCanonicalResidue || isConsumerJournal || isConsumerStage || isRasterJournal || isRasterStage) residue.push(relative);
+      if (entry.isDirectory() && !entry.isSymbolicLink() && entry.name !== ".git" && entry.name !== "node_modules") {
+        pending.push({ absolute: join(directory.absolute, entry.name), relative });
+      }
+    }
+  }
+  return residue.sort();
 }
 
 export async function snapshotCanonicalTree(
   rootInput: string,
   allowAbsent = false,
   operation: DiagnosticContext["operation"] = "reconcile",
+  ignoredCanonicalFiles: ReadonlySet<string> = new Set(),
 ): Promise<CanonicalSnapshot> {
   const ctx = context(operation);
   const root = await realpath(rootInput);
@@ -157,9 +204,82 @@ export async function snapshotCanonicalTree(
   const directories: string[] = [".tfsb"];
   const directoryIdentities = new Map<string, FileIdentity>([[".tfsb", fileIdentity(canonicalStat)]]);
   const topEntries = await readDirectoryEntries(canonical);
+  let receiptCount = 0;
+  let baselineCount = 0;
+  let baselineBytes = 0;
+  let rasterReceiptCount = 0;
   for (const entry of topEntries) {
     const relative = `.tfsb/${entry.name}`;
-    if (entry.name === "assets" || entry.name === "companions") {
+    if (ignoredCanonicalFiles.has(relative)) {
+      const ignoredStat = await lstat(join(root, relative));
+      if (!ignoredStat.isFile() || ignoredStat.isSymbolicLink()) {
+        fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Ignored transaction entry '${relative}' is not a regular non-symlink file.`, relative);
+      }
+      continue;
+    }
+    if (entry.name === "brand-baselines") {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical entry '${relative}'.`, relative);
+      directories.push(relative);
+      const baselineDirectoryBefore = await lstat(join(root, relative));
+      directoryIdentities.set(relative, fileIdentity(baselineDirectoryBefore));
+      const profiles = await readDirectoryEntries(join(root, relative));
+      if (profiles.length === 0) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", "Brand baseline directory cannot be empty.", relative);
+      for (const profile of profiles) {
+        const profileRelative = `${relative}/${profile.name}`;
+        if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(profile.name) || !profile.isDirectory() || profile.isSymbolicLink()) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported baseline profile entry '${profileRelative}'.`, profileRelative);
+        directories.push(profileRelative);
+        const profileBefore = await lstat(join(root, profileRelative));
+        directoryIdentities.set(profileRelative, fileIdentity(profileBefore));
+        const baselineFiles = await readDirectoryEntries(join(root, profileRelative));
+        if (baselineFiles.length === 0) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Baseline profile directory '${profileRelative}' cannot be empty.`, profileRelative);
+        for (const child of baselineFiles) {
+          const childRelative = `${profileRelative}/${child.name}`;
+          if (!child.isFile() || child.isSymbolicLink() || !isBrandBaselinePath(childRelative)) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported baseline entry '${childRelative}'.`, childRelative);
+          baselineCount++;
+          if (baselineCount > BRAND_BASELINE_MAX_FILES) fail(ctx, "RESOURCE_LIMIT_EXCEEDED", `Brand baseline count exceeds ${BRAND_BASELINE_MAX_FILES}.`, childRelative);
+          const file = await readRegularFileSnapshot(join(root, childRelative), ctx, "PROJECT_UNSUPPORTED_SOURCE", `Canonical baseline '${childRelative}' changed or became unsafe during snapshot.`, BRAND_BASELINE_MAX_FILE_BYTES);
+          baselineBytes += file.bytes.byteLength;
+          if (baselineBytes > BRAND_BASELINE_MAX_AGGREGATE_BYTES) fail(ctx, "RESOURCE_LIMIT_EXCEEDED", "Aggregate brand baseline bytes exceed 256 MiB.", BRAND_BASELINE_DIR);
+          files.set(childRelative, snapshotFile(file.bytes, file.snapshot));
+        }
+        const profileAfter = await lstat(join(root, profileRelative));
+        if (!profileAfter.isDirectory() || profileAfter.isSymbolicLink() || !sameFileIdentity(fileIdentity(profileBefore), fileIdentity(profileAfter))) fail(ctx, "CANONICAL_CHANGED_DURING_PLAN", `Baseline profile directory '${profileRelative}' changed during snapshot.`, profileRelative);
+      }
+      const baselineDirectoryAfter = await lstat(join(root, relative));
+      if (!baselineDirectoryAfter.isDirectory() || baselineDirectoryAfter.isSymbolicLink() || !sameFileIdentity(fileIdentity(baselineDirectoryBefore), fileIdentity(baselineDirectoryAfter))) fail(ctx, "CANONICAL_CHANGED_DURING_PLAN", "Baseline directory changed during snapshot.", relative);
+      continue;
+    }
+    if (entry.name === "raster-receipts") {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical entry '${relative}'.`, relative);
+      directories.push(relative);
+      const receiptDirectoryBefore = await lstat(join(root, relative));
+      directoryIdentities.set(relative, fileIdentity(receiptDirectoryBefore));
+      const profiles = await readDirectoryEntries(join(root, relative));
+      if (profiles.length === 0) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", "Raster receipt directory cannot be empty.", relative);
+      for (const profile of profiles) {
+        const profileRelative = `${relative}/${profile.name}`;
+        if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(profile.name) || !profile.isDirectory() || profile.isSymbolicLink()) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported raster receipt profile entry '${profileRelative}'.`, profileRelative);
+        directories.push(profileRelative);
+        const profileBefore = await lstat(join(root, profileRelative));
+        directoryIdentities.set(profileRelative, fileIdentity(profileBefore));
+        const receiptFiles = await readDirectoryEntries(join(root, profileRelative));
+        if (receiptFiles.length === 0) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Raster receipt profile directory '${profileRelative}' cannot be empty.`, profileRelative);
+        for (const child of receiptFiles) {
+          const childRelative = `${profileRelative}/${child.name}`;
+          if (!child.isFile() || child.isSymbolicLink() || !isRasterReceiptPath(childRelative)) fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported raster receipt entry '${childRelative}'.`, childRelative);
+          rasterReceiptCount++;
+          if (rasterReceiptCount > BRAND_RASTER_RECEIPT_MAX_FILES) fail(ctx, "RESOURCE_LIMIT_EXCEEDED", `Raster receipt count exceeds ${BRAND_RASTER_RECEIPT_MAX_FILES}.`, childRelative);
+          const file = await readRegularFileSnapshot(join(root, childRelative), ctx, "PROJECT_UNSUPPORTED_SOURCE", `Canonical raster receipt '${childRelative}' changed or became unsafe during snapshot.`, BRAND_RASTER_RECEIPT_MAX_FILE_BYTES);
+          files.set(childRelative, snapshotFile(file.bytes, file.snapshot));
+        }
+        const profileAfter = await lstat(join(root, profileRelative));
+        if (!profileAfter.isDirectory() || profileAfter.isSymbolicLink() || !sameFileIdentity(fileIdentity(profileBefore), fileIdentity(profileAfter))) fail(ctx, "CANONICAL_CHANGED_DURING_PLAN", `Raster receipt profile directory '${profileRelative}' changed during snapshot.`, profileRelative);
+      }
+      const receiptDirectoryAfter = await lstat(join(root, relative));
+      if (!receiptDirectoryAfter.isDirectory() || receiptDirectoryAfter.isSymbolicLink() || !sameFileIdentity(fileIdentity(receiptDirectoryBefore), fileIdentity(receiptDirectoryAfter))) fail(ctx, "CANONICAL_CHANGED_DURING_PLAN", "Raster receipt directory changed during snapshot.", BRAND_RASTER_RECEIPT_DIR);
+      continue;
+    }
+    if (entry.name === "assets" || entry.name === "companions" || entry.name === "derived") {
       if (!entry.isDirectory() || entry.isSymbolicLink()) {
         fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical entry '${relative}'.`, relative);
       }
@@ -171,8 +291,25 @@ export async function snapshotCanonicalTree(
         if (!child.isFile() || child.isSymbolicLink() || !supportedFile(childRelative)) {
           fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical entry '${childRelative}'.`, childRelative);
         }
+        if (entry.name === "derived") {
+          receiptCount++;
+          if (receiptCount > DERIVED_RECEIPT_MAX_COUNT) {
+            fail(
+              ctx,
+              "RESOURCE_LIMIT_EXCEEDED",
+              `Derived receipts count exceeds limit ${DERIVED_RECEIPT_MAX_COUNT}.`,
+              childRelative,
+            );
+          }
+        }
         const full = join(root, childRelative);
-        const file = await readRegularFileSnapshot(full, ctx, "PROJECT_UNSUPPORTED_SOURCE", `Canonical file '${childRelative}' changed or became unsafe during snapshot.`);
+        const file = await readRegularFileSnapshot(
+          full,
+          ctx,
+          "PROJECT_UNSUPPORTED_SOURCE",
+          `Canonical file '${childRelative}' changed or became unsafe during snapshot.`,
+          entry.name === "derived" ? DERIVED_RECEIPT_MAX_BYTES : undefined,
+        );
         files.set(childRelative, snapshotFile(file.bytes, file.snapshot));
       }
       const childDirectoryAfter = await lstat(join(root, relative));
@@ -185,7 +322,14 @@ export async function snapshotCanonicalTree(
       fail(ctx, "PROJECT_UNSUPPORTED_SOURCE", `Unsupported canonical entry '${relative}'.`, relative);
     }
     const full = join(root, relative);
-    const file = await readRegularFileSnapshot(full, ctx, "PROJECT_UNSUPPORTED_SOURCE", `Canonical file '${relative}' changed or became unsafe during snapshot.`);
+    const fixedBrand = getFixedBrandFile(relative);
+    const file = await readRegularFileSnapshot(
+      full,
+      ctx,
+      "PROJECT_UNSUPPORTED_SOURCE",
+      `Canonical file '${relative}' changed or became unsafe during snapshot.`,
+      relative === ".tfsb/brand.lock.json" ? 1_048_576 : fixedBrand?.maxBytes,
+    );
     files.set(relative, snapshotFile(file.bytes, file.snapshot));
   }
   if (!directories.includes(".tfsb/assets")) {
@@ -194,6 +338,7 @@ export async function snapshotCanonicalTree(
   if (!files.has(".tfsb/project.toml")) {
     fail(ctx, "ROOT_NOT_FOUND", "Canonical project marker is missing.", ".tfsb/project.toml");
   }
+  if (directories.includes(BRAND_BASELINE_DIR) && !files.has(".tfsb/brand-qa.toml")) fail(ctx, "BRAND_QA_BASELINES_WITHOUT_QA", "Brand baselines require enabled QA authority.", BRAND_BASELINE_DIR);
   directories.sort();
   const canonicalAfter = await lstat(canonical);
   const rootAfter = await lstat(root);
@@ -229,6 +374,30 @@ export function snapshotsEqual(left: CanonicalSnapshot, right: CanonicalSnapshot
   return true;
 }
 
+export function snapshotsEqualIgnoringDirectoryMetadata(
+  left: CanonicalSnapshot,
+  right: CanonicalSnapshot,
+  ignoredDirectories: ReadonlySet<string>,
+): boolean {
+  if (
+    left.root !== right.root || left.rootDev !== right.rootDev || left.rootIno !== right.rootIno ||
+    left.canonicalPresent !== right.canonicalPresent || left.canonicalDev !== right.canonicalDev ||
+    left.canonicalIno !== right.canonicalIno || left.directories.join("\0") !== right.directories.join("\0") ||
+    left.directoryIdentities.size !== right.directoryIdentities.size || left.files.size !== right.files.size
+  ) return false;
+  for (const [path, expected] of left.directoryIdentities) {
+    if (ignoredDirectories.has(path)) continue;
+    const actual = right.directoryIdentities.get(path);
+    if (actual === undefined || !sameFileIdentity(expected, actual)) return false;
+  }
+  for (const [path, expected] of left.files) {
+    const actual = right.files.get(path);
+    if (actual === undefined || actual.digest !== expected.digest || actual.dev !== expected.dev || actual.ino !== expected.ino ||
+      actual.mode !== expected.mode || actual.size !== expected.size || actual.mtimeMs !== expected.mtimeMs || actual.ctimeMs !== expected.ctimeMs) return false;
+  }
+  return true;
+}
+
 async function syncPath(path: string): Promise<void> {
   const handle = await open(path, "r");
   try {
@@ -243,12 +412,56 @@ async function durableWrite(path: string, bytes: Uint8Array): Promise<void> {
   await syncPath(path);
 }
 
-function validateNextTree(nextFiles: CanonicalTree, operation: "import" | "reconcile" | "fmt" | "migrate"): void {
+function validateNextTree(nextFiles: CanonicalTree, operation: "import" | "edit" | "reconcile" | "fmt" | "migrate" | "install"): void {
   const ctx = context(operation);
   if (!nextFiles.has(".tfsb/project.toml")) fail(ctx, "TRANSACTION_INVALID_PLAN", "Next tree lacks project.toml.");
-  for (const path of nextFiles.keys()) {
+  let receiptCount = 0;
+  let baselineCount = 0;
+  let baselineBytes = 0;
+  let rasterReceiptCount = 0;
+  for (const [path, bytes] of nextFiles) {
     if (!supportedFile(path)) fail(ctx, "TRANSACTION_INVALID_PLAN", `Next tree contains unsupported path '${path}'.`, path);
+    const fixedBrand = getFixedBrandFile(path);
+    if (fixedBrand !== undefined && bytes.byteLength > fixedBrand.maxBytes) {
+      fail(
+        ctx,
+        "RESOURCE_LIMIT_EXCEEDED",
+        `Fixed brand file '${path}' (${bytes.byteLength} bytes) exceeds limit ${fixedBrand.maxBytes} bytes.`,
+        path,
+      );
+    }
+    if (path === ".tfsb/brand.lock.json" && bytes.byteLength > 1_048_576) fail(ctx, "RESOURCE_LIMIT_EXCEEDED", "brand.lock.json exceeds 1 MiB.", path);
+    if (isDerivedReceiptPath(path)) {
+      receiptCount++;
+      if (receiptCount > DERIVED_RECEIPT_MAX_COUNT) {
+        fail(
+          ctx,
+          "RESOURCE_LIMIT_EXCEEDED",
+          `Derived receipts count exceeds limit ${DERIVED_RECEIPT_MAX_COUNT}.`,
+          path,
+        );
+      }
+      if (bytes.byteLength > DERIVED_RECEIPT_MAX_BYTES) {
+        fail(
+          ctx,
+          "RESOURCE_LIMIT_EXCEEDED",
+          `Derived receipt '${path}' (${bytes.byteLength} bytes) exceeds limit ${DERIVED_RECEIPT_MAX_BYTES} bytes.`,
+          path,
+        );
+      }
+    }
+    if (isBrandBaselinePath(path)) {
+      baselineCount++;
+      baselineBytes += bytes.byteLength;
+      if (baselineCount > BRAND_BASELINE_MAX_FILES || bytes.byteLength > BRAND_BASELINE_MAX_FILE_BYTES || baselineBytes > BRAND_BASELINE_MAX_AGGREGATE_BYTES) fail(ctx, "RESOURCE_LIMIT_EXCEEDED", "Brand baseline limits exceeded.", path);
+    }
+    if (isRasterReceiptPath(path)) {
+      rasterReceiptCount++;
+      if (rasterReceiptCount > BRAND_RASTER_RECEIPT_MAX_FILES || bytes.byteLength > BRAND_RASTER_RECEIPT_MAX_FILE_BYTES) fail(ctx, "RESOURCE_LIMIT_EXCEEDED", "Raster receipt limits exceeded.", path);
+    }
   }
+  if (baselineCount > 0 && !nextFiles.has(".tfsb/brand-qa.toml")) fail(ctx, "TRANSACTION_INVALID_PLAN", "Brand baselines require brand-qa.toml.", BRAND_BASELINE_DIR);
+  if (rasterReceiptCount > 0 && !nextFiles.has(".tfsb/brand-exports.toml")) fail(ctx, "TRANSACTION_INVALID_PLAN", "Raster receipts require brand-exports.toml.", BRAND_RASTER_RECEIPT_DIR);
 }
 
 async function cleanupStage(stage: string): Promise<void> {
@@ -292,6 +505,10 @@ export async function executeCanonicalTransaction(options: CanonicalTransactionO
     await mkdir(join(stage, "assets"), { mode: 0o700 });
     const needsCompanions = [...options.nextFiles.keys()].some((path) => path.startsWith(".tfsb/companions/"));
     if (needsCompanions) await mkdir(join(stage, "companions"), { mode: 0o700 });
+    const needsDerived = [...options.nextFiles.keys()].some((path) => path.startsWith(".tfsb/derived/"));
+    if (needsDerived) await mkdir(join(stage, "derived"), { mode: 0o700 });
+    const baselineProfiles = [...new Set([...options.nextFiles.keys()].filter(isBrandBaselinePath).map((path) => path.split("/")[2]!))].sort();
+    if (baselineProfiles.length > 0) await mkdir(join(stage, "brand-baselines"), { mode: 0o700 });
     await options.hooks?.beforeStageWrite?.();
     for (const [relative, bytes] of [...options.nextFiles.entries()].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)) {
       const inside = relative.slice(".tfsb/".length);
@@ -301,6 +518,9 @@ export async function executeCanonicalTransaction(options: CanonicalTransactionO
     }
     await syncPath(join(stage, "assets"));
     if (needsCompanions) await syncPath(join(stage, "companions"));
+    if (needsDerived) await syncPath(join(stage, "derived"));
+    for (const profile of baselineProfiles) await syncPath(join(stage, "brand-baselines", profile));
+    if (baselineProfiles.length > 0) await syncPath(join(stage, "brand-baselines"));
     await syncPath(stage);
     await options.hooks?.afterStageWrite?.();
     await options.validateStagedTree?.(stage);
@@ -326,6 +546,19 @@ export async function executeCanonicalTransaction(options: CanonicalTransactionO
       await options.hooks?.beforePromotion?.();
       if (!options.expectedSnapshot.canonicalPresent && (await optionalLstat(canonical)) !== undefined) {
         fail(ctx, "CANONICAL_CHANGED_DURING_PLAN", "Canonical tree appeared after import planning.", ".tfsb");
+      }
+      await options.validateStagedTree?.(stage);
+      if (options.archiveSnapshot !== undefined) await verifyArchiveSnapshot(options.archiveSnapshot, operation);
+      if (options.verifyExternalState !== undefined) {
+        try {
+          await options.verifyExternalState();
+        } catch (extErr) {
+          if (backupCreated && extErr instanceof DiagnosticError && extErr.diagnostic.code === "ROOT_NOT_FOUND") {
+            // Canonical tree was backed up to backup location during promotion window
+          } else {
+            throw extErr;
+          }
+        }
       }
       await rename(stage, canonical);
       promoted = true;

@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"install-plan-1","result":{"planToken":"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG","planDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","expiresInMs":600000,"method":"project.install.plan","summary":{"itemCount":1,"items":[{"assetId":"asset:mark","source":"mark.svg","configuredDestination":"icons/mark.svg"}]}}}

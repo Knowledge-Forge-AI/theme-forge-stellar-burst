@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledge-forge.ai/tfsb/design-evidence/v1/candidate.schema.json",
+  "title": "TFSB design candidate packet v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "briefDigest", "candidateId", "revision", "author", "title", "rationale", "proposal", "claims", "qaSummary", "materials", "visualEvidence", "candidateDigest"],
+  "properties": {
+    "schema": { "const": "tfsb.design-candidate" }, "schemaVersion": { "const": 1 }, "briefDigest": { "$ref": "#/$defs/digest" }, "candidateId": { "$ref": "#/$defs/id" }, "revision": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }, "revisionOf": { "$ref": "#/$defs/digest" },
+    "author": { "$ref": "#/$defs/author" }, "title": { "type": "string", "maxLength": 512 }, "rationale": { "type": "string", "maxLength": 4096 }, "proposal": { "$ref": "#/$defs/proposal" },
+    "claims": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/claim" } }, "qaSummary": { "$ref": "#/$defs/qaSummary" }, "materials": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/material" } },
+    "visualEvidence": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "../tfsb-studio-v1/results-1.2.schema.json#/$defs/visualEvidence" } }, "candidateDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }, "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$" },
+    "author": { "type": "object", "additionalProperties": false, "required": ["kind", "label"], "properties": { "kind": { "enum": ["human", "agent", "tool"] }, "label": { "type": "string", "minLength": 1, "maxLength": 256 }, "toolName": { "type": "string", "minLength": 1, "maxLength": 256 }, "toolVersion": { "type": "string", "minLength": 1, "maxLength": 128 } } },
+    "sourcePackage": { "type": "object", "additionalProperties": false, "required": ["packageId", "brandVersion", "brandSystemDigest"], "properties": { "packageId": { "type": "string", "minLength": 1, "maxLength": 214, "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*|[a-z0-9][a-z0-9._-]*)$" }, "brandVersion": { "type": "string", "minLength": 1, "maxLength": 64 }, "brandSystemDigest": { "$ref": "#/$defs/digest" } } },
+    "parameterValue": { "type": "object", "additionalProperties": false, "required": ["parameter", "value"], "properties": { "parameter": { "$ref": "#/$defs/id" }, "value": { "type": "string", "minLength": 1, "maxLength": 512 } } },
+    "parameterSelection": { "type": "object", "additionalProperties": false, "required": ["profileId", "values"], "properties": { "profileId": { "$ref": "#/$defs/id" }, "values": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/parameterValue" } } } },
+    "proposal": { "oneOf": [
+      { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "evidence-only" } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "selection"], "properties": { "kind": { "const": "derive" }, "selection": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "all" } } }, { "type": "object", "additionalProperties": false, "required": ["kind", "recipeIds"], "properties": { "kind": { "const": "recipes" }, "recipeIds": { "type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } } } }] } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "profileId", "caseId"], "properties": { "kind": { "const": "qa-baseline" }, "profileId": { "$ref": "#/$defs/id" }, "caseId": { "$ref": "#/$defs/id" } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "sourcePackages", "profileIds", "parameters"], "properties": { "kind": { "const": "consumer-install" }, "sourcePackages": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/sourcePackage" } }, "profileIds": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }, "parameters": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/parameterSelection" } } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "sourcePackages"], "properties": { "kind": { "const": "consumer-sync" }, "sourcePackages": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/sourcePackage" } }, "profileIds": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }, "parameters": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/parameterSelection" } } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "profileId"], "properties": { "kind": { "const": "export" }, "profileId": { "$ref": "#/$defs/id" }, "outputIds": { "type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } } } }
+    ] },
+    "claim": { "type": "object", "additionalProperties": false, "required": ["category", "severity", "message"], "properties": { "category": { "enum": ["composition", "alignment", "spacing", "legibility", "contrast", "color", "brand-fit", "accessibility", "small-size", "technical", "other"] }, "severity": { "enum": ["note", "minor", "substantive", "blocking"] }, "message": { "type": "string", "maxLength": 4096 } } },
+    "qaSummary": { "type": "object", "additionalProperties": false, "required": ["status"], "properties": { "status": { "enum": ["pass", "fail", "skipped", "unavailable", "error"] }, "qaResultDigest": { "$ref": "#/$defs/digest" } } },
+    "material": { "type": "object", "additionalProperties": false, "required": ["kind", "identifier", "digest"], "properties": { "kind": { "enum": ["user-supplied", "tfsb-rendered", "third-party", "external-claim"] }, "identifier": { "$ref": "#/$defs/id" }, "digest": { "$ref": "#/$defs/digest" }, "licenseExpression": { "type": "string", "minLength": 1, "maxLength": 256 }, "noticeDigest": { "$ref": "#/$defs/digest" } } }
+  }
+}

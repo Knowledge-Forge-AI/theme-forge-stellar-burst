@@ -1,0 +1,1341 @@
+{
+  "schema": "tfsb.design-evidence-negative-corpus",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "brief-non-nfc",
+      "packet": {
+        "schema": "tfsb.design-brief",
+        "schemaVersion": 1,
+        "briefId": "terminal-nova-mark",
+        "revision": 1,
+        "title": "Terminal Nova Café mark review",
+        "objective": "Café",
+        "context": {
+          "corePackageVersion": "0.4.0",
+          "studioVersion": "0.1.0",
+          "studioProtocolVersion": "1.2",
+          "project": {
+            "label": "Terminal Nova demo",
+            "canonicalDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "source": {
+            "packageId": "@knowledge-forge-ai/theme-forge-stellar-burst",
+            "brandVersion": "0.3.0",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        },
+        "targets": [
+          {
+            "targetId": "brand-mark",
+            "selector": {
+              "kind": "asset",
+              "assetId": "brand-mark"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "mark"
+          },
+          {
+            "targetId": "brand-wordmark",
+            "selector": {
+              "kind": "binding",
+              "family": "terminal-nova",
+              "role": "wordmark",
+              "variant": "primary"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "wordmark"
+          }
+        ],
+        "constraints": {
+          "allowedProposalKinds": [
+            "consumer-install",
+            "derive",
+            "evidence-only"
+          ],
+          "requiredTokenIds": [
+            "color.canvas",
+            "color.mark"
+          ],
+          "requiredRecipeIds": [
+            "mark-small"
+          ],
+          "qaProfileIds": [
+            "profile.compact"
+          ],
+          "renderTuples": [
+            {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            {
+              "width": 256,
+              "height": 128,
+              "background": "token:canvas-dark"
+            }
+          ],
+          "acceptanceCriteria": [
+            "The mark remains legible at sixteen pixels.",
+            "Unicode Café labels remain NFC."
+          ],
+          "prohibitedChanges": [
+            "Do not change package, project, or plan authority."
+          ]
+        },
+        "materials": [
+          {
+            "kind": "tfsb-rendered",
+            "identifier": "brand-mark-current",
+            "digest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "project-render",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "evidenceDigest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "briefDigest": "sha256:5b3863c74b9dc7ce7087023d3735e50e5322c309ea6f0773f16727555ff0c04a"
+      }
+    },
+    {
+      "id": "brief-unsorted-targets",
+      "packet": {
+        "schema": "tfsb.design-brief",
+        "schemaVersion": 1,
+        "briefId": "terminal-nova-mark",
+        "revision": 1,
+        "title": "Terminal Nova Café mark review",
+        "objective": "Compare profile: compact and align / center treatments while preserving the current brand system.",
+        "context": {
+          "corePackageVersion": "0.4.0",
+          "studioVersion": "0.1.0",
+          "studioProtocolVersion": "1.2",
+          "project": {
+            "label": "Terminal Nova demo",
+            "canonicalDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "source": {
+            "packageId": "@knowledge-forge-ai/theme-forge-stellar-burst",
+            "brandVersion": "0.3.0",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        },
+        "targets": [
+          {
+            "targetId": "brand-wordmark",
+            "selector": {
+              "kind": "binding",
+              "family": "terminal-nova",
+              "role": "wordmark",
+              "variant": "primary"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "wordmark"
+          },
+          {
+            "targetId": "brand-mark",
+            "selector": {
+              "kind": "asset",
+              "assetId": "brand-mark"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "mark"
+          }
+        ],
+        "constraints": {
+          "allowedProposalKinds": [
+            "consumer-install",
+            "derive",
+            "evidence-only"
+          ],
+          "requiredTokenIds": [
+            "color.canvas",
+            "color.mark"
+          ],
+          "requiredRecipeIds": [
+            "mark-small"
+          ],
+          "qaProfileIds": [
+            "profile.compact"
+          ],
+          "renderTuples": [
+            {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            {
+              "width": 256,
+              "height": 128,
+              "background": "token:canvas-dark"
+            }
+          ],
+          "acceptanceCriteria": [
+            "The mark remains legible at sixteen pixels.",
+            "Unicode Café labels remain NFC."
+          ],
+          "prohibitedChanges": [
+            "Do not change package, project, or plan authority."
+          ]
+        },
+        "materials": [
+          {
+            "kind": "tfsb-rendered",
+            "identifier": "brand-mark-current",
+            "digest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "project-render",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "evidenceDigest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "briefDigest": "sha256:5ba70192a44caa0e6252408c676d539df3e99299c517f3f3ed4c35f44b30f420"
+      }
+    },
+    {
+      "id": "brief-invalid-scoped-package",
+      "packet": {
+        "schema": "tfsb.design-brief",
+        "schemaVersion": 1,
+        "briefId": "terminal-nova-mark",
+        "revision": 1,
+        "title": "Terminal Nova Café mark review",
+        "objective": "Compare profile: compact and align / center treatments while preserving the current brand system.",
+        "context": {
+          "corePackageVersion": "0.4.0",
+          "studioVersion": "0.1.0",
+          "studioProtocolVersion": "1.2",
+          "project": {
+            "label": "Terminal Nova demo",
+            "canonicalDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "source": {
+            "packageId": "@Knowledge/theme",
+            "brandVersion": "0.3.0",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        },
+        "targets": [
+          {
+            "targetId": "brand-mark",
+            "selector": {
+              "kind": "asset",
+              "assetId": "brand-mark"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "mark"
+          },
+          {
+            "targetId": "brand-wordmark",
+            "selector": {
+              "kind": "binding",
+              "family": "terminal-nova",
+              "role": "wordmark",
+              "variant": "primary"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "wordmark"
+          }
+        ],
+        "constraints": {
+          "allowedProposalKinds": [
+            "consumer-install",
+            "derive",
+            "evidence-only"
+          ],
+          "requiredTokenIds": [
+            "color.canvas",
+            "color.mark"
+          ],
+          "requiredRecipeIds": [
+            "mark-small"
+          ],
+          "qaProfileIds": [
+            "profile.compact"
+          ],
+          "renderTuples": [
+            {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            {
+              "width": 256,
+              "height": 128,
+              "background": "token:canvas-dark"
+            }
+          ],
+          "acceptanceCriteria": [
+            "The mark remains legible at sixteen pixels.",
+            "Unicode Café labels remain NFC."
+          ],
+          "prohibitedChanges": [
+            "Do not change package, project, or plan authority."
+          ]
+        },
+        "materials": [
+          {
+            "kind": "tfsb-rendered",
+            "identifier": "brand-mark-current",
+            "digest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "project-render",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "evidenceDigest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "briefDigest": "sha256:bf5a006661aab576eb0ec42b1bba102864753213263eb4726d60c8295e10c13c"
+      }
+    },
+    {
+      "id": "brief-invalid-token-background",
+      "packet": {
+        "schema": "tfsb.design-brief",
+        "schemaVersion": 1,
+        "briefId": "terminal-nova-mark",
+        "revision": 1,
+        "title": "Terminal Nova Café mark review",
+        "objective": "Compare profile: compact and align / center treatments while preserving the current brand system.",
+        "context": {
+          "corePackageVersion": "0.4.0",
+          "studioVersion": "0.1.0",
+          "studioProtocolVersion": "1.2",
+          "project": {
+            "label": "Terminal Nova demo",
+            "canonicalDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "source": {
+            "packageId": "@knowledge-forge-ai/theme-forge-stellar-burst",
+            "brandVersion": "0.3.0",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        },
+        "targets": [
+          {
+            "targetId": "brand-mark",
+            "selector": {
+              "kind": "asset",
+              "assetId": "brand-mark"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "mark"
+          },
+          {
+            "targetId": "brand-wordmark",
+            "selector": {
+              "kind": "binding",
+              "family": "terminal-nova",
+              "role": "wordmark",
+              "variant": "primary"
+            },
+            "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "purpose": "wordmark"
+          }
+        ],
+        "constraints": {
+          "allowedProposalKinds": [
+            "consumer-install",
+            "derive",
+            "evidence-only"
+          ],
+          "requiredTokenIds": [
+            "color.canvas",
+            "color.mark"
+          ],
+          "requiredRecipeIds": [
+            "mark-small"
+          ],
+          "qaProfileIds": [
+            "profile.compact"
+          ],
+          "renderTuples": [
+            {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            {
+              "width": 256,
+              "height": 128,
+              "background": "token:Canvas"
+            }
+          ],
+          "acceptanceCriteria": [
+            "The mark remains legible at sixteen pixels.",
+            "Unicode Café labels remain NFC."
+          ],
+          "prohibitedChanges": [
+            "Do not change package, project, or plan authority."
+          ]
+        },
+        "materials": [
+          {
+            "kind": "tfsb-rendered",
+            "identifier": "brand-mark-current",
+            "digest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "project-render",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "evidenceDigest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "briefDigest": "sha256:b2d5e4fcf18bf6b70e1df8024c30e64157739aea4a17023088399c0d874c3ed4"
+      }
+    },
+    {
+      "id": "candidate-source-package-cap",
+      "packet": {
+        "schema": "tfsb.design-candidate",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateId": "candidate-b",
+        "revision": 2,
+        "revisionOf": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+        "author": {
+          "kind": "human",
+          "label": "Fixture designer"
+        },
+        "title": "Consumer profile candidate",
+        "rationale": "Compare a consumer intent with exact scoped source-package provenance.",
+        "proposal": {
+          "kind": "consumer-install",
+          "sourcePackages": [
+            {
+              "packageId": "package-0",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-1",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-2",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-3",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-4",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-5",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-6",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-7",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "package-8",
+              "brandVersion": "1.0.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          ],
+          "profileIds": [
+            "profile.compact"
+          ],
+          "parameters": [
+            {
+              "profileId": "profile.compact",
+              "values": [
+                {
+                  "parameter": "alignment",
+                  "value": "center"
+                }
+              ]
+            }
+          ]
+        },
+        "claims": [
+          {
+            "category": "brand-fit",
+            "severity": "minor",
+            "message": "Human review is required before disposition."
+          }
+        ],
+        "qaSummary": {
+          "status": "skipped"
+        },
+        "materials": [
+          {
+            "kind": "external-claim",
+            "identifier": "candidate-b-claim",
+            "digest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "qa-baseline",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark-baseline",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "baseline",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              },
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "qaDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "difference": {
+              "changedPixels": 0,
+              "maximumChannelDelta": 0,
+              "changedBounds": null,
+              "claim": "pixel-equal-for-this-renderer-and-case-only"
+            },
+            "evidenceDigest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3"
+          }
+        ],
+        "candidateDigest": "sha256:27666f279f1e93055e260dbaf961937c80f7febf369e5cdd889a4a74493637cf"
+      }
+    },
+    {
+      "id": "candidate-parameter-value-bytes",
+      "packet": {
+        "schema": "tfsb.design-candidate",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateId": "candidate-b",
+        "revision": 2,
+        "revisionOf": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+        "author": {
+          "kind": "human",
+          "label": "Fixture designer"
+        },
+        "title": "Consumer profile candidate",
+        "rationale": "Compare a consumer intent with exact scoped source-package provenance.",
+        "proposal": {
+          "kind": "consumer-install",
+          "sourcePackages": [
+            {
+              "packageId": "@knowledge-forge-ai/tfsb-raster-resvg",
+              "brandVersion": "0.1.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            {
+              "packageId": "@knowledge-forge-ai/theme-forge-stellar-burst",
+              "brandVersion": "0.3.0",
+              "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          ],
+          "profileIds": [
+            "profile.compact"
+          ],
+          "parameters": [
+            {
+              "profileId": "profile.compact",
+              "values": [
+                {
+                  "parameter": "alignment",
+                  "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                }
+              ]
+            }
+          ]
+        },
+        "claims": [
+          {
+            "category": "brand-fit",
+            "severity": "minor",
+            "message": "Human review is required before disposition."
+          }
+        ],
+        "qaSummary": {
+          "status": "skipped"
+        },
+        "materials": [
+          {
+            "kind": "external-claim",
+            "identifier": "candidate-b-claim",
+            "digest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "qa-baseline",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark-baseline",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "baseline",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              },
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "qaDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "difference": {
+              "changedPixels": 0,
+              "maximumChannelDelta": 0,
+              "changedBounds": null,
+              "claim": "pixel-equal-for-this-renderer-and-case-only"
+            },
+            "evidenceDigest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3"
+          }
+        ],
+        "candidateDigest": "sha256:d4ebcd5be9deae9cd40069ff58aae57ddd7cb0e869aac65e230adf0745104058"
+      }
+    },
+    {
+      "id": "candidate-unsorted-materials",
+      "packet": {
+        "schema": "tfsb.design-candidate",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateId": "candidate-a",
+        "revision": 1,
+        "author": {
+          "kind": "agent",
+          "label": "External packet simulator",
+          "toolName": "public-api-fixture",
+          "toolVersion": "1.0.0"
+        },
+        "title": "Recipe-directed Café candidate",
+        "rationale": "Use profile: compact and align / center while keeping plan authority in TFSB.",
+        "proposal": {
+          "kind": "derive",
+          "selection": {
+            "kind": "recipes",
+            "recipeIds": [
+              "mark-small"
+            ]
+          }
+        },
+        "claims": [
+          {
+            "category": "small-size",
+            "severity": "note",
+            "message": "The supplied renders are intended for multi-artifact review."
+          }
+        ],
+        "qaSummary": {
+          "status": "unavailable"
+        },
+        "materials": [
+          {
+            "kind": "tfsb-rendered",
+            "identifier": "candidate-a-render",
+            "digest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          },
+          {
+            "kind": "external-claim",
+            "identifier": "agent-rationale",
+            "digest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "brand-diff",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-wordmark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "before",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              },
+              {
+                "role": "after",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "sourceDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "difference": {
+              "changedPixels": 0,
+              "maximumChannelDelta": 0,
+              "changedBounds": null,
+              "claim": "pixel-equal-for-this-renderer-and-case-only"
+            },
+            "evidenceDigest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799"
+          },
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "project-render",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "evidenceDigest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "candidateDigest": "sha256:621a1b0717b2425b9e080cfb26a18e3ceb224ddf44dce5898a02047ce6dd754c"
+      }
+    },
+    {
+      "id": "candidate-invalid-artifact-role",
+      "packet": {
+        "schema": "tfsb.design-candidate",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateId": "candidate-a",
+        "revision": 1,
+        "author": {
+          "kind": "agent",
+          "label": "External packet simulator",
+          "toolName": "public-api-fixture",
+          "toolVersion": "1.0.0"
+        },
+        "title": "Recipe-directed Café candidate",
+        "rationale": "Use profile: compact and align / center while keeping plan authority in TFSB.",
+        "proposal": {
+          "kind": "derive",
+          "selection": {
+            "kind": "recipes",
+            "recipeIds": [
+              "mark-small"
+            ]
+          }
+        },
+        "claims": [
+          {
+            "category": "small-size",
+            "severity": "note",
+            "message": "The supplied renders are intended for multi-artifact review."
+          }
+        ],
+        "qaSummary": {
+          "status": "unavailable"
+        },
+        "materials": [
+          {
+            "kind": "external-claim",
+            "identifier": "agent-rationale",
+            "digest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799"
+          },
+          {
+            "kind": "tfsb-rendered",
+            "identifier": "candidate-a-render",
+            "digest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "visualEvidence": [
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "brand-diff",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-wordmark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "preview",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              },
+              {
+                "role": "after",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "sourceDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "difference": {
+              "changedPixels": 0,
+              "maximumChannelDelta": 0,
+              "changedBounds": null,
+              "claim": "pixel-equal-for-this-renderer-and-case-only"
+            },
+            "evidenceDigest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799"
+          },
+          {
+            "schema": "tfsb.studio-visual-evidence",
+            "schemaVersion": 1,
+            "kind": "project-render",
+            "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "target": {
+              "assetId": "brand-mark",
+              "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "configuration": {
+              "width": 16,
+              "height": 16,
+              "background": "transparent"
+            },
+            "renderer": {
+              "id": "resvg-png-v1",
+              "version": "2.6.2",
+              "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+              "platformClaim": "darwin-arm64"
+            },
+            "artifacts": [
+              {
+                "role": "current",
+                "mediaType": "image/png",
+                "encoding": "base64",
+                "width": 16,
+                "height": 16,
+                "byteLength": 82,
+                "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+                "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+                "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg=="
+              }
+            ],
+            "evidenceDigest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16"
+          }
+        ],
+        "candidateDigest": "sha256:7bcf40e5a0841832651a77298472749bc7a769270e7117387749dd6bb03fbf9d"
+      }
+    },
+    {
+      "id": "review-unsorted-annotations",
+      "packet": {
+        "schema": "tfsb.design-review",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateDigests": [
+          "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+          "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68"
+        ],
+        "annotations": [
+          {
+            "annotationId": "region-note",
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "visualEvidenceDigest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3",
+            "artifactRole": "baseline",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "region",
+              "xMillionths": 100000,
+              "yMillionths": 100000,
+              "widthMillionths": 400000,
+              "heightMillionths": 400000
+            },
+            "category": "alignment",
+            "severity": "minor",
+            "comment": "Inspect align / center in this normalized region."
+          },
+          {
+            "annotationId": "artifact-note",
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "visualEvidenceDigest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799",
+            "artifactRole": "after",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "artifact"
+            },
+            "category": "small-size",
+            "severity": "note",
+            "comment": "Review the complete after artifact at the target size."
+          }
+        ],
+        "dispositions": [
+          {
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "disposition": "preferred"
+          },
+          {
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "disposition": "needs-revision"
+          }
+        ],
+        "overallDisposition": {
+          "kind": "needs-revision",
+          "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68"
+        },
+        "summary": "Candidate A is preferred; candidate B needs-revision for the profile: compact alignment.",
+        "reviewDigest": "sha256:512c4165e7d43d02e16c9cd9af176773bb9896c5cd005c2d03cae74fac3178c9"
+      }
+    },
+    {
+      "id": "review-overall-mismatch",
+      "packet": {
+        "schema": "tfsb.design-review",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateDigests": [
+          "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+          "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68"
+        ],
+        "annotations": [
+          {
+            "annotationId": "artifact-note",
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "visualEvidenceDigest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799",
+            "artifactRole": "after",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "artifact"
+            },
+            "category": "small-size",
+            "severity": "note",
+            "comment": "Review the complete after artifact at the target size."
+          },
+          {
+            "annotationId": "region-note",
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "visualEvidenceDigest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3",
+            "artifactRole": "baseline",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "region",
+              "xMillionths": 100000,
+              "yMillionths": 100000,
+              "widthMillionths": 400000,
+              "heightMillionths": 400000
+            },
+            "category": "alignment",
+            "severity": "minor",
+            "comment": "Inspect align / center in this normalized region."
+          }
+        ],
+        "dispositions": [
+          {
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "disposition": "preferred"
+          },
+          {
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "disposition": "needs-revision"
+          }
+        ],
+        "overallDisposition": {
+          "kind": "approved",
+          "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2"
+        },
+        "summary": "Candidate A is preferred; candidate B needs-revision for the profile: compact alignment.",
+        "reviewDigest": "sha256:a90caa5ae9ddbe702a13ed06537a6e5796c43aa3a213d48f3540e9298fcb97f6"
+      }
+    },
+    {
+      "id": "review-rejected-all-mismatch",
+      "packet": {
+        "schema": "tfsb.design-review",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateDigests": [
+          "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+          "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68"
+        ],
+        "annotations": [
+          {
+            "annotationId": "artifact-note",
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "visualEvidenceDigest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799",
+            "artifactRole": "after",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "artifact"
+            },
+            "category": "small-size",
+            "severity": "note",
+            "comment": "Review the complete after artifact at the target size."
+          },
+          {
+            "annotationId": "region-note",
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "visualEvidenceDigest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3",
+            "artifactRole": "baseline",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "region",
+              "xMillionths": 100000,
+              "yMillionths": 100000,
+              "widthMillionths": 400000,
+              "heightMillionths": 400000
+            },
+            "category": "alignment",
+            "severity": "minor",
+            "comment": "Inspect align / center in this normalized region."
+          }
+        ],
+        "dispositions": [
+          {
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "disposition": "preferred"
+          },
+          {
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "disposition": "needs-revision"
+          }
+        ],
+        "overallDisposition": {
+          "kind": "rejected-all"
+        },
+        "summary": "Candidate A is preferred; candidate B needs-revision for the profile: compact alignment.",
+        "reviewDigest": "sha256:9cd7da3e875256a79c56614e6c1df126e138fa0fe6e208b518047ba95ff691b3"
+      }
+    },
+    {
+      "id": "review-no-decision-with-preferred",
+      "packet": {
+        "schema": "tfsb.design-review",
+        "schemaVersion": 1,
+        "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+        "candidateDigests": [
+          "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+          "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68"
+        ],
+        "annotations": [
+          {
+            "annotationId": "artifact-note",
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "visualEvidenceDigest": "sha256:52a369511a59955bf5153e0f3f0259a38818a18084e1c8480a4e1aadd448c799",
+            "artifactRole": "after",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "artifact"
+            },
+            "category": "small-size",
+            "severity": "note",
+            "comment": "Review the complete after artifact at the target size."
+          },
+          {
+            "annotationId": "region-note",
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "visualEvidenceDigest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3",
+            "artifactRole": "baseline",
+            "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+            "scope": {
+              "kind": "region",
+              "xMillionths": 100000,
+              "yMillionths": 100000,
+              "widthMillionths": 400000,
+              "heightMillionths": 400000
+            },
+            "category": "alignment",
+            "severity": "minor",
+            "comment": "Inspect align / center in this normalized region."
+          }
+        ],
+        "dispositions": [
+          {
+            "candidateDigest": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+            "disposition": "preferred"
+          },
+          {
+            "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+            "disposition": "needs-revision"
+          }
+        ],
+        "overallDisposition": {
+          "kind": "no-decision"
+        },
+        "summary": "Candidate A is preferred; candidate B needs-revision for the profile: compact alignment.",
+        "reviewDigest": "sha256:6b06f8d502aa2b1b9b09d26c9880490b3a28fbd46211a07c806b6b36a5615239"
+      }
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "schema": "tfsb.supply-chain-tools-v1",
+  "schemaVersion": 1,
+  "discoveryDate": "2026-09-05",
+  "tools": {
+    "syft": {
+      "product": "syft",
+      "repository": "https://github.com/anchore/syft",
+      "license": "Apache-2.0",
+      "version": "1.51.1",
+      "immutable_pin": "v1.51.1",
+      "integrity": "SHA-256 over official release archives verified against official syft_1.51.1_checksums.txt",
+      "assets": {
+        "darwin-arm64": {
+          "archive": "syft_1.51.1_darwin_arm64.tar.gz",
+          "binary_path": "syft",
+          "sha256": "ac063af3b9874769deb7ea1e6d76841e68f9e3bb50cd654226fc977de65532c1",
+          "url": "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_darwin_arm64.tar.gz"
+        },
+        "linux-amd64": {
+          "archive": "syft_1.51.1_linux_amd64.tar.gz",
+          "binary_path": "syft",
+          "sha256": "8fcb33017a0dc1058298c923c436d19dfa68ae93968e0b423248542e3afb9fc3",
+          "url": "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_linux_amd64.tar.gz"
+        }
+      }
+    },
+    "grype": {
+      "product": "grype",
+      "repository": "https://github.com/anchore/grype",
+      "license": "Apache-2.0",
+      "version": "0.118.0",
+      "immutable_pin": "v0.118.0",
+      "integrity": "SHA-256 over official release archives verified against official grype_0.118.0_checksums.txt",
+      "vulnerability_db_policy": "Grype vulnerability database is fetched dynamically from official endpoints at scan time; failure to download or update blocks qualification; database digest and tool metadata are recorded in evidence",
+      "assets": {
+        "darwin-arm64": {
+          "archive": "grype_0.118.0_darwin_arm64.tar.gz",
+          "binary_path": "grype",
+          "sha256": "938f050bb5076c8aa761867b39843abad2414dfe4cc82b7d36886e634f49c640",
+          "url": "https://github.com/anchore/grype/releases/download/v0.118.0/grype_0.118.0_darwin_arm64.tar.gz"
+        },
+        "linux-amd64": {
+          "archive": "grype_0.118.0_linux_amd64.tar.gz",
+          "binary_path": "grype",
+          "sha256": "1d444c5e7360471815f7158f71935fcecc68a3c417d85c7344f770854300bba2",
+          "url": "https://github.com/anchore/grype/releases/download/v0.118.0/grype_0.118.0_linux_amd64.tar.gz"
+        }
+      }
+    },
+    "actionlint": {
+      "product": "actionlint",
+      "repository": "https://github.com/rhysd/actionlint",
+      "license": "MIT",
+      "version": "1.7.12",
+      "immutable_pin": "v1.7.12",
+      "integrity": "SHA-256 over official release archives",
+      "assets": {
+        "darwin-arm64": {
+          "archive": "actionlint_1.7.12_darwin_arm64.tar.gz",
+          "binary_path": "actionlint",
+          "sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f",
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz"
+        },
+        "linux-amd64": {
+          "archive": "actionlint_1.7.12_linux_amd64.tar.gz",
+          "binary_path": "actionlint",
+          "sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+          "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
+        }
+      }
+    },
+    "zizmor": {
+      "product": "zizmor",
+      "repository": "https://github.com/zizmorcore/zizmor",
+      "license": "MIT",
+      "version": "1.29.0",
+      "immutable_pin": "v1.29.0",
+      "integrity": "SHA-256 over official release archives",
+      "assets": {
+        "darwin-arm64": {
+          "archive": "zizmor-aarch64-apple-darwin.tar.gz",
+          "binary_path": "zizmor",
+          "sha256": "720322fade9e83a9c7953944c438f2ba942636b86b96a8f0e6b15ce94c8a6b6f",
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.29.0/zizmor-aarch64-apple-darwin.tar.gz"
+        },
+        "linux-amd64": {
+          "archive": "zizmor-x86_64-unknown-linux-gnu.tar.gz",
+          "binary_path": "zizmor",
+          "sha256": "dd96df044a6e8538d5f423790f453bdd03d49e5b2bcc38214acc41a2f1297839",
+          "url": "https://github.com/zizmorcore/zizmor/releases/download/v1.29.0/zizmor-x86_64-unknown-linux-gnu.tar.gz"
+        }
+      }
+    },
+    "betterleaks": {
+      "product": "betterleaks",
+      "repository": "https://github.com/betterleaks/betterleaks",
+      "license": "MIT",
+      "version": "1.8.1",
+      "immutable_pin": "v1.8.1",
+      "integrity": "SHA-256 over official release archives",
+      "assets": {
+        "darwin-arm64": {
+          "archive": "betterleaks_1.8.1_darwin_arm64.tar.gz",
+          "binary_path": "betterleaks",
+          "sha256": "8e80f33b5f2a7426b390347b9fd466033723cb94b6bdffa7572632e2eaec964e",
+          "url": "https://github.com/betterleaks/betterleaks/releases/download/v1.8.1/betterleaks_1.8.1_darwin_arm64.tar.gz"
+        },
+        "linux-amd64": {
+          "archive": "betterleaks_1.8.1_linux_x64.tar.gz",
+          "binary_path": "betterleaks",
+          "sha256": "efa407244e1ea8e35f582b8a42becdeac08bdead04f68eb752adda722d583c2a",
+          "url": "https://github.com/betterleaks/betterleaks/releases/download/v1.8.1/betterleaks_1.8.1_linux_x64.tar.gz"
+        }
+      }
+    }
+  }
+}

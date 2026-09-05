@@ -1,0 +1,46 @@
+{
+  "schema": "tfsb.brand-bundle-manifest",
+  "schemaVersion": 1,
+  "packageId": "core-fixture-brand",
+  "name": "Core Fixture Brand Package",
+  "brandVersion": "0.4.0-fixture.1",
+  "genericManifestByteDigest": "sha256:53ece77670595a24f49bbdfb0af0498e093e5a08366ecaff090814a02c9f70e8",
+  "brandPackageDigest": "sha256:1c14df2cf73b282f366a5cef541cea1f3d9d08c1ab55c1ebbbf34e2f63ab9f23",
+  "brandSystemDigest": "sha256:4e10ef25161f37bdd137bcf85fcf1b842b4e0a6512f863d7f2fbba0d8a7e9c4d",
+  "domainDigests": {
+    "brand": "sha256:40554e6807109966b1561707aeb32c11cf112b7807e477ccafa1cece28fd86a8"
+  },
+  "inventory": [
+    {
+      "assetId": "fixture-mark-on-dark",
+      "family": "core-fixture",
+      "role": "mark",
+      "variant": "standard-dark",
+      "bundlePath": "assets/fixture-mark-on-dark.svg",
+      "canonicalAssetDigest": "sha256:6a95e550c0c3e92793a873251eed3bc888e5e4c4a3355124d5230eaebe479387",
+      "svgDigest": "sha256:1068a15abd03564d4a48257825914baa14ae26990aad96c0c8f46e2d5a27a15b"
+    },
+    {
+      "assetId": "fixture-mark-on-light",
+      "family": "core-fixture",
+      "role": "mark",
+      "variant": "standard-light",
+      "bundlePath": "assets/fixture-mark-on-light.svg",
+      "canonicalAssetDigest": "sha256:8e53627c743ba21b079b281638804f3a9214895686514dbf5fec0c279db71667",
+      "svgDigest": "sha256:a1bf2b63584d6c5e7832d2e7c29f9137f6f15c4a0d004b9e71c1ee599d75d75f"
+    }
+  ],
+  "companions": [
+    {
+      "id": "fixture-guidance",
+      "purpose": "brand-guidance",
+      "bundlePath": "companions/GUIDANCE.md",
+      "canonicalCompanionFile": "GUIDANCE.md",
+      "mediaType": "text/markdown",
+      "digest": "sha256:10a61401be21913c99086526840a27a24991815db9d7044ac1668787e737a9d3",
+      "required": true
+    }
+  ],
+  "profiles": [],
+  "brandManifestDigest": "sha256:9ac4ecc30676224eba1d044fbce94345906b5ca76e12a932fad16a26eb480585"
+}

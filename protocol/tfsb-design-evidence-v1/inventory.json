@@ -1,0 +1,68 @@
+{
+  "schema": "tfsb.design-evidence-inventory",
+  "schemaVersion": 1,
+  "extensions": {
+    "brief": ".tfsb-brief.json",
+    "candidate": ".tfsb-candidate.json",
+    "review": ".tfsb-review.json"
+  },
+  "digestDomains": {
+    "brief": "tfsb.design-brief-v1\n",
+    "candidate": "tfsb.design-candidate-v1\n",
+    "review": "tfsb.design-review-v1\n"
+  },
+  "limits": {
+    "packetBytes": 16777216,
+    "visualBytes": 8388608,
+    "visualEntries": 8,
+    "targets": 32,
+    "renderTuples": 16,
+    "candidates": 8,
+    "claims": 64,
+    "annotations": 128,
+    "textBytes": 4096,
+    "annotationCommentBytes": 2048,
+    "acceptanceCriteria": 64,
+    "prohibitedChanges": 64,
+    "sourcePackages": 8,
+    "profileIds": 32,
+    "parameterSelections": 32,
+    "parameterValues": 32,
+    "parameterValueBytes": 512,
+    "licenseExpressionBytes": 256,
+    "materials": 64
+  },
+  "grammars": {
+    "generalId": "^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$",
+    "packageId": "^(?:@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*|[a-z0-9][a-z0-9._-]*)$",
+    "tokenBackground": "^token:[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+  },
+  "schemas": [
+    "brief.schema.json",
+    "candidate.schema.json",
+    "review.schema.json"
+  ],
+  "examples": [
+    {
+      "name": "brief.json",
+      "sha256": "fcd46bde2212e3f6e89f6b6108aa272a59ef24b73c6c76077f8aa97090b9d579"
+    },
+    {
+      "name": "candidate-a.json",
+      "sha256": "6fafbbf9bc269af306e3f4d4efdf6050b13296ab44fb29c2677a9c93a14b8d6a"
+    },
+    {
+      "name": "candidate-b.json",
+      "sha256": "37decedb1522332679daf4a7deab4d3e3cab0322a5839e55c826a70ea01b5d41"
+    },
+    {
+      "name": "review.json",
+      "sha256": "e179468cce24ae902d9837491e9dd4f691a7fa6628ceeec6aea8c0c0d4c4b87d"
+    }
+  ],
+  "negativeCorpus": {
+    "name": "negative-corpus.json",
+    "cases": 12,
+    "sha256": "14e61769066bfad954b1d730ef35a0ab48c9de173ed6ac2e390fd0a7ba6cfda7"
+  }
+}

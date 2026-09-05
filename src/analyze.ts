@@ -16,7 +16,7 @@ import {
   type AnalyzeProfileKey,
   type AnalyzeResult,
 } from "./analyze-contract.js";
-import { executeAnalyzeSource, inspectAnalyzeInput, type AnalyzeInputPlan } from "./analyze-source.js";
+import { executeAnalyzeSource, inspectAnalyzeInput, type AnalyzeInputPlan, type AnalyzeSourceHooks } from "./analyze-source.js";
 
 export interface AnalyzeOptions { readonly input: string; readonly cwd?: string; }
 export type AnalyzeEnvelope = JsonResultEnvelope<"analyze", AnalyzeJsonData>;
@@ -80,8 +80,8 @@ function samples(files: readonly AnalyzeDetailsFile[]): AnalyzeJsonData["samples
   return result;
 }
 
-export async function executeCompleteAnalysis(plan: AnalyzeInputPlan): Promise<AnalyzeResult> {
-  const source = await executeAnalyzeSource(plan);
+export async function executeCompleteAnalysis(plan: AnalyzeInputPlan, hooks: AnalyzeSourceHooks = {}): Promise<AnalyzeResult> {
+  const source = await executeAnalyzeSource(plan, hooks);
   const files = source.files;
   const schema1 = aggregateProfile(files, "schema1");
   const commonV03 = aggregateProfile(files, "commonV03");

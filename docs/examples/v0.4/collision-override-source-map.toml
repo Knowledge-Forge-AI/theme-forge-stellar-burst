@@ -1,0 +1,26 @@
+schema_version = 1
+source_root = "."
+
+[[collection]]
+id = "collision-example"
+name = "Explicit collision resolution"
+root = "icons"
+identity = "relative-path"
+prefix = ""
+include_paths = []
+include_trees = ["."]
+exclude_paths = []
+exclude_trees = []
+
+# a/b.svg and a-b.svg both derive a-b. The override is reviewed authority;
+# TFSB never invents a number or hash suffix.
+[[collection.entry]]
+source_path = "a-b.svg"
+asset_id = "a-b-flat"
+
+# Exact exclusions are distinct from identity overrides.
+[[collection.entry]]
+source_path = "legacy/unsafe.svg"
+exclude = true
+reason = "unsupported external reference"
+

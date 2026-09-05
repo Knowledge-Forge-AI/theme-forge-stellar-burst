@@ -7,10 +7,15 @@ import { inflateSync } from "fflate";
 import { ARCHIVE_LIMITS, mutationAggregateBytesExceedsLimit, mutationSvgCountExceedsLimit } from "./archive-limits.js";
 import { DiagnosticError, fail, type DiagnosticContext } from "./diagnostics.js";
 import { computeRawSha256, type Sha256Digest } from "./digests.js";
+import { readExactBuffer } from "./filesystem.js";
 import {
   BUNDLE_MANIFEST_FILENAME,
   parseBundleManifest,
   unwrapBundleManifest,
+  type AnyBundleManifest,
+  type BundleManifestAssetRecord,
+  type BundleManifestCompanionRecord,
+  type BundleManifestGenerator,
   type BundleManifestV1,
 } from "./manifest.js";
 import type { AssetId } from "./types.js";
@@ -66,14 +71,9 @@ async function readExactly(
   length: number,
   position: number,
   ctx: DiagnosticContext,
+  maxLimit: number = ARCHIVE_LIMITS.centralDirectoryBytes,
 ): Promise<Buffer> {
-  if (!Number.isInteger(length) || length < 0 || length > ARCHIVE_LIMITS.centralDirectoryBytes) {
-    invalid(ctx, "ZIP structure size is invalid.");
-  }
-  const buffer = Buffer.allocUnsafe(length);
-  const { bytesRead } = await handle.read(buffer, 0, length, position);
-  if (bytesRead !== length) invalid(ctx, "ZIP structure is truncated.");
-  return buffer;
+  return readExactBuffer(handle, length, position, ctx, maxLimit, "ARCHIVE_INVALID_ZIP", "ZIP structure is truncated.");
 }
 
 function decodeEntryName(bytes: Uint8Array, utf8Flag: boolean, ctx: DiagnosticContext): string {
@@ -345,7 +345,7 @@ function sameSnapshot(left: ArchiveSnapshot, right: ArchiveSnapshot): boolean {
     left.mtimeMs === right.mtimeMs && left.ctimeMs === right.ctimeMs;
 }
 
-async function hashOpenArchive(
+export async function hashOpenArchive(
   handle: FileHandle,
   size: number,
   ctx: DiagnosticContext,
@@ -357,10 +357,14 @@ async function hashOpenArchive(
   let position = 0;
   while (position < size) {
     const length = Math.min(chunk.length, size - position);
-    const { bytesRead } = await handle.read(chunk, 0, length, position);
-    if (bytesRead !== length) invalid(ctx, "Archive changed or became truncated while hashing.");
-    hash.update(chunk.subarray(0, bytesRead));
-    position += bytesRead;
+    let chunkRead = 0;
+    while (chunkRead < length) {
+      const { bytesRead } = await handle.read(chunk, chunkRead, length - chunkRead, position + chunkRead);
+      if (bytesRead === 0) invalid(ctx, "Archive changed or became truncated while hashing.");
+      chunkRead += bytesRead;
+    }
+    hash.update(chunk.subarray(0, length));
+    position += length;
     await hooks?.onHashChunk?.();
   }
   return `sha256:${hash.digest("hex")}`;
@@ -624,7 +628,7 @@ export interface ManifestArchiveCompanionEntry {
 }
 
 export interface ManifestArchiveReadResult {
-  readonly manifest: BundleManifestV1;
+  readonly manifest: AnyBundleManifest;
   readonly svgs: readonly ManifestArchiveAssetEntry[];
   readonly companions: readonly ManifestArchiveCompanionEntry[];
   readonly archiveDigest: Sha256Digest;
@@ -710,7 +714,136 @@ export async function readManifestArchive(
 
     const manifest = unwrapBundleManifest(parseBundleManifest(manifestText, BUNDLE_MANIFEST_FILENAME));
 
-    // Inventory check: regular files in archive must equal manifest.files + manifest itself
+    if (manifest.schemaVersion === 2) {
+      if (byName.has("tfsb-brand-manifest.json")) {
+        fail(
+          ctx,
+          "BRAND_MANIFEST_PRESENT",
+          "Brand manifest 'tfsb-brand-manifest.json' is present in archive; run 'tfsb import <archive> --manifest --brand-package' to import brand package.",
+        );
+      }
+
+      // Inventory check for v2: regular files in archive must equal manifest.files (by path) + manifest itself
+      const manifestPaths = new Set(manifest.files.map((file) => file.path));
+      for (const entry of entries) {
+        if (entry.name !== BUNDLE_MANIFEST_FILENAME && !manifestPaths.has(entry.name)) {
+          fail(ctx, "ARCHIVE_UNDECLARED_ENTRY", `Archive contains undeclared entry '${entry.name}'.`, entry.name);
+        }
+      }
+      for (const file of manifest.files) {
+        if (file.type !== "asset" && file.type !== "companion") {
+          fail(
+            ctx,
+            "MANIFEST_UNSUPPORTED_RECORD",
+            `Manifest entry '${file.path}' has unsupported record type '${(file as any).type}' for ordinary manifest import; brand domain files require --brand-package.`,
+            file.path,
+          );
+        }
+        if (!byName.has(file.path)) {
+          fail(ctx, "ARCHIVE_MISSING_ENTRY", `Manifest lists entry '${file.path}' which is missing from archive.`, file.path);
+        }
+      }
+
+      // Check size limits across declared entries
+      let declaredAggregate = manifestBytes.length;
+      for (const file of manifest.files) {
+        const entry = byName.get(file.path)!;
+        declaredAggregate += entry.uncompressedSize;
+        if (
+          entry.compressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
+          entry.uncompressedSize > ARCHIVE_LIMITS.selectedEntryBytes ||
+          (entry.compressedSize === 0
+            ? entry.uncompressedSize !== 0
+            : entry.uncompressedSize > entry.compressedSize * ARCHIVE_LIMITS.expansionRatio)
+        ) {
+          fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", `Selected entry '${entry.name}' exceeds archive limits.`, entry.name);
+        }
+      }
+      if (mutationAggregateBytesExceedsLimit(declaredAggregate)) {
+        fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Selected entries exceed the 32 MiB aggregate limit.");
+      }
+
+      // Read and verify digest for EVERY manifest entry
+      const readEntriesByPath = new Map<string, { bytes: Uint8Array; entry: CentralEntry }>();
+      await options.hooks?.beforeSelectedEntryInspection?.();
+
+      for (const file of manifest.files) {
+        const entry = byName.get(file.path)!;
+        const bytes = await readEntry(handle, entry, stat.size, ctx);
+        const computedSha256 = computeRawSha256(bytes);
+        if (computedSha256 !== file.sha256) {
+          fail(ctx, "ARCHIVE_DIGEST_MISMATCH", `Digest mismatch for entry '${file.path}'.`, file.path);
+        }
+        readEntriesByPath.set(file.path, { bytes, entry });
+      }
+
+      // Selection handling
+      const isFiltered = svgSelections.length > 0 || companionSelections.length > 0;
+      const selectedSvgPaths = new Set(svgSelections);
+      const selectedCompanionPaths = new Set(companionSelections);
+
+      if (isFiltered) {
+        for (const sel of svgSelections) {
+          const found = manifest.files.find((f) => f.type === "asset" && (f.path === sel || f.assetId === sel));
+          if (found === undefined) {
+            fail(ctx, "ARCHIVE_SELECTION_MISSING", `Selected entry '${sel}' does not exist in manifest.`, sel);
+          }
+        }
+        for (const sel of companionSelections) {
+          const found = manifest.files.find((f) => f.type === "companion" && f.path === sel);
+          if (found === undefined) {
+            fail(ctx, "ARCHIVE_SELECTION_MISSING", `Selected companion '${sel}' does not exist in manifest.`, sel);
+          }
+        }
+      }
+
+      const svgs: ManifestArchiveAssetEntry[] = [];
+      const companions: ManifestArchiveCompanionEntry[] = [];
+
+      for (const file of manifest.files) {
+        if (file.type === "asset") {
+          if (isFiltered && !selectedSvgPaths.has(file.path) && !selectedSvgPaths.has(file.assetId)) continue;
+          const { bytes, entry } = readEntriesByPath.get(file.path)!;
+          svgs.push({
+            entryName: file.path,
+            assetId: file.assetId,
+            bytes,
+            sha256: file.sha256,
+            compressedSize: entry.compressedSize,
+            uncompressedSize: bytes.length,
+          });
+        } else if (file.type === "companion") {
+          if (isFiltered && !selectedCompanionPaths.has(file.path)) continue;
+          const { bytes, entry } = readEntriesByPath.get(file.path)!;
+          const leaf = file.path.split("/").pop() ?? file.path;
+          companions.push({
+            entryName: file.path,
+            filename: leaf,
+            bytes,
+            sha256: file.sha256,
+            compressedSize: entry.compressedSize,
+            uncompressedSize: bytes.length,
+          });
+        }
+      }
+
+      if (svgs.length === 0 && options.allowNoSvgs !== true) {
+        fail(ctx, "ARCHIVE_SELECTION_EMPTY", "Archive selection contains no SVG entries.");
+      }
+      if (mutationSvgCountExceedsLimit(svgs.length)) {
+        fail(ctx, "ARCHIVE_LIMIT_EXCEEDED", "Archive selects more than 128 SVG assets.");
+      }
+
+      const finalStat = await handle.stat();
+      if (!sameSnapshot(snapshot, archiveSnapshot(archivePath, finalStat))) {
+        fail(ctx, "ARCHIVE_CHANGED_DURING_PLAN", "Archive changed during candidate inspection.");
+      }
+      await verifyArchiveSnapshot(snapshot, options.operation ?? "import");
+
+      return { manifest, svgs, companions, archiveDigest, snapshot };
+    }
+
+    // Schema 1 manifest
     const manifestNames = new Set(manifest.files.map((file) => file.name));
     for (const entry of entries) {
       if (entry.name !== BUNDLE_MANIFEST_FILENAME && !manifestNames.has(entry.name)) {

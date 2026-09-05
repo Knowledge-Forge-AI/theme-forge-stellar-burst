@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"list-1","result":{"scope":{"kind":"project"},"page":{"size":64,"count":1,"items":[{"assetId":"mark","filename":"mark.svg"}],"nextCursor":null},"viewDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}

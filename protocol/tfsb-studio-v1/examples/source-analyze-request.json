@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"analyze-1","method":"source.analyze","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","sourceHandle":"source_REDACTED_EXAMPLE_HANDLE","includeDetails":true,"pageSize":64}}

@@ -1,42 +1,489 @@
 name: CI
 
 on:
-  push:
   pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
+concurrency:
+  group: tfsb-ci-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
-    runs-on: ubuntu-latest
+  source-policy:
+    name: Public staging source policy and receipt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Validate PR source policy
+        env:
+          TFSB_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          TFSB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          TFSB_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          TFSB_EVENT_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ "$TFSB_BASE_REF" != "main" ]; then
+            echo "::error::Base ref must be main, got $TFSB_BASE_REF"
+            exit 1
+          fi
+          if [ "$TFSB_HEAD_REF" != "staging" ]; then
+            echo "::error::Head ref must be staging, got $TFSB_HEAD_REF"
+            exit 1
+          fi
+          if [ "$TFSB_HEAD_REPOSITORY" != "$TFSB_EVENT_REPOSITORY" ]; then
+            echo "::error::PR must originate from the same repository, got $TFSB_HEAD_REPOSITORY"
+            exit 1
+          fi
+      - name: Checkout exact staging head
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: 22
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Record staging head receipt
+        run: |
+          mkdir -p .test-reports/source-policy
+          node tools/ci/exact-head.mjs --output .test-reports/source-policy/receipt.json --expected-branch staging --expected-base main --checkout-role staging-head
+      - name: Bind source policy receipt
+        run: node tools/ci/artifact-manifest.mjs --root .test-reports/source-policy --output .test-reports/source-policy/artifact-manifest.json --job source-policy --require receipt.json
+      - name: Upload source policy receipt
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: source-policy-receipt
+          path: .test-reports/source-policy/
+          if-no-files-found: error
+          retention-days: 14
+
+  root-package:
+    name: Root package and core test suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: source-policy
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
           cache: npm
+      - name: Verify merge parents
+        run: |
+          HEAD_COMMIT=$(git rev-parse HEAD)
+          PARENT_COUNT=$(git rev-list --parents -n 1 HEAD | awk '{print NF-1}')
+          echo "Checked out commit: $HEAD_COMMIT (parents: $PARENT_COUNT)"
+      - name: Record exact-head receipt
+        run: |
+          mkdir -p .test-reports/root-package
+          node tools/ci/exact-head.mjs --output .test-reports/root-package/receipt.json --expected-branch staging --expected-base main --checkout-role merge-candidate
       - run: npm ci
+      - name: Install raster companion package dependencies
+        run: npm ci --prefix packages/tfsb-raster-resvg
       - run: npm run typecheck
+      - name: Verify dist cleanliness before build
+        run: test ! -d dist
+      - run: npm run build
+      - name: Run root tests with machine report
+        run: npm test -- --reporter=default --reporter=json --outputFile=.test-reports/root-package/test-report.json
+      - name: Run production dependency audit
+        run: npm audit --omit=dev --json > .test-reports/root-package/audit-result.json
+      - run: npm run qualify:package
+      - name: Run portable Terminal Nova suite with isolated HOME
+        run: |
+          mkdir -p "$RUNNER_TEMP/tfsb-portable-home"
+          HOME="$RUNNER_TEMP/tfsb-portable-home" npm run test:terminal-nova:portable
+      - name: Pack root package
+        run: |
+          npm pack --pack-destination .test-reports/root-package --json > .test-reports/root-package/pack-manifest.json
+          mv .test-reports/root-package/*.tgz .test-reports/root-package/root-package.tgz
+      - name: Check git diff cleanliness
+        run: git diff --check
+      - name: Bind root artifact bytes
+        run: node tools/ci/artifact-manifest.mjs --root .test-reports/root-package --output .test-reports/root-package/artifact-manifest.json --job root-package --require receipt.json --require pack-manifest.json --require test-report.json --require audit-result.json --require root-package.tgz
+      - name: Upload root package artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: root-package-artifacts
+          path: .test-reports/root-package/
+          if-no-files-found: error
+          retention-days: 14
+
+  native-directory-snapshot:
+    name: Native directory snapshot (${{ matrix.tuple }})
+    needs: source-policy
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tuple: darwin-arm64
+            os: macos-15
+          - tuple: darwin-x64
+            os: macos-15-intel
+          - tuple: linux-x64-gnu
+            os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    env:
+      TFSB_TUPLE: ${{ matrix.tuple }}
+      TFSB_MATRIX_JSON: '{"tuple":"${{ matrix.tuple }}"}'
+      TFSB_NATIVE_REPORT_DIR: .test-reports/native-${{ matrix.tuple }}
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Record exact-head receipt
+        run: |
+          mkdir -p "$TFSB_NATIVE_REPORT_DIR"
+          node tools/ci/exact-head.mjs --output "$TFSB_NATIVE_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - run: npm ci
+      - run: npm ci --prefix packages/tfsb-raster-resvg
+      - run: npm run build
+      - run: npm run typecheck
+      - name: Qualify retained native artifact and supported reproducibility
+        id: native-reproducibility
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.tuple == 'darwin-arm64' && '13.0' || matrix.tuple == 'darwin-x64' && '15.0' || '' }}"
+        run: node tools/ci/qualify-native-reproducibility.mjs --artifact "$TFSB_TUPLE" --output "$TFSB_NATIVE_REPORT_DIR/native-reproducibility.json"
+      - name: Verify retained native bytes with the existing checker when current inputs and bytes agree
+        if: steps.native-reproducibility.outputs.input-match == 'true'
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.tuple == 'darwin-arm64' && '13.0' || matrix.tuple == 'darwin-x64' && '15.0' || '' }}"
+        run: npm run check:native -- --artifact "$TFSB_TUPLE" --check-tracked
+      - name: Run existing native suites
+        run: npx vitest run test/directory-snapshot-native.test.ts test/directory-snapshot-native-primitives.test.ts test/directory-snapshot-native-cleanup.test.ts test/directory-snapshot-loader.test.ts test/directory-snapshot-race.test.ts
       - run: npm test
       - run: npm audit --omit=dev
+      - name: Qualify native directory snapshot package
+        run: npm run qualify:package
+      - name: Run native qualification report
+        run: node tools/report-directory-snapshot-native.mjs > "$TFSB_NATIVE_REPORT_DIR/native-report.json"
+      - name: Retain native release artifact
+        run: |
+          cp "native/directory-snapshot/prebuilds/$TFSB_TUPLE/native-addon-posix-openat-v1.node" "$TFSB_NATIVE_REPORT_DIR/native-addon-posix-openat-v1.node"
+          cp "native/directory-snapshot/prebuilds/$TFSB_TUPLE/manifest.json" "$TFSB_NATIVE_REPORT_DIR/native-manifest.json"
+      - name: Bind native artifact bytes
+        if: always()
+        run: node tools/ci/artifact-manifest.mjs --root "$TFSB_NATIVE_REPORT_DIR" --output "$TFSB_NATIVE_REPORT_DIR/artifact-manifest.json" --job native-directory-snapshot --matrix "tuple=$TFSB_TUPLE" --require receipt.json --require native-reproducibility.json
+      - name: Upload native artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: always()
+        with:
+          name: native-artifacts-${{ matrix.tuple }}
+          path: .test-reports/native-${{ matrix.tuple }}/
+          if-no-files-found: error
+          retention-days: 14
 
-  visual:
-    runs-on: ubuntu-latest
+  visual-accessibility:
+    name: Playwright visual and accessibility suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: source-policy
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: 22
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
           cache: npm
+      - name: Record exact-head receipt
+        run: |
+          mkdir -p .test-reports/visual
+          node tools/ci/exact-head.mjs --output .test-reports/visual/receipt.json --expected-branch staging --expected-base main --checkout-role merge-candidate
       - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install Playwright browsers with OS dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run build
-      - run: npm run test:visual
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - name: Run visual test suite
+        run: |
+          set +e
+          npm run test:visual
+          status=$?
+          STATUS=$status node -e 'import { writeFileSync } from "node:fs"; writeFileSync(".test-reports/visual/visual-summary.json", JSON.stringify({schema:"tfsb.ci-visual-summary",schemaVersion:1,status:process.env.STATUS === "0" ? "pass" : "fail",projects:["chromium","firefox","webkit"],nativePickerAxGate:false}, null, 2) + "\n")'
+          if [ -d .test-reports/playwright ]; then cp -R .test-reports/playwright .test-reports/visual/playwright-evidence; fi
+          exit $status
+      - name: Bind visual artifact bytes
+        if: always()
+        run: node tools/ci/artifact-manifest.mjs --root .test-reports/visual --output .test-reports/visual/artifact-manifest.json --job visual-accessibility --require receipt.json --require visual-summary.json --require 'playwright-evidence*'
+      - name: Upload visual artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: always()
         with:
-          name: playwright-failure-artifacts
-          path: .test-reports/playwright/
-          if-no-files-found: ignore
-          retention-days: 7
+          name: visual-artifacts
+          path: .test-reports/visual/
+          if-no-files-found: error
+          retention-days: 14
+
+  raster-companion:
+    name: Raster companion candidate (${{ matrix.tuple }})
+    needs: source-policy
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tuple: darwin-arm64
+            os: macos-15
+          - tuple: darwin-x64
+            os: macos-15-intel
+          - tuple: linux-x64-gnu
+            os: ubuntu-24.04
+          - tuple: windows-x64
+            os: windows-2025
+    runs-on: ${{ matrix.os }}
+    env:
+      TFSB_TUPLE: ${{ matrix.tuple }}
+      TFSB_MATRIX_JSON: '{"tuple":"${{ matrix.tuple }}"}'
+      TFSB_RASTER_REPORT_DIR: .test-reports/raster-${{ matrix.tuple }}
+      TFSB_NETWORK_DENIAL_PRELOAD: ${{ github.workspace }}/tools/ci/network-denial-preload.mjs
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Record exact-head receipt
+        shell: bash
+        run: |
+          mkdir -p "$TFSB_RASTER_REPORT_DIR"
+          node tools/ci/exact-head.mjs --output "$TFSB_RASTER_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - run: npm ci
+      - run: npm ci --prefix packages/tfsb-raster-resvg
+      - run: npm run build
+      - name: Pack release root and raster companion packages
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/root-pack" "$RUNNER_TEMP/raster-pack"
+          npm pack --pack-destination "$RUNNER_TEMP/root-pack" --json > "$TFSB_RASTER_REPORT_DIR/root-pack-manifest.json"
+          mv "$RUNNER_TEMP/root-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/root-package.tgz"
+          npm pack ./packages/tfsb-raster-resvg --pack-destination "$RUNNER_TEMP/raster-pack" --json > "$TFSB_RASTER_REPORT_DIR/raster-pack-manifest.json"
+          mv "$RUNNER_TEMP/raster-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz"
+      - name: Run raster companion test with network denial
+        shell: bash
+        run: |
+          NODE_OPTIONS="--import=$TFSB_NETWORK_DENIAL_PRELOAD" node tools/qualify-raster-resvg.mjs --expected-tuple "$TFSB_TUPLE" > "$TFSB_RASTER_REPORT_DIR/raster-report.json"
+      - name: Run packed-consumer qualification with network denial
+        shell: bash
+        run: |
+          npm exec -- node tools/qualify-raster-packed-consumers.mjs "$TFSB_RASTER_REPORT_DIR/root-package.tgz" "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz" > "$TFSB_RASTER_REPORT_DIR/packed-consumer-report.json"
+      - name: Bind raster companion artifact bytes
+        shell: bash
+        run: node tools/ci/artifact-manifest.mjs --root "$TFSB_RASTER_REPORT_DIR" --output "$TFSB_RASTER_REPORT_DIR/artifact-manifest.json" --job raster-companion --matrix "tuple=$TFSB_TUPLE" --require receipt.json --require raster-report.json --require packed-consumer-report.json --require root-package.tgz --require root-pack-manifest.json --require raster-companion.tgz --require raster-pack-manifest.json
+      - name: Upload raster companion artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: raster-companion-${{ matrix.tuple }}
+          path: .test-reports/raster-${{ matrix.tuple }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  codeql:
+    name: Advanced CodeQL analysis (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: source-policy
+    env:
+      TFSB_LANGUAGE: ${{ matrix.language }}
+      TFSB_MATRIX_JSON: '{"language":"${{ matrix.language }}"}'
+      TFSB_CODEQL_REPORT_DIR: .test-reports/codeql-${{ matrix.language }}
+    permissions:
+      contents: read
+      security-events: write # Required by CodeQL analysis upload.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+          - language: c-cpp
+          - language: actions
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Record exact-head receipt
+        run: |
+          mkdir -p "$TFSB_CODEQL_REPORT_DIR"
+          node tools/ci/exact-head.mjs --output "$TFSB_CODEQL_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - name: Initialize CodeQL Action
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+      - name: Build for compiled language
+        if: matrix.language == 'c-cpp'
+        run: |
+          npm ci
+          node tools/build-directory-snapshot-native.mjs
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  supply-chain:
+    name: Supply chain, Syft SBOMs, Grype scan, and audits
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs:
+      - source-policy
+      - root-package
+      - native-directory-snapshot
+      - visual-accessibility
+      - raster-companion
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Record exact-head receipt
+        run: |
+          mkdir -p .test-reports/supply-chain
+          node tools/ci/exact-head.mjs --output .test-reports/supply-chain/receipt.json --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - name: Download product release artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          path: ${{ runner.temp }}/tfsb-stellar-supply/
+      - name: Materialize Stellar release surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          TFSB_INPUT_DIR="$RUNNER_TEMP/tfsb-stellar-supply"
+          TFSB_RELEASE_DIR="$RUNNER_TEMP/tfsb-stellar-release"
+          rm -rf "$TFSB_RELEASE_DIR"
+          mkdir -p "$TFSB_RELEASE_DIR/root-package" "$TFSB_RELEASE_DIR/root-install" "$TFSB_RELEASE_DIR/native" "$TFSB_RELEASE_DIR/raster-install"
+          test -s "$TFSB_INPUT_DIR/root-package-artifacts/root-package.tgz"
+          cp "$TFSB_INPUT_DIR/root-package-artifacts/root-package.tgz" "$TFSB_RELEASE_DIR/root-package/root-package.tgz"
+          node tools/ci/artifact-manifest.mjs --archive "$TFSB_INPUT_DIR/root-package-artifacts/root-package.tgz" --manifest "$TFSB_INPUT_DIR/root-package-artifacts/artifact-manifest.json" --extract-to "$TFSB_RELEASE_DIR/root-install" --strip-components 1
+          cp package.json package-lock.json "$TFSB_RELEASE_DIR/root-install/"
+          npm ci --ignore-scripts --no-audit --no-fund --omit=dev --prefix "$TFSB_RELEASE_DIR/root-install"
+          mkdir -p "$RUNNER_TEMP/tfsb-stellar-inventory/core" "$RUNNER_TEMP/tfsb-stellar-inventory/raster"
+          cp package.json package-lock.json "$RUNNER_TEMP/tfsb-stellar-inventory/core/"
+          cp packages/tfsb-raster-resvg/package.json packages/tfsb-raster-resvg/package-lock.json "$RUNNER_TEMP/tfsb-stellar-inventory/raster/"
+          rm "$TFSB_RELEASE_DIR/root-install/package-lock.json"
+          for tuple in darwin-arm64 darwin-x64 linux-x64-gnu; do
+            input="$TFSB_INPUT_DIR/native-artifacts-$tuple"
+            output="$TFSB_RELEASE_DIR/native/$tuple"
+            mkdir -p "$output"
+            for file in receipt.json native-report.json native-manifest.json native-addon-posix-openat-v1.node artifact-manifest.json; do
+              test -s "$input/$file"
+              cp "$input/$file" "$output/$file"
+            done
+          done
+          for tuple in darwin-arm64 darwin-x64 linux-x64-gnu windows-x64; do
+            input="$TFSB_INPUT_DIR/raster-companion-$tuple"
+            output="$TFSB_RELEASE_DIR/raster/$tuple"
+            install="$TFSB_RELEASE_DIR/raster-install/$tuple"
+            mkdir -p "$output" "$install"
+            for file in receipt.json raster-report.json packed-consumer-report.json root-package.tgz root-pack-manifest.json raster-companion.tgz raster-pack-manifest.json artifact-manifest.json; do
+              test -s "$input/$file"
+              cp "$input/$file" "$output/$file"
+            done
+            node tools/ci/artifact-manifest.mjs --archive "$output/raster-companion.tgz" --manifest "$output/artifact-manifest.json" --extract-to "$install" --strip-components 1
+            cp packages/tfsb-raster-resvg/package.json packages/tfsb-raster-resvg/package-lock.json "$install/"
+            npm ci --ignore-scripts --no-audit --no-fund --omit=dev --prefix "$install"
+            rm "$install/package-lock.json"
+          done
+      - name: Run Syft SBOM generation and Grype vulnerability scan
+        run: |
+          TFSB_RELEASE_DIR="$RUNNER_TEMP/tfsb-stellar-release"
+          node tools/ci/run-syft-grype.mjs --target "$TFSB_RELEASE_DIR" --output-dir .test-reports/supply-chain --name root-package             --component-input "build-input:core-lock=$RUNNER_TEMP/tfsb-stellar-inventory/core"             --component-input "build-input:raster-lock=$RUNNER_TEMP/tfsb-stellar-inventory/raster"             --component-catalogers core-lock=javascript-lock-cataloger,javascript-package-cataloger             --component-catalogers raster-lock=javascript-lock-cataloger,javascript-package-cataloger
+      - name: Run selected workflow and secret checks
+        run: node tools/ci/run-workflow-checks.mjs --root . --output-dir .test-reports/workflow-checks
+      - name: Retain workflow and secret check outputs
+        run: |
+          rm -rf .test-reports/supply-chain/workflow-checks
+          mv .test-reports/workflow-checks .test-reports/supply-chain/workflow-checks
+      - name: Bind supply-chain artifacts
+        run: |
+          node tools/ci/artifact-manifest.mjs --root .test-reports/supply-chain --output .test-reports/supply-chain/artifact-manifest.json --job supply-chain --require receipt.json --require root-package.syft.json --require root-package.spdx.json --require root-package.cdx.json --require root-package.grype.json --require root-package.grype.sarif --require root-package.receipt.json --require workflow-checks/actionlint.result.json --require workflow-checks/zizmor.result.json --require workflow-checks/betterleaks.result.json --require workflow-checks/workflow-checks.receipt.json --require workflow-checks/betterleaks.report.json
+      - name: Upload supply chain artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: supply-chain-artifacts
+          path: .test-reports/supply-chain/
+          if-no-files-found: error
+          retention-days: 14
+
+  evidence-aggregate:
+    name: Evidence aggregation and qualification gate
+    runs-on: ubuntu-24.04
+    if: always()
+    env:
+      TFSB_NEEDS_JSON: ${{ toJson(needs) }}
+    timeout-minutes: 15
+    needs:
+      - source-policy
+      - root-package
+      - native-directory-snapshot
+      - visual-accessibility
+      - raster-companion
+      - codeql
+      - supply-chain
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Download all job artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          path: .downloaded-artifacts/
+      - name: Aggregate evidence and generate qualification manifest
+        run: |
+          mkdir -p .test-reports/evidence-aggregate
+          node tools/ci/exact-head.mjs --output .test-reports/evidence-aggregate/receipt.json --expected-branch staging --expected-base main --checkout-role merge-candidate
+          node tools/ci/evidence-aggregator.mjs --download-dir .downloaded-artifacts --output-dir .test-reports/evidence-aggregate --product stellar-burst --expected-receipt .test-reports/evidence-aggregate/receipt.json --needs-json "$TFSB_NEEDS_JSON"
+      - name: Upload evidence aggregate artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: always()
+        with:
+          name: evidence-aggregate-artifacts
+          path: .test-reports/evidence-aggregate/
+          if-no-files-found: error
+          retention-days: 14

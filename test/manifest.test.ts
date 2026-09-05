@@ -152,7 +152,7 @@ describe("bundle manifest validation failure matrix", () => {
   });
 
   it("rejects unsupported schemaVersion", () => {
-    expectFailure({ ...validManifest, schemaVersion: 2 }, "MANIFEST_UNSUPPORTED_VERSION");
+    expectFailure({ ...validManifest, schemaVersion: 99 }, "MANIFEST_UNSUPPORTED_VERSION");
   });
 
   it("rejects invalid generator structure or unknown fields", () => {

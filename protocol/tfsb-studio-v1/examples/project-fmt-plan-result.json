@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"fmt-plan-1","result":{"planToken":"EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE","planDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","expiresInMs":600000,"method":"project.fmt.plan","summary":{"changed":true,"fileCount":2,"canonicalPaths":[".tfsb/assets/mark.toml",".tfsb/project.toml"]}}}

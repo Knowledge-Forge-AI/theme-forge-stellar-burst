@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"preview-plan-1","result":{"planToken":"HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH","planDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","expiresInMs":600000,"method":"preview.plan","summary":{"outputDirectory":".tfsb-preview","replaced":false,"assetCount":1,"companionCount":0,"fileCount":1,"buildExtraCount":0}}}

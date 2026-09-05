@@ -1,0 +1,34 @@
+{
+  "name": "@knowledge-forge-ai/tfsb-raster-resvg",
+  "version": "0.0.0-tfsb47f",
+  "description": "Optional fixed resvg WASM raster capability for Theme Forge Stellar Burst",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "LICENSE",
+    "NOTICE",
+    "COMMERCIAL-LICENSE.md",
+    "MPL-2.0.txt",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run test"
+  },
+  "dependencies": {
+    "@resvg/resvg-wasm": "2.6.2"
+  }
+}

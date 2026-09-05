@@ -1,0 +1,83 @@
+{
+  "schema": "tfsb.brand-qa-result",
+  "schemaVersion": 1,
+  "profileId": "terminal-nova-release",
+  "qaDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "brandSystemDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "status": "unavailable",
+  "exitCode": 3,
+  "counts": { "pass": 2, "fail": 0, "skipped": 0, "unavailable": 5, "error": 0 },
+  "results": [
+    {
+      "caseId": "external-content",
+      "kind": "external-reference",
+      "status": "pass",
+      "capability": "semantic-core-v1",
+      "capabilityRequired": false,
+      "measurements": { "targets": 10 },
+      "diagnostics": [],
+      "evaluations": [{ "target": { "assetId": "external-content" }, "status": "pass", "measurements": {}, "diagnostics": [] }]
+    },
+    {
+      "caseId": "family-completeness",
+      "kind": "inventory",
+      "status": "pass",
+      "capability": "semantic-core-v1",
+      "capabilityRequired": false,
+      "measurements": { "targets": 10 },
+      "diagnostics": [],
+      "evaluations": [{ "target": { "assetId": "terminal-nova" }, "status": "pass", "measurements": {}, "diagnostics": [] }]
+    },
+    {
+      "caseId": "favicon-baseline-light",
+      "kind": "baseline",
+      "status": "unavailable",
+      "capability": "renderer",
+      "capabilityRequired": true,
+      "measurements": { "reason": "renderer capability unavailable" },
+      "diagnostics": [{ "code": "BRAND_QA_RENDERER_UNAVAILABLE", "message": "The base package has no renderer capability." }],
+      "evaluations": [{ "target": { "assetId": "favicon-baseline-light" }, "status": "unavailable", "measurements": {}, "diagnostics": [] }]
+    },
+    {
+      "caseId": "favicon-small-size",
+      "kind": "small-size-visibility",
+      "status": "unavailable",
+      "capability": "renderer",
+      "capabilityRequired": true,
+      "measurements": { "reason": "renderer capability unavailable" },
+      "diagnostics": [{ "code": "BRAND_QA_RENDERER_UNAVAILABLE", "message": "The base package has no renderer capability." }],
+      "evaluations": [{ "target": { "assetId": "favicon-small-size" }, "status": "unavailable", "measurements": {}, "diagnostics": [] }]
+    },
+    {
+      "caseId": "horizontal-minimum",
+      "kind": "clipping",
+      "status": "unavailable",
+      "capability": "renderer",
+      "capabilityRequired": true,
+      "measurements": { "reason": "renderer capability unavailable" },
+      "diagnostics": [{ "code": "BRAND_QA_RENDERER_UNAVAILABLE", "message": "The base package has no renderer capability." }],
+      "evaluations": [{ "target": { "assetId": "horizontal-minimum" }, "status": "unavailable", "measurements": {}, "diagnostics": [] }]
+    },
+    {
+      "caseId": "mark-clear-space",
+      "kind": "visible-padding",
+      "status": "unavailable",
+      "capability": "renderer",
+      "capabilityRequired": true,
+      "measurements": { "reason": "renderer capability unavailable" },
+      "diagnostics": [{ "code": "BRAND_QA_RENDERER_UNAVAILABLE", "message": "The base package has no renderer capability." }],
+      "evaluations": [{ "target": { "assetId": "mark-clear-space" }, "status": "unavailable", "measurements": {}, "diagnostics": [] }]
+    },
+    {
+      "caseId": "stacked-minimum",
+      "kind": "clipping",
+      "status": "unavailable",
+      "capability": "renderer",
+      "capabilityRequired": true,
+      "measurements": { "reason": "renderer capability unavailable" },
+      "diagnostics": [{ "code": "BRAND_QA_RENDERER_UNAVAILABLE", "message": "The base package has no renderer capability." }],
+      "evaluations": [{ "target": { "assetId": "stacked-minimum" }, "status": "unavailable", "measurements": {}, "diagnostics": [] }]
+    }
+  ],
+  "resultDigest": "sha256:f54be7c916eda88f51d4b3e6536a773ed0c050e806d91e9a6b76a6bef9e2f2ce"
+}

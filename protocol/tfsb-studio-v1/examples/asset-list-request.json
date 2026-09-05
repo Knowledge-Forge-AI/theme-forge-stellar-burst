@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"list-1","method":"asset.list","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","scope":{"kind":"project","projectHandle":"project_REDACTED_EXAMPLE_HANDLE"},"pageSize":64}}

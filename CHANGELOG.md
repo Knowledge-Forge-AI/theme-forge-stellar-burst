@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - Unreleased
+
+Theme Forge Stellar Burst v0.4 adds collection-aware directory workflows and
+the brand-systems surface while preserving the existing bounded SVG lifecycle.
+This entry describes the release contents; the publication record carries the
+observed public commits, registry bytes, application artifacts, scans, and
+signing status.
+
+### Added
+
+- **Collection and directory workflows:** Source maps, bounded directory
+  snapshots, deterministic shards, read-only workspace aggregation, and typed
+  directory provenance extend the existing project lifecycle without adding
+  cross-project mutation authority.
+- **Brand systems:** Families, roles, variants, typed tokens, deterministic
+  recipes, package and legal metadata, consumer profiles and locks, semantic
+  brand diffs, and renderer-bound visual QA are available through the opt-in
+  v0.4 brand records.
+- **Optional PNG export:** The closed `resvg-png-v1` adapter produces the
+  required PNG purposes only when the pinned companion and renderer tuple is
+  present and qualified. SVG remains canonical; ICO and ICNS remain outside
+  this release.
+- **Studio integration:** The typed `tfsb.studio` protocol adds the v1.1
+  brand methods with backward-compatible protocol v1.0 negotiation. Nebular
+  Fusion `0.1.0` remains an independently locked macOS-arm64 application.
+
+### Compatibility
+
+- Existing schema-1 and schema-2 projects continue to work without implicit
+  migration or brand metadata.
+- The root package and Nebular Fusion application retain independent version,
+  dependency, artifact, release, and rollback identities.
+- The optional raster companion remains private at
+  `@knowledge-forge-ai/tfsb-raster-resvg@0.0.0-tfsb47f`; it is distributed as
+  an authenticated release input with its lockfile and legal notices, not as
+  an inaccessible registry dependency.
+
+### Release status
+
+The final v0.4.0 source, public CI, registry publication, GitHub release, and
+paired Nebular application distribution are recorded only after their actual
+readback in [`docs/releases/v0.4.0.md`](docs/releases/v0.4.0.md). This entry
+does not assert that CI, signing, notarization, or publication has completed.
+
 ## [0.3.0] - 2026-08-24
 
 Major feature release advancing Theme Forge Stellar Burst with productized archive pre-import analysis (`tfsb analyze`), Schema 2 vector models and typed geometric primitives, granular accessibility modes (`labelled`, `decorative`, `consumer_labelled`), direct canonical Schema 2 import, explicit exact-common normalization with normalization map schema 1 and `tfsb-normalization-policy-v1`, provenance schema 2, deterministic Schema 1 to Schema 2 migration (`tfsb migrate`), schema-2 reconciliation, raw versus normalized archive diffing, deterministic bundle and manifest compatibility, scriptless offline preview galleries, and frozen Schema 1 backward compatibility.

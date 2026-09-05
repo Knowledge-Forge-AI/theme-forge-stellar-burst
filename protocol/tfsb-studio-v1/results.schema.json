@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledge-forge.ai/protocol/tfsb-studio-v1/results.schema.json",
+  "title": "TFSB Studio protocol 1.0 result and server-notification shapes",
+  "$defs": {
+    "id": { "$ref": "envelope.schema.json#/$defs/id" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "token": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+    "relativeIdentity": {
+      "type": "string", "minLength": 1, "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*(?:^|/) )(?!.*(?:^|/)[^/]*[. ](?:/|$)).+$"
+    },
+    "idText": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "minLength": 1, "maxLength": 256 },
+    "handle": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "jsonValue": {
+      "oneOf": [
+        { "type": "null" }, { "type": "string" }, { "type": "boolean" }, { "type": "number" },
+        { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/jsonValue" } },
+        { "type": "object", "maxProperties": 10000, "additionalProperties": { "$ref": "#/$defs/jsonValue" } }
+      ]
+    },
+    "authorityKey": {
+      "oneOf": [
+        { "type": "string", "pattern": "^asset:[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 263 },
+        { "type": "string", "pattern": "^companion:(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^companion:|/)(?:\\.|\\.\\.)(?:/|$))(?!.*(?:^companion:|/) )(?!.*(?:^companion:|/)[^/]*[. ](?:/|$)).+$", "maxLength": 1034 },
+        { "$ref": "#/$defs/relativeIdentity" }
+      ]
+    },
+    "semanticScalar": {
+      "oneOf": [
+        { "type": "null" }, { "type": "string" }, { "type": "boolean" }, { "type": "number" },
+        { "type": "array", "items": { "type": "number" }, "maxItems": 100000 }
+      ]
+    },
+    "pathText": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "basis": { "const": "tfsb-path-text-v1" }, "beforeSha256": { "$ref": "#/$defs/digest" }, "afterSha256": { "$ref": "#/$defs/digest" },
+        "beforeLength": { "type": "integer", "minimum": 0, "maximum": 8388608 }, "afterLength": { "type": "integer", "minimum": 0, "maximum": 8388608 },
+        "beforePrefix": { "type": "string", "maxLength": 256 }, "beforeSuffix": { "type": "string", "maxLength": 256 },
+        "afterPrefix": { "type": "string", "maxLength": 256 }, "afterSuffix": { "type": "string", "maxLength": 256 }
+      }
+    },
+    "semanticChange": {
+      "type": "object", "additionalProperties": false,
+      "required": ["key", "category", "location", "changeType"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "category": { "enum": ["canvas", "accessibility", "metadata", "gradient", "gradient_stop", "definition", "artwork_element", "presentation", "transform", "path_geometry", "companion", "asset_identity", "asset_addition_removal"] },
+        "location": { "type": "string", "minLength": 1, "maxLength": 1024 }, "changeType": { "enum": ["added", "removed", "changed"] },
+        "before": { "$ref": "#/$defs/semanticScalar" }, "after": { "$ref": "#/$defs/semanticScalar" }, "pathText": { "$ref": "#/$defs/pathText" }, "diagnosticCode": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "assetEditSummary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["assetId", "affectedCanonicalPath", "oldDigest", "newDigest", "changed", "changes"],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/idText" }, "affectedCanonicalPath": { "$ref": "#/$defs/relativeIdentity" },
+        "oldDigest": { "$ref": "#/$defs/digest" }, "newDigest": { "$ref": "#/$defs/digest" }, "changed": { "type": "boolean" },
+        "changes": { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/semanticChange" } }
+      }
+    },
+    "importSummary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sourceKind", "schemaVersion", "assetCount", "companionCount", "canonicalFileCount", "willInitialize"],
+      "properties": {
+        "sourceKind": { "enum": ["archive", "directory"] }, "schemaVersion": { "const": 2 }, "assetCount": { "type": "integer", "minimum": 0, "maximum": 128 }, "companionCount": { "type": "integer", "minimum": 0, "maximum": 1024 }, "canonicalFileCount": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "normalizationPolicyDigest": { "$ref": "#/$defs/digest" }, "sourceMapDigest": { "$ref": "#/$defs/digest" }, "snapshotDigest": { "$ref": "#/$defs/digest" }, "willInitialize": { "const": true }
+      }
+    },
+    "reconcileRecord": {
+      "type": "object", "additionalProperties": false,
+      "required": ["key", "kind", "classification", "plannedAction", "requiredAuthority", "blocker"],
+      "properties": {
+        "key": { "$ref": "#/$defs/authorityKey" }, "kind": { "enum": ["asset", "companion"] },
+        "classification": { "enum": ["UNCHANGED", "UNCHANGED_ACCEPTED_DIVERGENCE", "ARCHIVE_CHANGED", "CANONICAL_EDITED", "CONVERGED", "CONFLICT", "ARCHIVE_OMISSION", "ARCHIVE_OMISSION_CANONICAL_EDITED", "UNCHANGED_ACCEPTED_ABSENCE", "CONVERGED_ABSENCE", "CANONICAL_MISSING", "UNTRACKED_MATCH", "UNTRACKED_CONFLICT", "NEW_ASSET", "COMPANION_CHANGED", "NEW_COMPANION", "RENAMED", "COMPANION_RENAMED", "REMOVED", "COMPANION_REMOVED", "POLICY_AUTHORITY_REQUIRED", "SOURCE_CHANGED", "SOURCE_FORMATTING_ONLY", "CANONICAL_CHANGED", "BOTH_CHANGED", "SOURCE_OMISSION", "NEW_SOURCE", "ACCEPTED_CANONICAL_DIVERGENCE", "ACCEPTED_SOURCE_ABSENCE", "RENAME_REQUIRED", "REMOVE_REQUIRED", "SOURCE_MAP_AUTHORITY_REQUIRED", "SOURCE_KIND_AUTHORITY_REQUIRED"] },
+        "plannedAction": { "enum": ["none", "replace_canonical", "update_provenance", "add_canonical", "retain", "resolve", "rename", "remove", "blocked_collision"] },
+        "requiredAuthority": { "enum": ["none", "resolve", "rename", "remove", "source-map", "source-kind", "policy"] }, "blocker": { "type": "boolean" }
+      }
+    },
+    "reconcileSummary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sourceKind", "changed", "pending", "blocked", "records"],
+      "properties": { "sourceKind": { "enum": ["archive", "directory"] }, "changed": { "type": "boolean" }, "pending": { "type": "boolean" }, "blocked": { "type": "boolean" }, "sourceMapDigest": { "$ref": "#/$defs/digest" }, "snapshotDigest": { "$ref": "#/$defs/digest" }, "records": { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/reconcileRecord" } } }
+    },
+    "migrateSummary": {
+      "type": "object", "additionalProperties": false, "required": ["fromSchemaVersion", "toSchemaVersion", "migrationNeeded", "assetCount", "companionCount", "svgEquivalentCount", "canonicalPaths"],
+      "properties": { "fromSchemaVersion": { "enum": [1, 2] }, "toSchemaVersion": { "const": 2 }, "migrationNeeded": { "type": "boolean" }, "assetCount": { "type": "integer", "minimum": 0, "maximum": 128 }, "companionCount": { "type": "integer", "minimum": 0, "maximum": 1024 }, "svgEquivalentCount": { "type": "integer", "minimum": 0, "maximum": 128 }, "canonicalPaths": { "type": "array", "maxItems": 100000, "uniqueItems": true, "items": { "$ref": "#/$defs/relativeIdentity" } } }
+    },
+    "fmtSummary": {
+      "type": "object", "additionalProperties": false, "required": ["changed", "fileCount", "canonicalPaths"],
+      "properties": { "changed": { "type": "boolean" }, "fileCount": { "type": "integer", "minimum": 0, "maximum": 100000 }, "canonicalPaths": { "type": "array", "maxItems": 100000, "uniqueItems": true, "items": { "$ref": "#/$defs/relativeIdentity" } } }
+    },
+    "buildOutput": {
+      "type": "object", "additionalProperties": false, "required": ["filename", "size", "sha256"],
+      "properties": { "filename": { "$ref": "#/$defs/relativeIdentity" }, "size": { "type": "integer", "minimum": 0, "maximum": 8388608 }, "sha256": { "$ref": "#/$defs/digest" } }
+    },
+    "buildSummary": {
+      "type": "object", "additionalProperties": false, "required": ["buildDirectory", "outputCount", "outputs", "replacingExisting", "receiptDigest"],
+      "properties": { "buildDirectory": { "$ref": "#/$defs/relativeIdentity" }, "outputCount": { "type": "integer", "minimum": 0, "maximum": 128 }, "outputs": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/buildOutput" } }, "replacingExisting": { "type": "boolean" }, "receiptDigest": { "$ref": "#/$defs/digest" } }
+    },
+    "installItem": {
+      "type": "object", "additionalProperties": false, "required": ["assetId", "source", "configuredDestination"],
+      "properties": { "assetId": { "$ref": "#/$defs/authorityKey" }, "source": { "$ref": "#/$defs/relativeIdentity" }, "configuredDestination": { "$ref": "#/$defs/relativeIdentity" } }
+    },
+    "installSummary": {
+      "type": "object", "additionalProperties": false, "required": ["itemCount", "items"],
+      "properties": { "itemCount": { "type": "integer", "minimum": 0, "maximum": 2048 }, "items": { "type": "array", "maxItems": 2048, "items": { "$ref": "#/$defs/installItem" } } }
+    },
+    "previewSummary": {
+      "type": "object", "additionalProperties": false, "required": ["outputDirectory", "replaced", "assetCount", "companionCount", "fileCount", "buildExtraCount"],
+      "properties": { "outputDirectory": { "$ref": "#/$defs/relativeIdentity" }, "replaced": { "type": "boolean" }, "assetCount": { "type": "integer", "minimum": 0, "maximum": 128 }, "companionCount": { "type": "integer", "minimum": 0, "maximum": 1024 }, "fileCount": { "type": "integer", "minimum": 0, "maximum": 100000 }, "buildExtraCount": { "type": "integer", "minimum": 0, "maximum": 100000 } }
+    },
+    "assetEditPlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "asset.edit.plan" }, "summary": { "$ref": "#/$defs/assetEditSummary" } } },
+    "importPlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "project.import.plan" }, "summary": { "$ref": "#/$defs/importSummary" } } },
+    "reconcilePlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "project.reconcile.plan" }, "summary": { "$ref": "#/$defs/reconcileSummary" } } },
+    "migratePlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "project.migrate.plan" }, "summary": { "$ref": "#/$defs/migrateSummary" } } },
+    "fmtPlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "project.fmt.plan" }, "summary": { "$ref": "#/$defs/fmtSummary" } } },
+    "buildPlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "project.build.plan" }, "summary": { "$ref": "#/$defs/buildSummary" } } },
+    "installPlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "project.install.plan" }, "summary": { "$ref": "#/$defs/installSummary" } } },
+    "previewPlanResult": { "type": "object", "additionalProperties": false, "required": ["planToken", "planDigest", "expiresInMs", "method", "summary"], "properties": { "planToken": { "$ref": "#/$defs/token" }, "planDigest": { "$ref": "#/$defs/digest" }, "expiresInMs": { "const": 600000 }, "method": { "const": "preview.plan" }, "summary": { "$ref": "#/$defs/previewSummary" } } },
+    "initializeResult": {
+      "type": "object", "additionalProperties": false, "required": ["protocol", "selectedVersion", "server", "sessionNonce", "capabilities"],
+      "properties": {
+        "protocol": { "const": "tfsb.studio" }, "selectedVersion": { "const": "1.0" }, "sessionNonce": { "$ref": "#/$defs/token" },
+        "server": { "type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "const": "tfsb-studio-service" }, "version": { "type": "string", "minLength": 1, "maxLength": 64 } } },
+        "capabilities": {
+          "type": "object", "additionalProperties": false, "required": ["methods", "limits"],
+          "properties": {
+            "methods": { "type": "object", "additionalProperties": false, "required": ["workspaceOpen", "projectOpen", "sourceOpen", "workspaceStatus", "projectList", "assetList", "assetGet", "assetValidate", "assetDiff", "sourceAnalyze", "previewStatus", "progress", "cancellation", "mutationPlans", "planApply"], "properties": { "workspaceOpen": { "const": true }, "projectOpen": { "const": true }, "sourceOpen": { "const": true }, "workspaceStatus": { "const": true }, "projectList": { "const": true }, "assetList": { "const": true }, "assetGet": { "const": true }, "assetValidate": { "const": true }, "assetDiff": { "const": true }, "sourceAnalyze": { "const": true }, "previewStatus": { "const": true }, "progress": { "const": true }, "cancellation": { "const": true }, "mutationPlans": { "const": true }, "planApply": { "const": true } } },
+            "limits": { "type": "object", "additionalProperties": false, "required": ["maxFrameBytes", "maxConcurrentReads", "maxQueuedReads", "assetPageSizeMin", "assetPageSizeDefault", "assetPageSizeMax", "sourceDetailPageSizeMin", "sourceDetailPageSizeDefault", "sourceDetailPageSizeMax", "maxActivePlans", "maxRetainedPlanBytes", "maxRetainedNativeSnapshotPlans", "planTtlMs", "maxConcurrentApplies"], "properties": { "maxFrameBytes": { "const": 16777216 }, "maxConcurrentReads": { "const": 4 }, "maxQueuedReads": { "const": 4 }, "assetPageSizeMin": { "const": 1 }, "assetPageSizeDefault": { "const": 64 }, "assetPageSizeMax": { "const": 128 }, "sourceDetailPageSizeMin": { "const": 1 }, "sourceDetailPageSizeDefault": { "const": 64 }, "sourceDetailPageSizeMax": { "const": 128 }, "maxActivePlans": { "const": 4 }, "maxRetainedPlanBytes": { "const": 201326592 }, "maxRetainedNativeSnapshotPlans": { "const": 1 }, "planTtlMs": { "const": 600000 }, "maxConcurrentApplies": { "const": 1 } } }
+          }
+        }
+      }
+    },
+    "workspaceOpenResult": { "type": "object", "additionalProperties": false, "required": ["workspaceHandle", "rootKind", "workspaceId", "name", "manifestDigest", "childCount", "diagnostics"], "properties": { "workspaceHandle": { "$ref": "#/$defs/handle" }, "rootKind": { "const": "workspace" }, "workspaceId": { "type": "string", "minLength": 1 }, "name": { "type": "string", "minLength": 1 }, "manifestDigest": { "$ref": "#/$defs/digest" }, "childCount": { "type": "integer", "minimum": 0, "maximum": 1024 }, "diagnostics": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/jsonValue" } } } },
+    "projectOpenResult": { "type": "object", "additionalProperties": false, "required": ["projectHandle", "rootKind", "schemaVersion", "name", "canonicalDigest", "assetCount", "companionCount"], "properties": { "projectHandle": { "$ref": "#/$defs/handle" }, "rootKind": { "const": "project" }, "schemaVersion": { "enum": [1, 2] }, "name": { "type": "string", "minLength": 1 }, "canonicalDigest": { "$ref": "#/$defs/digest" }, "assetCount": { "type": "integer", "minimum": 0, "maximum": 128 }, "companionCount": { "type": "integer", "minimum": 0, "maximum": 1024 } } },
+    "uninitializedProjectOpenResult": { "type": "object", "additionalProperties": false, "required": ["projectHandle", "rootKind", "state"], "properties": { "projectHandle": { "$ref": "#/$defs/handle" }, "rootKind": { "const": "project" }, "state": { "const": "uninitialized" } } },
+    "sourceOpenContentResult": { "type": "object", "additionalProperties": false, "required": ["sourceHandle", "rootKind", "sourceKind", "digest", "candidateCount", "capabilities"], "properties": { "sourceHandle": { "$ref": "#/$defs/handle" }, "rootKind": { "const": "source" }, "sourceKind": { "enum": ["directory", "archive"] }, "digest": { "$ref": "#/$defs/digest" }, "candidateCount": { "type": "integer", "minimum": 0, "maximum": 100000 }, "capabilities": { "type": "object", "additionalProperties": false, "required": ["analyze", "mutation"], "properties": { "analyze": { "const": true }, "mutation": { "const": false } } } } },
+    "sourceOpenAuxiliaryResult": { "type": "object", "additionalProperties": false, "required": ["sourceHandle", "rootKind", "authorityKind", "byteDigest", "semanticDigest", "byteLength", "capabilities"], "properties": { "sourceHandle": { "$ref": "#/$defs/handle" }, "rootKind": { "const": "source" }, "authorityKind": { "enum": ["source-map", "normalization-map", "shard-manifest"] }, "byteDigest": { "$ref": "#/$defs/digest" }, "semanticDigest": { "$ref": "#/$defs/digest" }, "byteLength": { "type": "integer", "minimum": 0, "maximum": 1048576 }, "capabilities": { "type": "object", "additionalProperties": false, "required": ["analyze", "mutationAuthority"], "properties": { "analyze": { "const": false }, "mutationAuthority": { "const": true } } } } },
+    "workspaceDiscoveryResult": { "type": "object", "additionalProperties": false, "required": ["workspaceId", "name", "digest", "totalProjects", "loadable", "failed", "diagnostics"], "properties": { "workspaceId": { "type": "string", "minLength": 1 }, "name": { "type": "string", "minLength": 1 }, "digest": { "$ref": "#/$defs/digest" }, "totalProjects": { "type": "integer", "minimum": 0, "maximum": 1024 }, "loadable": { "type": "integer", "minimum": 0, "maximum": 1024 }, "failed": { "type": "integer", "minimum": 0, "maximum": 1024 }, "diagnostics": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/jsonValue" } } } },
+    "workspaceCheckResult": { "type": "object", "additionalProperties": false, "required": ["status", "workspace", "projects", "drift", "children", "diagnostics"], "properties": { "status": { "enum": ["ok", "drift", "error"] }, "workspace": { "$ref": "#/$defs/jsonValue" }, "projects": { "$ref": "#/$defs/jsonValue" }, "drift": { "$ref": "#/$defs/jsonValue" }, "children": { "type": "array", "maxItems": 1024, "items": { "$ref": "#/$defs/jsonValue" } }, "diagnostics": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/jsonValue" } } } },
+    "projectListResult": { "type": "object", "additionalProperties": false, "required": ["assets", "companions"], "properties": { "assets": { "type": "array", "maxItems": 128, "items": { "type": "object", "additionalProperties": false, "required": ["id", "filename", "buildPath", "destinations"], "properties": { "id": { "type": "string" }, "filename": { "type": "string" }, "buildPath": { "type": "string" }, "destinations": { "type": "array", "items": { "type": "string" } } } } }, "companions": { "type": "array", "maxItems": 1024, "items": { "type": "object", "additionalProperties": false, "required": ["file", "canonicalPath", "destinations"], "properties": { "file": { "type": "string" }, "canonicalPath": { "type": "string" }, "destinations": { "type": "array", "items": { "type": "string" } } } } } } },
+    "assetListResult": { "type": "object", "additionalProperties": false, "required": ["scope", "page", "viewDigest"], "properties": { "scope": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "enum": ["project", "workspace"] }, "workspaceId": { "type": "string" } } }, "page": { "type": "object", "additionalProperties": false, "required": ["size", "count", "items", "nextCursor"], "properties": { "size": { "type": "integer", "minimum": 1, "maximum": 128 }, "count": { "type": "integer", "minimum": 0, "maximum": 128 }, "items": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/jsonValue" } }, "nextCursor": { "oneOf": [{ "type": "string" }, { "type": "null" }] } } }, "viewDigest": { "$ref": "#/$defs/digest" } } },
+    "assetGetResult": { "type": "object", "additionalProperties": false, "required": ["assetId", "canonicalToml", "model", "canonicalSvg", "digests"], "properties": { "assetId": { "type": "string" }, "canonicalToml": { "type": "string" }, "model": { "$ref": "#/$defs/jsonValue" }, "canonicalSvg": { "type": "string" }, "digests": { "type": "object", "additionalProperties": false, "required": ["rawToml", "semantic", "svg"], "properties": { "rawToml": { "$ref": "#/$defs/digest" }, "semantic": { "$ref": "#/$defs/digest" }, "svg": { "$ref": "#/$defs/digest" } } } } },
+    "invalidAssetResult": { "type": "object", "additionalProperties": false, "required": ["valid", "diagnostics"], "properties": { "valid": { "const": false }, "diagnostics": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/jsonValue" } } } },
+    "validAssetResult": { "type": "object", "additionalProperties": false, "required": ["valid", "model", "canonicalToml", "digests"], "properties": { "valid": { "const": true }, "model": { "$ref": "#/$defs/jsonValue" }, "canonicalToml": { "type": "string" }, "digests": { "type": "object", "additionalProperties": false, "required": ["rawToml", "semantic"], "properties": { "rawToml": { "$ref": "#/$defs/digest" }, "semantic": { "$ref": "#/$defs/digest" } } } } },
+    "assetDiffResult": { "oneOf": [{ "$ref": "#/$defs/invalidAssetResult" }, { "type": "object", "additionalProperties": false, "required": ["valid", "different", "changes", "proposedDigest"], "properties": { "valid": { "const": true }, "different": { "type": "boolean" }, "changes": { "type": "array", "maxItems": 100000, "items": { "$ref": "#/$defs/jsonValue" } }, "proposedDigest": { "$ref": "#/$defs/digest" } } }] },
+    "sourceAnalyzeResult": { "type": "object", "additionalProperties": false, "required": ["sourceKind", "status", "summary", "details"], "properties": { "sourceKind": { "enum": ["directory", "archive"] }, "status": { "enum": ["ok", "drift", "error"] }, "summary": { "type": "object", "additionalProperties": false, "required": ["totals", "profiles", "resourceObservations", "identity"], "properties": { "totals": { "$ref": "#/$defs/jsonValue" }, "profiles": { "$ref": "#/$defs/jsonValue" }, "resourceObservations": { "$ref": "#/$defs/jsonValue" }, "identity": { "$ref": "#/$defs/jsonValue" } } }, "details": { "type": "object", "additionalProperties": false, "required": ["count", "items", "nextCursor"], "properties": { "count": { "type": "integer", "minimum": 0, "maximum": 128 }, "items": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/jsonValue" } }, "nextCursor": { "oneOf": [{ "type": "string" }, { "type": "null" }] } } } } },
+    "previewStatusResult": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["status", "outputIdentity", "markerDigest"], "properties": { "status": { "enum": ["absent", "unowned/invalid"] }, "outputIdentity": { "const": ".tfsb-preview" }, "markerDigest": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] } } }, { "type": "object", "additionalProperties": false, "required": ["status", "outputIdentity", "markerDigest", "assetCount"], "properties": { "status": { "enum": ["owned-clean", "owned-drift"] }, "outputIdentity": { "const": ".tfsb-preview" }, "markerDigest": { "$ref": "#/$defs/digest" }, "assetCount": { "type": "integer", "minimum": 0, "maximum": 128 } } }] },
+    "planDiscardResult": { "type": "object", "additionalProperties": false, "required": ["discarded"], "properties": { "discarded": { "const": true } } },
+    "planApplyResult": { "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["applied", "method"], "properties": { "applied": { "const": true }, "method": { "enum": ["asset.edit.plan", "project.import.plan", "project.reconcile.plan", "project.migrate.plan", "project.fmt.plan", "project.build.plan", "project.install.plan", "preview.plan"] } } }] },
+    "progress": { "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method", "params"], "properties": { "jsonrpc": { "const": "2.0" }, "method": { "const": "$/progress" }, "params": { "type": "object", "additionalProperties": false, "required": ["requestId", "stage", "completed"], "properties": { "requestId": { "$ref": "#/$defs/id" }, "stage": { "enum": ["started", "scanning", "complete", "validate", "snapshot", "analyze", "plan", "ready", "revalidate", "waiting-lock", "staging", "promoting", "cleanup"] }, "completed": { "type": "integer", "minimum": 0 }, "total": { "type": "integer", "minimum": 0 } } } } },
+    "success": { "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "result"], "properties": { "jsonrpc": { "const": "2.0" }, "id": { "$ref": "#/$defs/id" }, "result": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/initializeResult" }, { "$ref": "#/$defs/workspaceOpenResult" }, { "$ref": "#/$defs/projectOpenResult" }, { "$ref": "#/$defs/uninitializedProjectOpenResult" }, { "$ref": "#/$defs/sourceOpenContentResult" }, { "$ref": "#/$defs/sourceOpenAuxiliaryResult" }, { "$ref": "#/$defs/workspaceDiscoveryResult" }, { "$ref": "#/$defs/workspaceCheckResult" }, { "$ref": "#/$defs/projectListResult" }, { "$ref": "#/$defs/assetListResult" }, { "$ref": "#/$defs/assetGetResult" }, { "$ref": "#/$defs/invalidAssetResult" }, { "$ref": "#/$defs/validAssetResult" }, { "$ref": "#/$defs/assetDiffResult" }, { "$ref": "#/$defs/sourceAnalyzeResult" }, { "$ref": "#/$defs/previewStatusResult" }, { "$ref": "#/$defs/assetEditPlanResult" }, { "$ref": "#/$defs/importPlanResult" }, { "$ref": "#/$defs/reconcilePlanResult" }, { "$ref": "#/$defs/migratePlanResult" }, { "$ref": "#/$defs/fmtPlanResult" }, { "$ref": "#/$defs/buildPlanResult" }, { "$ref": "#/$defs/installPlanResult" }, { "$ref": "#/$defs/previewPlanResult" }, { "$ref": "#/$defs/planDiscardResult" }, { "$ref": "#/$defs/planApplyResult" }] } } }
+  },
+  "oneOf": [{ "$ref": "#/$defs/success" }, { "$ref": "#/$defs/progress" }, { "$ref": "envelope.schema.json#/$defs/errorResponse" }]
+}
