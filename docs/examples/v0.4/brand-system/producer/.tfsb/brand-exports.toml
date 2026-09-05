@@ -1,0 +1,62 @@
+schema = "tfsb.brand-exports"
+schema_version = 1
+
+[[profiles]]
+id = "web-icons"
+adapter = "resvg-png-v1"
+
+[[profiles.outputs]]
+id = "apple-touch-180"
+purpose = "apple-touch-icon"
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-light"
+destination = "brand/export/apple-touch-icon.png"
+width = 180
+height = 180
+fit = "contain-pad"
+background = "transparent"
+color_space = "srgb"
+alpha = "straight"
+
+[[profiles.outputs]]
+id = "pwa-192"
+purpose = "pwa-icon"
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-light"
+destination = "brand/export/pwa-192.png"
+width = 192
+height = 192
+fit = "contain-pad"
+background = "transparent"
+color_space = "srgb"
+alpha = "straight"
+
+[[profiles.outputs]]
+id = "pwa-512"
+purpose = "pwa-icon"
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-light"
+destination = "brand/export/pwa-512.png"
+width = 512
+height = 512
+fit = "contain-pad"
+background = "transparent"
+color_space = "srgb"
+alpha = "straight"
+
+[[profiles.outputs]]
+id = "avatar-512-dark"
+purpose = "avatar"
+family = "terminal-nova"
+role = "mark"
+variant = "reversed-on-dark"
+destination = "brand/export/avatar-512-dark.png"
+width = 512
+height = 512
+fit = "contain-pad"
+background_token = "near-black"
+color_space = "srgb"
+alpha = "opaque"

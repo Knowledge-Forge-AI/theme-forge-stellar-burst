@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"import-plan-1","method":"project.import.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_TARGET","sourceHandle":"source_REDACTED_EXAMPLE_HANDLE","schemaVersion":2,"archiveMode":"ordinary","selections":["mark.svg"]}}

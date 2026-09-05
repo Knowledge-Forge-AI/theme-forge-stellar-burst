@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"apply-1","method":"plan.apply","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","planToken":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","expectedPlanDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}

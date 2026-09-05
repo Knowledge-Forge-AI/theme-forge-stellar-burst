@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"migrate-plan-1","method":"project.migrate.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","targetSchemaVersion":2}}

@@ -1,7 +1,7 @@
 # TFSB v0.2 lifecycle examples
 
 These are non-authoritative design examples for the
-[v0.2 lifecycle architecture](../../architecture/v0.2.md). They use the real
+v0.2 lifecycle model. They use the real
 Terminal Nova production fixture as their scenario source. Hashes in the JSON
 examples were calculated from the named fixture bytes and the current canonical
 schema-1 serializers during TFSB20.

@@ -1,0 +1,117 @@
+schema = "tfsb.brand-package"
+schema_version = 1
+package_id = "terminal-nova-brand"
+name = "Theme Forge Terminal Nova Brand"
+brand_version = "0.4.0-example.1"
+families = ["terminal-nova"]
+compatible_profiles = ["astro-starlight", "package-distribution", "vite-web"]
+brand_system_digest = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+brand_token_digest = "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+brand_recipe_digest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+brand_qa_digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+consumer_profile_digest = "sha256:c77a32278faba284238a44818eacc04bb38b13135df429bc4d260a4afebe60f0"
+export_profile_digest = "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+
+[npm_package]
+name = "@knowledge-forge-ai/theme-forge-terminal-nova"
+version = "0.4.0-example.1"
+
+[[companions]]
+id = "terminal-nova-brand-guidance"
+source = "brand/README.md"
+bundle_path = "companions/README-BRAND.md"
+canonical_companion_file = "README-BRAND.md"
+media_type = "text/markdown"
+purpose = "brand-guidance"
+required = true
+digest = "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+
+[[companions]]
+id = "software-license"
+source = "LICENSE"
+bundle_path = "companions/LICENSE"
+canonical_companion_file = "LICENSE"
+media_type = "text/plain"
+purpose = "license"
+required = true
+digest = "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+
+[[inventory]]
+family = "terminal-nova"
+role = "mark"
+variant = "full-color-on-light"
+asset = "theme-forge-terminal-nova-mark-on-light"
+canonical_asset_digest = "sha256:1010101010101010101010101010101010101010101010101010101010101010"
+svg_digest = "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+
+[[inventory]]
+family = "terminal-nova"
+role = "mark"
+variant = "reversed-on-dark"
+asset = "theme-forge-terminal-nova-mark-on-dark"
+canonical_asset_digest = "sha256:2020202020202020202020202020202020202020202020202020202020202020"
+svg_digest = "sha256:2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+
+[[inventory]]
+family = "terminal-nova"
+role = "lockup-horizontal"
+variant = "full-color-on-light"
+asset = "theme-forge-terminal-nova-horizontal-on-light"
+canonical_asset_digest = "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+svg_digest = "sha256:3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b"
+
+[[inventory]]
+family = "terminal-nova"
+role = "lockup-horizontal"
+variant = "reversed-on-dark"
+asset = "theme-forge-terminal-nova-horizontal-on-dark"
+canonical_asset_digest = "sha256:4040404040404040404040404040404040404040404040404040404040404040"
+svg_digest = "sha256:4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a"
+
+[[inventory]]
+family = "terminal-nova"
+role = "lockup-stacked"
+variant = "full-color-on-light"
+asset = "theme-forge-terminal-nova-stacked-on-light"
+canonical_asset_digest = "sha256:5050505050505050505050505050505050505050505050505050505050505050"
+svg_digest = "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+
+[[inventory]]
+family = "terminal-nova"
+role = "lockup-stacked"
+variant = "reversed-on-dark"
+asset = "theme-forge-terminal-nova-stacked-on-dark"
+canonical_asset_digest = "sha256:6060606060606060606060606060606060606060606060606060606060606060"
+svg_digest = "sha256:6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a"
+
+[[inventory]]
+family = "terminal-nova"
+role = "mark"
+variant = "monochrome-on-light"
+asset = "mark-monochrome-dark"
+canonical_asset_digest = "sha256:7070707070707070707070707070707070707070707070707070707070707070"
+svg_digest = "sha256:7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a"
+
+[[inventory]]
+family = "terminal-nova"
+role = "mark"
+variant = "monochrome-on-dark"
+asset = "mark-monochrome-light"
+canonical_asset_digest = "sha256:8080808080808080808080808080808080808080808080808080808080808080"
+svg_digest = "sha256:8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a"
+
+[[inventory]]
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-light"
+asset = "favicon-on-light"
+canonical_asset_digest = "sha256:0606060606060606060606060606060606060606060606060606060606060606"
+svg_digest = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+[[inventory]]
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-dark"
+asset = "favicon-on-dark"
+canonical_asset_digest = "sha256:0303030303030303030303030303030303030303030303030303030303030303"
+svg_digest = "sha256:3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a"

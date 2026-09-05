@@ -1,0 +1,118 @@
+{
+  "author": {
+    "kind": "human",
+    "label": "Fixture designer"
+  },
+  "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+  "candidateDigest": "sha256:8f209d0c7530e088102db27f550e995073af6b90b2d8bacc67831f6240a19e68",
+  "candidateId": "candidate-b",
+  "claims": [
+    {
+      "category": "brand-fit",
+      "message": "Human review is required before disposition.",
+      "severity": "minor"
+    }
+  ],
+  "materials": [
+    {
+      "digest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3",
+      "identifier": "candidate-b-claim",
+      "kind": "external-claim"
+    }
+  ],
+  "proposal": {
+    "kind": "consumer-install",
+    "parameters": [
+      {
+        "profileId": "profile.compact",
+        "values": [
+          {
+            "parameter": "alignment",
+            "value": "center"
+          }
+        ]
+      }
+    ],
+    "profileIds": [
+      "profile.compact"
+    ],
+    "sourcePackages": [
+      {
+        "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "brandVersion": "0.1.0",
+        "packageId": "@knowledge-forge-ai/tfsb-raster-resvg"
+      },
+      {
+        "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "brandVersion": "0.3.0",
+        "packageId": "@knowledge-forge-ai/theme-forge-stellar-burst"
+      }
+    ]
+  },
+  "qaSummary": {
+    "status": "skipped"
+  },
+  "rationale": "Compare a consumer intent with exact scoped source-package provenance.",
+  "revision": 2,
+  "revisionOf": "sha256:3dbcc10cea8d6d22acd2ec656656675ba858d995d66cff87644aae77baaaaee2",
+  "schema": "tfsb.design-candidate",
+  "schemaVersion": 1,
+  "title": "Consumer profile candidate",
+  "visualEvidence": [
+    {
+      "artifacts": [
+        {
+          "byteLength": 82,
+          "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg==",
+          "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+          "encoding": "base64",
+          "height": 16,
+          "mediaType": "image/png",
+          "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+          "role": "baseline",
+          "width": 16
+        },
+        {
+          "byteLength": 82,
+          "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg==",
+          "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+          "encoding": "base64",
+          "height": 16,
+          "mediaType": "image/png",
+          "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+          "role": "current",
+          "width": 16
+        }
+      ],
+      "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "configuration": {
+        "background": "transparent",
+        "height": 16,
+        "width": 16
+      },
+      "difference": {
+        "changedBounds": null,
+        "changedPixels": 0,
+        "claim": "pixel-equal-for-this-renderer-and-case-only",
+        "maximumChannelDelta": 0
+      },
+      "evidenceDigest": "sha256:60b0390b50829c816ddc07ccc4f1bc40d0a36eccb5f992a2db54d3eba96b87a3",
+      "kind": "qa-baseline",
+      "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "qaDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "renderer": {
+        "id": "resvg-png-v1",
+        "platformClaim": "darwin-arm64",
+        "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+        "version": "2.6.2"
+      },
+      "schema": "tfsb.studio-visual-evidence",
+      "schemaVersion": 1,
+      "target": {
+        "assetId": "brand-mark-baseline",
+        "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  ]
+}

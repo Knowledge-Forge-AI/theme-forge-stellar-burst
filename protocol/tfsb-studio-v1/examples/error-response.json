@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"read-1","error":{"code":-32011,"message":"The root handle is invalid for this method.","data":{"code":"ROOT_HANDLE_INVALID","message":"The root handle is invalid for this method.","retryable":false}}}

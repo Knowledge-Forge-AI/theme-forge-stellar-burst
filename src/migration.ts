@@ -13,6 +13,7 @@ import { executeCanonicalTransaction, type CanonicalSnapshot, type TransactionHo
 import { enforceMutationAssetLimit, loadCanonicalProject, type LoadedProject } from "./project.js";
 import { serializeAssetToml, serializeProjectToml } from "./toml-writer.js";
 import { parseImportProvenance, unwrapProvenance, type AssetProvenanceRecordV1, type CompanionProvenanceRecordV1, type ImportProvenanceV1 } from "./provenance.js";
+import { inspectPlanRetention, type PlanRetentionInspection } from "./plan-retention.js";
 import { ARCHIVE_DIGEST_BASIS, ARCHIVE_SOURCE_DIGEST_BASIS, COMPANION_DIGEST_BASIS, MIGRATION_RESOLUTION, parseImportProvenanceV2, serializeImportProvenanceV2, unwrapProvenanceV2, type ArchiveCheckpointV2, type AssetProvenanceRecordV2, type CompanionProvenanceRecordV2, type ImportProvenanceV2, type MigrationEvidenceV2 } from "./provenance2.js";
 import { TOOL_VERSION } from "./version.js";
 import type { ArtworkElement, NormalizedAsset, NormalizedProject, Paint, Presentation, Result } from "./types.js";
@@ -49,6 +50,10 @@ export interface MigrationPlan {
 
 export interface MigrationResult extends Omit<MigrationPlan, "applied"> { readonly applied: boolean; }
 export interface MigrationOptions { readonly root?: string; readonly check?: boolean; }
+
+export interface MigrationPlanningHooks {
+  readonly checkCancelled?: () => void | Promise<void>;
+}
 
 interface MigrationInternals {
   readonly snapshot: CanonicalSnapshot;
@@ -133,14 +138,20 @@ async function validateProposedTree(stageRoot: string, expectedSvgByAsset: Reado
   unwrapProvenanceV2(parseImportProvenanceV2(provenanceText, ".tfsb/provenance.json"));
 }
 
-export async function planMigration(options: MigrationOptions = {}): Promise<MigrationPlan> {
+export async function planMigrationWithHooks(options: MigrationOptions = {}, hooks: MigrationPlanningHooks = {}): Promise<MigrationPlan> {
+  await hooks.checkCancelled?.();
   const root = await findProjectRoot(options.root ?? process.cwd(), "migrate", options.root !== undefined);
   const loaded = await loadCanonicalProject(root, "migrate");
+  await hooks.checkCancelled?.();
   enforceMutationAssetLimit(loaded, "migrate");
   const mutationBytes = [...loaded.snapshot.files].filter(([path]) => path.startsWith(".tfsb/assets/") || path.startsWith(".tfsb/companions/")).reduce((sum, [, file]) => sum + file.bytes.byteLength, 0);
   if (mutationBytes > MAX_MUTATION_BYTES) fail(context(), "RESOURCE_LIMIT_EXCEEDED", "Migration source assets and companions exceed the 32 MiB mutation boundary.", ".tfsb");
   const companionPaths = [...loaded.companions.keys()].map((name) => `.tfsb/companions/${name}`).sort();
-  if (loaded.project.schemaVersion === 2) return { root, mode: options.check === true ? "check" : "apply", fromSchemaVersion: 2, toSchemaVersion: 2, assetCount: loaded.assets.length, companionCount: loaded.companions.size, svgEquivalentCount: loaded.assets.length, files: [], projectPath: ".tfsb/project.toml", companionPaths, provenancePath: loaded.snapshot.files.has(".tfsb/provenance.json") ? ".tfsb/provenance.json" : null, provenanceTransition: "already_current", buildReceiptSourceStale: false, migrationNeeded: false, applied: false };
+  if (loaded.project.schemaVersion === 2) {
+    const plan: MigrationPlan = { root, mode: options.check === true ? "check" : "apply", fromSchemaVersion: 2, toSchemaVersion: 2, assetCount: loaded.assets.length, companionCount: loaded.companions.size, svgEquivalentCount: loaded.assets.length, files: [], projectPath: ".tfsb/project.toml", companionPaths, provenancePath: loaded.snapshot.files.has(".tfsb/provenance.json") ? ".tfsb/provenance.json" : null, provenanceTransition: "already_current", buildReceiptSourceStale: false, migrationNeeded: false, applied: false };
+    internals.set(plan, { snapshot: loaded.snapshot, nextFiles: new Map([...loaded.snapshot.files].map(([path, file]) => [path, file.bytes])), expectedSvgByAsset: new Map() });
+    return plan;
+  }
   const project = loaded.project as NormalizedProject;
   const v1Provenance = loadV1Provenance(loaded);
   const oldAssetsById = new Map(v1Provenance?.records.filter((record): record is AssetProvenanceRecordV1 => record.type === "asset").map((record) => [record.assetId, record]) ?? []);
@@ -153,6 +164,7 @@ export async function planMigration(options: MigrationOptions = {}): Promise<Mig
   const expectedSvgByAsset = new Map<string, Uint8Array>();
   const records: (AssetProvenanceRecordV2 | CompanionProvenanceRecordV2)[] = [];
   for (const source of loaded.assets as readonly NormalizedAsset[]) {
+    await hooks.checkCancelled?.();
     const target = migrateAssetModel(source);
     const path = `.tfsb/assets/${source.id}.toml`;
     const beforeSvg = Buffer.from(unwrap(serializeSvg(source.svg, path)), "utf8");
@@ -172,8 +184,13 @@ export async function planMigration(options: MigrationOptions = {}): Promise<Mig
   const provenance: ImportProvenanceV2 = { kind: "tfsb-import-provenance", schemaVersion: 2, records };
   const provenanceText = serializeImportProvenanceV2(provenance); unwrapProvenanceV2(parseImportProvenanceV2(provenanceText, ".tfsb/provenance.json")); nextFiles.set(".tfsb/provenance.json", Buffer.from(provenanceText, "utf8"));
   const plan: MigrationPlan = { root, mode: options.check === true ? "check" : "apply", fromSchemaVersion: 1, toSchemaVersion: 2, assetCount: loaded.assets.length, companionCount: loaded.companions.size, svgEquivalentCount: filePlans.length, files: filePlans.sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path))), projectPath: ".tfsb/project.toml", companionPaths, provenancePath: ".tfsb/provenance.json", provenanceTransition: "schema_migration_checkpoint", buildReceiptSourceStale: true, migrationNeeded: true, applied: false };
-  if (plan.mode === "apply") internals.set(plan, { snapshot: loaded.snapshot, nextFiles, expectedSvgByAsset });
+  await hooks.checkCancelled?.();
+  internals.set(plan, { snapshot: loaded.snapshot, nextFiles, expectedSvgByAsset });
   return plan;
+}
+
+export async function planMigration(options: MigrationOptions = {}): Promise<MigrationPlan> {
+  return planMigrationWithHooks(options, {});
 }
 
 export async function executeMigration(plan: MigrationPlan, hooks?: TransactionHooks): Promise<MigrationResult> {
@@ -186,3 +203,10 @@ export async function executeMigration(plan: MigrationPlan, hooks?: TransactionH
 }
 
 export async function migrateProject(options: MigrationOptions = {}): Promise<MigrationResult> { const plan = await planMigration(options); return options.check === true ? { ...plan, applied: false } : executeMigration(plan); }
+
+/** Internal retention seam; not re-exported by the package root. */
+export function inspectMigrationPlanRetention(plan: MigrationPlan): PlanRetentionInspection {
+  const privatePlan = internals.get(plan);
+  if (privatePlan === undefined) throw new Error("Migration plan was not produced by this planner instance.");
+  return inspectPlanRetention([plan, privatePlan]);
+}

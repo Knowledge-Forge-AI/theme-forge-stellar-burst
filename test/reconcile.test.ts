@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { importProject } from "../src/importer.js";
 import { computeSha256 } from "../src/digests.js";
+import { diffProject } from "../src/diff.js";
 import {
   executeReconciliationPlan,
   planReconciliation,
@@ -335,6 +336,17 @@ describe("bounded reconciliation", () => {
     await writeFile(join(malformedCanonical.projectRoot, ".tfsb/assets/theme-forge-terminal-nova-mark-on-light.toml"), "schema_version = [\n");
     await expect(planReconciliation({ archive: malformedCanonical.source, root: malformedCanonical.projectRoot }))
       .rejects.toMatchObject({ diagnostic: { code: "TOML_SYNTAX" } });
+  });
+
+  it("fails closed when schema-1 archive diff sees wrong-version provenance", async () => {
+    const { projectRoot, source } = await imported();
+    const provenancePath = join(projectRoot, ".tfsb/provenance.json");
+    const provenance = JSON.parse(await readFile(provenancePath, "utf8"));
+    provenance.schemaVersion = 99;
+    await writeFile(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`);
+
+    await expect(diffProject({ root: projectRoot, baseline: "archive", archive: source }))
+      .rejects.toMatchObject({ diagnostic: { code: "PROVENANCE_UNSUPPORTED_VERSION" } });
   });
 
   it("revalidates archive evidence immediately before applying", async () => {

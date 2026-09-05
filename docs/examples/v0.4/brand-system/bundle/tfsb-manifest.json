@@ -1,0 +1,116 @@
+{
+  "kind": "tfsb-bundle-manifest",
+  "schemaVersion": 2,
+  "generator": {
+    "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
+    "version": "0.3.0"
+  },
+  "projectName": "theme-forge-terminal-nova",
+  "files": [
+    {
+      "type": "asset",
+      "path": "assets/favicon-on-dark.svg",
+      "assetId": "favicon-on-dark",
+      "sha256": "3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a"
+    },
+    {
+      "type": "asset",
+      "path": "assets/favicon-on-light.svg",
+      "assetId": "favicon-on-light",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "type": "asset",
+      "path": "assets/mark-monochrome-dark.svg",
+      "assetId": "mark-monochrome-dark",
+      "sha256": "7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a"
+    },
+    {
+      "type": "asset",
+      "path": "assets/mark-monochrome-light.svg",
+      "assetId": "mark-monochrome-light",
+      "sha256": "8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a"
+    },
+    {
+      "type": "asset",
+      "path": "assets/theme-forge-terminal-nova-horizontal-on-dark.svg",
+      "assetId": "theme-forge-terminal-nova-horizontal-on-dark",
+      "sha256": "4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a"
+    },
+    {
+      "type": "asset",
+      "path": "assets/theme-forge-terminal-nova-horizontal-on-light.svg",
+      "assetId": "theme-forge-terminal-nova-horizontal-on-light",
+      "sha256": "3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b"
+    },
+    {
+      "type": "asset",
+      "path": "assets/theme-forge-terminal-nova-mark-on-dark.svg",
+      "assetId": "theme-forge-terminal-nova-mark-on-dark",
+      "sha256": "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+    },
+    {
+      "type": "asset",
+      "path": "assets/theme-forge-terminal-nova-mark-on-light.svg",
+      "assetId": "theme-forge-terminal-nova-mark-on-light",
+      "sha256": "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+    },
+    {
+      "type": "asset",
+      "path": "assets/theme-forge-terminal-nova-stacked-on-dark.svg",
+      "assetId": "theme-forge-terminal-nova-stacked-on-dark",
+      "sha256": "6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a"
+    },
+    {
+      "type": "asset",
+      "path": "assets/theme-forge-terminal-nova-stacked-on-light.svg",
+      "assetId": "theme-forge-terminal-nova-stacked-on-light",
+      "sha256": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand-exports.toml",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand-package.toml",
+      "sha256": "9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand-qa.toml",
+      "sha256": "0202020202020202020202020202020202020202020202020202020202020202"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand-recipes.toml",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand-tokens.toml",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand.toml",
+      "sha256": "0101010101010101010101010101010101010101010101010101010101010101"
+    },
+    {
+      "type": "file",
+      "path": "brand/consumer-profiles.toml",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    {
+      "type": "companion",
+      "path": "companions/LICENSE",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    {
+      "type": "companion",
+      "path": "companions/README-BRAND.md",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+    }
+  ]
+}

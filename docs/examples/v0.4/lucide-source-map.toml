@@ -1,0 +1,14 @@
+schema_version = 1
+source_root = "."
+
+[[collection]]
+id = "lucide"
+name = "Lucide icons"
+root = "icons"
+identity = "basename"
+prefix = ""
+include_paths = []
+include_trees = ["."]
+exclude_paths = []
+exclude_trees = []
+

@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"discard-1","method":"plan.discard","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","planToken":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}}

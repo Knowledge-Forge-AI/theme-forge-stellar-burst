@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"import-plan-1","result":{"planToken":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","planDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","expiresInMs":600000,"method":"project.import.plan","summary":{"sourceKind":"archive","schemaVersion":2,"assetCount":1,"companionCount":0,"canonicalFileCount":3,"willInitialize":true}}}

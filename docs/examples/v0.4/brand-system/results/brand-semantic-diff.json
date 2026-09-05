@@ -1,0 +1,18 @@
+{
+  "schema": "tfsb.brand-diff",
+  "schemaVersion": 1,
+  "beforeDigest": "sha256:4e10ef25161f37bdd137bcf85fcf1b842b4e0a6512f863d7f2fbba0d8a7e9c4d",
+  "afterDigest": "sha256:4e10ef25161f37bdd137bcf85fcf1b842b4e0a6512f863d7f2fbba0d8a7e9c4d",
+  "status": "equal",
+  "inventory": { "families": [], "roles": [], "variants": [], "requirements": [], "completeness": null },
+  "bindings": { "records": [] },
+  "tokens": { "records": [] },
+  "recipes": { "records": [], "affectedTargets": [] },
+  "derived": { "records": [] },
+  "geometry": { "records": [], "canonicalTypedGeometryChanged": false, "equivalenceClaim": "none" },
+  "qaImpact": { "profiles": [], "cases": [], "affectedCases": [] },
+  "packageAndLegal": { "package": null, "companions": [], "bundleRelevantChanged": false },
+  "consumerProfiles": { "beforeState": "disabled", "afterState": "disabled", "status": "unavailable", "records": [] },
+  "exports": { "beforeState": "disabled", "afterState": "disabled", "status": "unavailable", "records": [] },
+  "resultDigest": "sha256:4bb6c15a45a3bcf98324a8aacf6d545c6a9910b2d30a4f4b7940adca9e31fcdb"
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledge-forge.ai/protocol/tfsb-studio-v1/envelope.schema.json",
+  "title": "TFSB Studio protocol 1.0 envelopes",
+  "$defs": {
+    "id": { "oneOf": [{ "type": "string", "minLength": 1, "maxLength": 256 }, { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 }] },
+    "nonce": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "handle": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "cursor": { "type": "string", "minLength": 1, "maxLength": 16384, "pattern": "^[A-Za-z0-9_-]+$" },
+    "pageSize": { "type": "integer", "minimum": 1, "maximum": 128 },
+    "errorData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "enum": ["PARSE_ERROR", "INVALID_REQUEST", "METHOD_NOT_FOUND", "INVALID_PARAMS", "INTERNAL_ERROR", "INVALID_REQUEST_ID", "PROTOCOL_VERSION_UNSUPPORTED", "SESSION_NOT_INITIALIZED", "SESSION_NONCE_INVALID", "ROOT_INVALID", "ROOT_HANDLE_INVALID", "METHOD_CAPABILITY_UNAVAILABLE", "REQUEST_BUSY", "REQUEST_CANCELLED", "PLAN_TOKEN_INVALID", "PLAN_STALE", "PLAN_DIGEST_MISMATCH", "CURSOR_INVALID", "CURSOR_STALE", "DOMAIN_OPERATION_FAILED", "MESSAGE_TOO_LARGE"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "retryable": { "type": "boolean" },
+        "location": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "errorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jsonrpc", "id", "error"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message", "data"],
+          "properties": {
+            "code": { "type": "integer" },
+            "message": { "type": "string", "minLength": 1, "maxLength": 256 },
+            "data": { "$ref": "#/$defs/errorData" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -126,7 +126,7 @@ describe("TFSB34 combined v0.3 qualification", () => {
     const overAggregatePath = join(base, "aggregate-over.zip");
     await writeFile(overAggregatePath, zipSync({ ...exactAggregate, "e.svg": new Uint8Array([0x78]) }, { level: 0, mtime: new Date("1980-01-02T00:00:00Z") }));
     await expect(readSvgArchive(overAggregatePath)).rejects.toMatchObject({ diagnostic: { code: "ARCHIVE_LIMIT_EXCEEDED" } });
-  });
+  }, 20_000);
 
   it("freezes aggregate-only dogfood evidence and required shard topology", () => {
     const parsed = JSON.parse(readRepoFile("docs/evaluations/v0.3-dogfood-shard-qualification.json")) as Record<string, unknown> & { aggregateDigest: string; corpora: { corpus: string; before: unknown; after: unknown; shards: { name: string; lifecycleOutcome: { status: string } }[] }[] };
@@ -153,8 +153,8 @@ describe("TFSB34 combined v0.3 qualification", () => {
       bin: Record<string, string>;
     };
     expect(pkg.name).toBe("@knowledge-forge-ai/theme-forge-stellar-burst");
-    expect(pkg.version).toBe("0.3.0");
-    expect(pkg.files).toEqual(["dist", "NOTICE", "COMMERCIAL-LICENSE.md"]);
+    expect(pkg.version).toBe("0.4.0");
+    expect(pkg.files).toEqual(["dist", "protocol/tfsb-studio-v1", "protocol/tfsb-design-evidence-v1", "native/directory-snapshot/prebuilds", "NOTICE", "COMMERCIAL-LICENSE.md"]);
     expect(pkg.dependencies).toEqual({
       "@xmldom/xmldom": "0.9.12",
       fflate: "0.8.3",
@@ -165,24 +165,178 @@ describe("TFSB34 combined v0.3 qualification", () => {
         types: "./dist/index.d.ts",
         import: "./dist/index.js",
       },
+      "./studio-protocol/v1": {
+        types: "./dist/service-protocol/v1-types.d.ts",
+        import: "./dist/service-protocol/v1-types.js",
+      },
+      "./design-evidence/v1": {
+        types: "./dist/design-evidence/index.d.ts",
+        import: "./dist/design-evidence/index.js",
+      },
     });
     expect(pkg.bin).toEqual({
       tfsb: "./dist/cli.js",
+      "tfsb-studio-service": "./dist/service-protocol/server-cli.js",
     });
 
     const packOutput = execFileSync("npm", ["pack", "--dry-run", "--json"], { encoding: "utf8" });
     const [packResult] = JSON.parse(packOutput) as [{ files: { path: string; size: number }[]; entryCount: number }];
     expect(packResult).toBeDefined();
-    expect(packResult?.entryCount).toBe(103);
     const paths = packResult?.files.map((f) => f.path) ?? [];
-    expect(paths.length).toBe(103);
+    const nativePaths = paths.filter((path) => path.startsWith("native/directory-snapshot/prebuilds/"));
+    // TFSB45B1 adds six genuine production modules (JS + declarations) and
+    // twenty-five closed mutation protocol examples: 37 entries above TFSB45A.
+    // TFSB47B2 adds four genuine brand package/bundle/import production modules (JS + declarations):
+    // 8 entries above TFSB47B1.
+    // TFSB47C adds four genuine brand tokens/recipes/derive production modules (JS + declarations):
+    // 8 entries above TFSB47B2.
+    // TFSB47D adds seven genuine QA/diff production modules (JS + declarations):
+    // 14 entries above TFSB47C.
+    // TFSB47E adds five genuine consumer distribution modules (JS + declarations):
+    // 10 entries above TFSB47D.
+    // TFSB47F adds four genuine raster export modules (JS + declarations):
+    // 8 entries above TFSB47E; the optional companion is independently packed.
+    // TFSB47G adds the Studio brand adapter (JS + declaration), three 1.1
+    // machine artifacts, and two versioned example files: 7 entries.
+    // TFSB47J adds bounded visual evidence (JS + declaration), three 1.2
+    // machine artifacts, and two versioned example files: 7 entries.
+    // TFSB47L adds five design-evidence modules (JS + declarations), three
+    // schemas, inventory/README, four canonical examples, and one shared
+    // negative corpus: 20 entries.
+    expect(packResult?.entryCount).toBe(296 + nativePaths.length);
+    expect(paths.length).toBe(296 + nativePaths.length);
+    expect(paths).toEqual(expect.arrayContaining([
+      "dist/brand/brand-files.d.ts",
+      "dist/brand/brand-files.js",
+      "dist/brand/brand-schema.d.ts",
+      "dist/brand/brand-schema.js",
+      "dist/brand/brand-digests.d.ts",
+      "dist/brand/brand-digests.js",
+      "dist/brand/brand-availability.d.ts",
+      "dist/brand/brand-availability.js",
+      "dist/brand/brand-core.d.ts",
+      "dist/brand/brand-core.js",
+      "dist/brand/brand-package.d.ts",
+      "dist/brand/brand-package.js",
+      "dist/brand/brand-bundle-manifest.d.ts",
+      "dist/brand/brand-bundle-manifest.js",
+      "dist/brand/brand-bundle.d.ts",
+      "dist/brand/brand-bundle.js",
+      "dist/brand/brand-import.d.ts",
+      "dist/brand/brand-import.js",
+      "dist/brand/tokens.d.ts",
+      "dist/brand/tokens.js",
+      "dist/brand/recipes.d.ts",
+      "dist/brand/recipes.js",
+      "dist/brand/derived-receipt.d.ts",
+      "dist/brand/derived-receipt.js",
+      "dist/brand/derive.d.ts",
+      "dist/brand/derive.js",
+      "dist/design-evidence/index.d.ts",
+      "dist/design-evidence/index.js",
+      "protocol/tfsb-design-evidence-v1/inventory.json",
+      "protocol/tfsb-design-evidence-v1/negative-corpus.json",
+      "protocol/tfsb-design-evidence-v1/examples/review.json",
+      "dist/brand/qa-schema.d.ts",
+      "dist/brand/qa-schema.js",
+      "dist/brand/qa-semantic.d.ts",
+      "dist/brand/qa-semantic.js",
+      "dist/brand/qa-capability.d.ts",
+      "dist/brand/qa-capability.js",
+      "dist/brand/qa-report.d.ts",
+      "dist/brand/qa-report.js",
+      "dist/brand/qa-baseline.d.ts",
+      "dist/brand/qa-baseline.js",
+      "dist/brand/brand-diff.d.ts",
+      "dist/brand/consumer-profile.d.ts",
+      "dist/brand/consumer-profile.js",
+      "dist/brand/consumer-lock.d.ts",
+      "dist/brand/consumer-lock.js",
+      "dist/brand/consumer-source.d.ts",
+      "dist/brand/consumer-source.js",
+      "dist/brand/consumer-plan.d.ts",
+      "dist/brand/consumer-plan.js",
+      "dist/brand/consumer-install.d.ts",
+      "dist/brand/consumer-install.js",
+      "dist/brand/export-profile.d.ts",
+      "dist/brand/export-profile.js",
+      "dist/brand/export-plan.d.ts",
+      "dist/brand/export-plan.js",
+      "dist/brand/raster-receipt.d.ts",
+      "dist/brand/raster-receipt.js",
+      "dist/brand/raster-capability.d.ts",
+      "dist/brand/raster-capability.js",
+      "dist/brand/brand-diff.js",
+      "dist/brand/visual-diff.d.ts",
+      "dist/brand/visual-diff.js",
+      "dist/directory-snapshot.d.ts",
+      "dist/directory-snapshot.js",
+      "dist/directory-snapshot-native.d.ts",
+      "dist/directory-snapshot-native.js",
+      "dist/source-identity.d.ts",
+      "dist/source-identity.js",
+      "dist/source-map.d.ts",
+      "dist/source-map.js",
+      "dist/provenance3.d.ts",
+      "dist/provenance3.js",
+      "dist/workspace.d.ts",
+      "dist/workspace.js",
+      "dist/workspace-check.d.ts",
+      "dist/workspace-check.js",
+      "dist/workspace-collisions.d.ts",
+      "dist/workspace-collisions.js",
+      "dist/workspace-list.d.ts",
+      "dist/workspace-list.js",
+      "dist/workspace-preview.d.ts",
+      "dist/workspace-preview.js",
+      "dist/shard.d.ts",
+      "dist/shard.js",
+      "dist/reconcile-directory.d.ts",
+      "dist/reconcile-directory.js",
+      "dist/edit.d.ts",
+      "dist/edit.js",
+      "dist/plan-retention.d.ts",
+      "dist/plan-retention.js",
+      "dist/service-protocol/authority-ledger.d.ts",
+      "dist/service-protocol/authority-ledger.js",
+      "dist/service-protocol/canonical-json.d.ts",
+      "dist/service-protocol/canonical-json.js",
+      "dist/service-protocol/brand-methods.d.ts",
+      "dist/service-protocol/brand-methods.js",
+      "dist/service-protocol/brand-visual-methods.d.ts",
+      "dist/service-protocol/brand-visual-methods.js",
+      "dist/service-protocol/mutation-methods.d.ts",
+      "dist/service-protocol/mutation-methods.js",
+      "dist/service-protocol/plan-registry.d.ts",
+      "dist/service-protocol/plan-registry.js",
+      "dist/service-protocol/server-cli.js",
+      "dist/service-protocol/v1-types.d.ts",
+      "protocol/tfsb-studio-v1/inventory.json",
+      "protocol/tfsb-studio-v1/inventory-1.1.json",
+      "protocol/tfsb-studio-v1/inventory-1.2.json",
+      "protocol/tfsb-studio-v1/requests.schema.json",
+      "protocol/tfsb-studio-v1/requests-1.1.schema.json",
+      "protocol/tfsb-studio-v1/requests-1.2.schema.json",
+      "protocol/tfsb-studio-v1/results-1.1.schema.json",
+      "protocol/tfsb-studio-v1/results-1.2.schema.json",
+      "protocol/tfsb-studio-v1/examples/1.1/requests.json",
+      "protocol/tfsb-studio-v1/examples/1.1/results.json",
+      "protocol/tfsb-studio-v1/examples/1.2/requests.json",
+      "protocol/tfsb-studio-v1/examples/1.2/results.json",
+      "protocol/tfsb-studio-v1/examples/asset-edit-plan-request.json",
+      "protocol/tfsb-studio-v1/examples/plan-apply-result.json",
+    ]));
+    expect(nativePaths.length).toBeGreaterThanOrEqual(2);
+    for (const path of nativePaths) {
+      expect(path).toMatch(/^native\/directory-snapshot\/prebuilds\/(?:darwin-arm64|darwin-x64|linux-x64-gnu)\/(?:manifest\.json|native-addon-posix-openat-v1\.node)$/);
+    }
     for (const path of paths) {
-      const allowed = path.startsWith("dist/") || path === "NOTICE" || path === "COMMERCIAL-LICENSE.md" || path === "LICENSE" || path === "package.json" || path === "README.md";
+      const allowed = path.startsWith("dist/") || path.startsWith("protocol/tfsb-studio-v1/") || path.startsWith("protocol/tfsb-design-evidence-v1/") || nativePaths.includes(path) || path === "NOTICE" || path === "COMMERCIAL-LICENSE.md" || path === "LICENSE" || path === "package.json" || path === "README.md";
       expect(allowed, `Unexpected file in package payload: ${path}`).toBe(true);
       expect(path).not.toMatch(/^(?:test|tools|docs|scratch)\b/);
       expect(path).not.toMatch(/dogfood|eval/i);
     }
-  });
+  }, 20_000);
 
   it("keeps release-acceptance arithmetic complete and executable-evidence based", () => {
     const matrix = JSON.parse(readRepoFile("docs/evaluations/v0.3-release-acceptance.json")) as {

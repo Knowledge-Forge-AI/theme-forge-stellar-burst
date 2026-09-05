@@ -15,12 +15,19 @@ import { findProjectRoot, validateProjectPathLayout } from "./root.js";
 import { parseSvg } from "./svg.js";
 import { parseAssetToml, parseProjectToml } from "./toml.js";
 import { serializeAssetToml, serializeProjectToml } from "./toml-writer.js";
+import { inspectPlanRetention, type PlanRetentionInspection } from "./plan-retention.js";
 import {
   executeCanonicalTransaction, snapshotCanonicalTree, snapshotsEqual,
-  type CanonicalSnapshot, type CanonicalTree,
+  type CanonicalSnapshot, type CanonicalTree, type TransactionHooks,
 } from "./transaction.js";
 import type { AssetId, NormalizedAsset, NormalizedProject, ProjectRelativePath, Result, SvgFilename } from "./types.js";
 import { TOOL_VERSION } from "./version.js";
+import { isFixedBrandFilePath } from "./brand/brand-files.js";
+import {
+  reconcileDirectoryProject,
+  type DirectoryReconciliationOptions,
+  type DirectoryReconciliationResult,
+} from "./reconcile-directory.js";
 import { planSchema2Reconciliation } from "./reconcile2.js";
 import type { NormalizationLedgerV1 } from "./normalization-ledger.js";
 import type { NormalizationPolicyIdentityV1 } from "./normalization-policy.js";
@@ -85,8 +92,9 @@ interface ReconciliationPlanInternals {
   readonly verifyExternalState?: () => Promise<void>;
 }
 
-interface ReconciliationPlanningHooks {
+export interface ReconciliationPlanningHooks {
   readonly afterCanonicalSnapshot?: () => void | Promise<void>;
+  readonly checkCancelled?: () => void | Promise<void>;
 }
 
 const reconciliationPlanInternals = new WeakMap<ReconciliationPlan, ReconciliationPlanInternals>();
@@ -325,7 +333,9 @@ function validateProposedTree(files: CanonicalTree): void {
         fail(context(), "PROJECT_UNSUPPORTED_SOURCE", `Unsupported proposed companion '${path}'.`, path);
       }
       companionFiles.add(name);
-    } else if (path !== ".tfsb/project.toml" && path !== ".tfsb/provenance.json") {
+    } else if (path === ".tfsb/brand.lock.json") {
+      if (bytes.byteLength > 1_048_576) fail(context(), "RESOURCE_LIMIT_EXCEEDED", "brand.lock.json exceeds 1 MiB.", path);
+    } else if (path !== ".tfsb/project.toml" && path !== ".tfsb/provenance.json" && !isFixedBrandFilePath(path)) {
       fail(context(), "PROJECT_UNSUPPORTED_SOURCE", `Unsupported proposed canonical path '${path}'.`, path);
     }
   }
@@ -347,12 +357,22 @@ async function planReconciliationInternal(
   hooks: ReconciliationPlanningHooks,
 ): Promise<ReconciliationPlan> {
   const ctx = context();
+  await hooks.checkCancelled?.();
   const root = await findProjectRoot(options.root, "reconcile", options.root !== undefined);
   const canonicalSnapshot = await snapshotCanonicalTree(root);
   await hooks.afterCanonicalSnapshot?.();
+  await hooks.checkCancelled?.();
   const project = await loadCanonicalProjectFromSnapshot(canonicalSnapshot, "reconcile");
   if (project.project.schemaVersion === 2) {
+    const activeProvenance = canonicalSnapshot.files.get(".tfsb/provenance.json")?.bytes;
+    if (activeProvenance !== undefined) {
+      let schemaVersion: unknown;
+      try { schemaVersion = (JSON.parse(Buffer.from(activeProvenance).toString("utf8")) as { readonly schemaVersion?: unknown }).schemaVersion; } catch { /* schema-2 parser below returns the closed diagnostic */ }
+      if (schemaVersion === 3) fail(ctx, "RECONCILE_SOURCE_KIND_UNSUPPORTED", "Archive reconcile cannot mutate a provenance-schema-3 directory project; TFSB43 owns explicit source-kind reconciliation.", ".tfsb/provenance.json");
+    }
+    await hooks.checkCancelled?.();
     const material = await planSchema2Reconciliation(project, options);
+    await hooks.checkCancelled?.();
     const publicRecords = Object.freeze(material.records.map((record) => Object.freeze(record)));
     const plan: ReconciliationPlan = Object.freeze({ records: publicRecords, changed: material.changed, pending: material.pending, blocked: material.blocked, ...(material.normalizationPolicy === undefined ? {} : { normalizationPolicy: Object.freeze(material.normalizationPolicy), normalizationLedger: Object.freeze({ schemaVersion: 1 as const, entries: Object.freeze(material.normalizationLedger!.entries.map((entry) => Object.freeze(entry))) }) }), [planBrand]: true as const });
     reconciliationPlanInternals.set(plan, { root, nextFiles: material.nextFiles, canonicalSnapshot, archiveSnapshot: material.archiveSnapshot, changed: material.changed, pending: material.pending, blocked: material.blocked, ...(material.verifyExternalState === undefined ? {} : { verifyExternalState: material.verifyExternalState }) });
@@ -382,6 +402,7 @@ async function planReconciliationInternal(
   const assetProvenanceByEntry = new Map<string, AssetProvenanceRecordV1>();
   const companionProvenanceByEntry = new Map<string, CompanionProvenanceRecordV1>();
   for (const item of provenance.records) {
+    await hooks.checkCancelled?.();
     if (item.type === "asset") {
       assetProvenance.set(item.assetId, item);
       assetProvenanceByEntry.set(item.entryName, item);
@@ -405,6 +426,7 @@ async function planReconciliationInternal(
   const candidatesByEntry = new Map<string, CandidateAsset>();
   const candidatesById = new Map<string, CandidateAsset>();
   for (const entry of archive.svgs) {
+    await hooks.checkCancelled?.();
     const tracked = assetProvenanceByEntry.get(entry.entryName);
     const identity: { id: AssetId; filename: SvgFilename } = tracked !== undefined
       ? {
@@ -431,6 +453,7 @@ async function planReconciliationInternal(
   const candidateCompanionsByEntry = new Map<string, CandidateCompanion>();
   const candidateCompanionsByFilename = new Map<string, CandidateCompanion>();
   for (const entry of archive.companions) {
+    await hooks.checkCancelled?.();
     const tracked = companionProvenanceByEntry.get(entry.entryName);
     const filename = tracked !== undefined ? companionFilename(tracked.canonicalPath) : entry.filename;
     const candidate = { entry: { ...entry, filename }, digest: computeCompanionByteDigest(entry.bytes) };
@@ -440,6 +463,7 @@ async function planReconciliationInternal(
 
   const currentAssets = new Map<string, NormalizedAsset>();
   for (const asset of project.assets) {
+    await hooks.checkCancelled?.();
     if (asset.schemaVersion !== 1) throw new Error("Schema homogeneity was lost after reconcile dispatch.");
     currentAssets.set(asset.id, asset);
   }
@@ -465,6 +489,7 @@ async function planReconciliationInternal(
   };
 
   for (const [oldId, entryName] of renames) {
+    await hooks.checkCancelled?.();
     const current = currentAssets.get(oldId);
     const candidate = candidatesByEntry.get(entryName);
     if (current === undefined || candidate === undefined) fail(ctx, "RECONCILE_UNKNOWN_RENAME", `Rename '${oldId}=${entryName}' is not in active scope.`, oldId);
@@ -486,6 +511,7 @@ async function planReconciliationInternal(
   }
 
   for (const [oldFilename, entryName] of companionRenames) {
+    await hooks.checkCancelled?.();
     const current = project.companions.get(oldFilename);
     const candidate = candidateCompanionsByEntry.get(entryName);
     if (current === undefined || candidate === undefined) fail(ctx, "RECONCILE_UNKNOWN_RENAME", `Companion rename '${oldFilename}=${entryName}' is not in active scope.`, oldFilename);
@@ -509,6 +535,7 @@ async function planReconciliationInternal(
 
   const allAssetIds = new Set([...currentAssets.keys(), ...assetProvenance.keys()]);
   for (const id of [...allAssetIds].sort(compareUtf8)) {
+    await hooks.checkCancelled?.();
     if (renames.has(id)) continue;
     const current = currentAssets.get(id);
     const prior = assetProvenance.get(id);
@@ -563,6 +590,7 @@ async function planReconciliationInternal(
   }
 
   for (const candidate of [...candidatesByEntry.values()].sort((left, right) => compareUtf8(left.entry.entryName, right.entry.entryName))) {
+    await hooks.checkCancelled?.();
     if (consumedAssets.has(candidate.entry.entryName)) continue;
     if (currentAssets.has(candidate.asset.id)) {
       records.push({
@@ -587,6 +615,7 @@ async function planReconciliationInternal(
   const currentCompanions = project.companions;
   const allCompanionNames = new Set([...currentCompanions.keys(), ...companionProvenance.keys()]);
   for (const filename of [...allCompanionNames].sort(compareUtf8)) {
+    await hooks.checkCancelled?.();
     if (companionRenames.has(filename)) continue;
     const current = currentCompanions.get(filename);
     const currentDigest = current === undefined ? undefined : computeCompanionByteDigest(current);
@@ -640,6 +669,7 @@ async function planReconciliationInternal(
   }
 
   for (const candidate of [...candidateCompanionsByEntry.values()].sort((left, right) => compareUtf8(left.entry.entryName, right.entry.entryName))) {
+    await hooks.checkCancelled?.();
     if (consumedCompanions.has(candidate.entry.entryName)) continue;
     if (currentCompanions.has(candidate.entry.filename) || nextFiles.has(`.tfsb/companions/${candidate.entry.filename}`)) {
       fail(ctx, "RECONCILE_COLLISION", `New companion '${candidate.entry.entryName}' collides with canonical companion.`, candidate.entry.entryName);
@@ -681,6 +711,7 @@ async function planReconciliationInternal(
   if (!snapshotsEqual(canonicalSnapshot, currentSnapshot)) {
     fail(ctx, "CANONICAL_CHANGED_DURING_PLAN", "Canonical tree changed during reconciliation planning.");
   }
+  await hooks.checkCancelled?.();
   const publicRecords = Object.freeze(records.map((record) => Object.freeze(record)));
   const plan: ReconciliationPlan = Object.freeze({ records: publicRecords, changed, pending, blocked, [planBrand]: true as const });
   reconciliationPlanInternals.set(plan, { root, nextFiles, canonicalSnapshot, archiveSnapshot: archive.snapshot, changed, pending, blocked });
@@ -705,22 +736,36 @@ function requirePlanInternals(plan: ReconciliationPlan): ReconciliationPlanInter
   return internals;
 }
 
-export async function executeReconciliationPlan(plan: ReconciliationPlan): Promise<void> {
+export async function executeReconciliationPlan(plan: ReconciliationPlan, hooks?: TransactionHooks): Promise<void> {
   const internals = requirePlanInternals(plan);
   if (internals.blocked) fail(context(), "RECONCILE_UNRESOLVED", "One unresolved record blocks the complete reconciliation apply.");
   if (!internals.changed) return;
   await executeCanonicalTransaction({
     root: internals.root, nextFiles: internals.nextFiles, expectedSnapshot: internals.canonicalSnapshot,
     archiveSnapshot: internals.archiveSnapshot,
+    ...(hooks === undefined ? {} : { hooks }),
     ...(internals.verifyExternalState === undefined ? {} : { verifyExternalState: internals.verifyExternalState }),
   });
 }
 
-export async function reconcileProject(options: ReconcileOptions): Promise<ReconciliationResult> {
-  const plan = await planReconciliation(options);
+/** Internal retention seam; not re-exported by the package root. */
+export function inspectReconciliationPlanRetention(plan: ReconciliationPlan): PlanRetentionInspection {
+  const internals = reconciliationPlanInternals.get(plan);
+  if (internals === undefined) throw new Error("Reconciliation plan was not produced by this planner instance.");
+  return inspectPlanRetention([plan, internals]);
+}
+
+export function reconcileProject(options: ReconcileOptions): Promise<ReconciliationResult>;
+export function reconcileProject(options: DirectoryReconciliationOptions): Promise<DirectoryReconciliationResult>;
+export async function reconcileProject(options: ReconcileOptions | DirectoryReconciliationOptions): Promise<ReconciliationResult | DirectoryReconciliationResult> {
+  if ("directory" in options || "sourceRoot" in options || "source" in options) {
+    return reconcileDirectoryProject(options as DirectoryReconciliationOptions);
+  }
+  const archiveOptions = options as ReconcileOptions;
+  const plan = await planReconciliation(archiveOptions);
   const internals = requirePlanInternals(plan);
   let applied = false;
-  if (options.apply === true && !internals.blocked) {
+  if (archiveOptions.apply === true && !internals.blocked) {
     await executeReconciliationPlan(plan);
     applied = internals.changed;
   }

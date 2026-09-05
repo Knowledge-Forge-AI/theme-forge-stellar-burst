@@ -1,0 +1,29 @@
+{
+  "jsonrpc": "2.0",
+  "id": "brand-status-1",
+  "result": {
+    "present": true,
+    "valid": true,
+    "brandSystemDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "counts": {
+      "bindings": 10,
+      "derivedAssets": 2,
+      "families": 1,
+      "recipes": 2,
+      "tokens": 10,
+      "variants": 6
+    },
+    "completeness": {
+      "missingRequiredRoles": 0,
+      "status": "complete"
+    },
+    "consumerLock": {
+      "present": true,
+      "status": "ok"
+    },
+    "export": {
+      "adapter": "resvg-png-v1",
+      "status": "qualified"
+    }
+  }
+}
