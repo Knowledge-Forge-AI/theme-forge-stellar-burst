@@ -228,8 +228,10 @@ describe("TFSB23 canonical formatting and JSON", () => {
       expect(result.stderr).toBe("");
       expect(JSON.parse(result.stdout).exitCode).toBe(result.exit);
     }
-    for (const command of ["import", "build", "install"] as const) {
-      const unsupported = await invoke(command === "import" ? ["import", archive, "--json"] : [command, "--json"]);
+    const importFailure = await invoke(["import", archive, "--json"]);
+    expect(importFailure.exit).toBe(1); expect(importFailure.stderr).toBe(""); expect(JSON.parse(importFailure.stdout)).toMatchObject({ command: "import", status: "error", exitCode: 1 });
+    for (const command of ["build", "install"] as const) {
+      const unsupported = await invoke([command, "--json"]);
       expect(unsupported.exit).toBe(1);
       expect(unsupported.stdout).toBe("");
       expect(unsupported.stderr).toContain("USAGE_ERROR");

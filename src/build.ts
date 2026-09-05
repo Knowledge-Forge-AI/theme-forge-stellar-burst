@@ -25,8 +25,10 @@ import {
   receiptOwnsProject,
   serializeBuildReceipt,
   type BuildReceipt,
+  type BuildReceiptV3,
 } from "./receipt.js";
 import { resolveConfinedPath } from "./root.js";
+import { inspectPlanRetention, type PlanRetentionInspection } from "./plan-retention.js";
 import { withCanonicalMutationLock } from "./transaction.js";
 
 const buildPlanBrand: unique symbol = Symbol("tfsb-build-plan");
@@ -62,7 +64,13 @@ function deepFreeze<T>(value: T): T {
 export interface BuildTestHooks {
   readonly afterStage?: () => void | Promise<void>;
   readonly afterBackup?: () => void | Promise<void>;
+  /** Last cancellable point, immediately before the first target rename. */
+  readonly beforePromotion?: () => void | Promise<void>;
   readonly afterPromote?: () => void | Promise<void>;
+}
+
+export interface BuildPlanningHooks {
+  readonly checkCancelled?: () => void | Promise<void>;
 }
 
 export interface BuildInspection {
@@ -128,11 +136,31 @@ export async function inspectBuild(
   return (await inspectBuildSnapshot(project, operation)).inspection;
 }
 
-export async function planBuild(root: string): Promise<BuildPlan> {
+import { inspectDerivedAuthority } from "./brand/derive.js";
+
+export async function planBuildWithHooks(root: string, hooks: BuildPlanningHooks = {}): Promise<BuildPlan> {
+  await hooks.checkCancelled?.();
   const project = await loadCanonicalProject(root, "build");
   enforceMutationAssetLimit(project, "build");
+
+  // Safeguard: validate derived targets if brand recipes are enabled
+  if (project.brand !== undefined && project.brand.recipesModel !== undefined) {
+    const inspection = inspectDerivedAuthority(project.snapshot.files, context("build"));
+    const blocked = inspection.entries.find((entry) => entry.state !== "unchanged");
+    if (blocked !== undefined) {
+      const code = blocked.state === "stale-authority" ? "DERIVED_ASSET_STALE"
+        : blocked.state === "target-drift" ? "DERIVED_ASSET_DRIFT"
+        : blocked.state === "human-owned" ? "DERIVED_TARGET_OWNED_BY_HUMAN"
+        : blocked.state === "missing-target" ? "DERIVED_TARGET_MISSING"
+        : blocked.state === "ownership-conflict" ? "DERIVED_OWNERSHIP_CONFLICT"
+        : "DERIVED_RECEIPT_INVALID";
+      fail(context("build"), code, `Derived target '${blocked.targetAssetId}' is not current (${blocked.state}).`, blocked.targetAssetId);
+    }
+  }
+
   const target = await inspectBuildSnapshot(project);
   await verifyLoadedProjectSnapshot(project, "build");
+  await hooks.checkCancelled?.();
   const receipt = createBuildReceipt(project);
   const files = new Map(project.outputs);
   files.set(BUILD_RECEIPT_FILENAME, serializeBuildReceipt(receipt));
@@ -145,8 +173,13 @@ export async function planBuild(root: string): Promise<BuildPlan> {
     replacingExisting: target.snapshot.kind === "directory",
     [buildPlanBrand]: true as const,
   });
+  await hooks.checkCancelled?.();
   buildPlanInternals.set(plan, { project, files: new Map(files), targetSnapshot: target.snapshot });
   return plan;
+}
+
+export async function planBuild(root: string): Promise<BuildPlan> {
+  return planBuildWithHooks(root, {});
 }
 
 export async function executeBuild(plan: BuildPlan, hooks: BuildTestHooks = {}): Promise<void> {
@@ -184,6 +217,7 @@ export async function executeBuild(plan: BuildPlan, hooks: BuildTestHooks = {}):
         fail(context(), "BUILD_TARGET_CHANGED_DURING_PLAN", "Build target changed after planning.", project.project.buildDirectory);
       }
       if (beforeRename.kind === "directory") {
+        await hooks.beforePromotion?.();
         await rename(project.buildDirectory, backup);
         backupCreated = true;
         await hooks.afterBackup?.();
@@ -192,6 +226,7 @@ export async function executeBuild(plan: BuildPlan, hooks: BuildTestHooks = {}):
       if (reservation.kind !== "absent") {
         fail(context(), "BUILD_TARGET_CHANGED_DURING_PLAN", "Build target appeared during promotion.", project.project.buildDirectory);
       }
+      if (beforeRename.kind !== "directory") await hooks.beforePromotion?.();
       await rename(stage, project.buildDirectory);
       promoted = true;
       await hooks.afterPromote?.();
@@ -218,4 +253,11 @@ export async function buildProject(root: string, dryRun = false, hooks: BuildTes
   const plan = await planBuild(root);
   if (!dryRun) await executeBuild(plan, hooks);
   return plan;
+}
+
+/** Internal retention seam; not re-exported by the package root. */
+export function inspectBuildPlanRetention(plan: BuildPlan): PlanRetentionInspection {
+  const internals = buildPlanInternals.get(plan);
+  if (internals === undefined) throw new Error("Build plan was not produced by this planner instance.");
+  return inspectPlanRetention([plan, internals]);
 }

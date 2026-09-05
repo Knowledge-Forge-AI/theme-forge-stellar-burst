@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledge-forge.ai/tfsb/design-evidence/v1/review.schema.json",
+  "title": "TFSB design review packet v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "briefDigest", "candidateDigests", "annotations", "dispositions", "overallDisposition", "summary", "reviewDigest"],
+  "properties": {
+    "schema": { "const": "tfsb.design-review" }, "schemaVersion": { "const": 1 }, "briefDigest": { "$ref": "#/$defs/digest" }, "candidateDigests": { "type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": { "$ref": "#/$defs/digest" } }, "previousReviewDigest": { "$ref": "#/$defs/digest" },
+    "annotations": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/annotation" } }, "dispositions": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/disposition" } }, "overallDisposition": { "$ref": "#/$defs/overall" }, "summary": { "type": "string", "minLength": 1, "maxLength": 4096 }, "reviewDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }, "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$" },
+    "artifactScope": { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "artifact" } } },
+    "regionScope": { "type": "object", "additionalProperties": false, "required": ["kind", "xMillionths", "yMillionths", "widthMillionths", "heightMillionths"], "properties": { "kind": { "const": "region" }, "xMillionths": { "type": "integer", "minimum": 0, "maximum": 1000000 }, "yMillionths": { "type": "integer", "minimum": 0, "maximum": 1000000 }, "widthMillionths": { "type": "integer", "minimum": 1, "maximum": 1000000 }, "heightMillionths": { "type": "integer", "minimum": 1, "maximum": 1000000 } } },
+    "annotation": { "type": "object", "additionalProperties": false, "required": ["annotationId", "candidateDigest", "visualEvidenceDigest", "artifactRole", "pngDigest", "scope", "category", "severity", "comment"], "properties": { "annotationId": { "$ref": "#/$defs/id" }, "candidateDigest": { "$ref": "#/$defs/digest" }, "visualEvidenceDigest": { "$ref": "#/$defs/digest" }, "artifactRole": { "enum": ["current", "baseline", "before", "after"] }, "pngDigest": { "$ref": "#/$defs/digest" }, "scope": { "oneOf": [{ "$ref": "#/$defs/artifactScope" }, { "$ref": "#/$defs/regionScope" }] }, "category": { "enum": ["composition", "alignment", "spacing", "legibility", "contrast", "color", "brand-fit", "accessibility", "small-size", "technical", "other"] }, "severity": { "enum": ["note", "minor", "substantive", "blocking"] }, "comment": { "type": "string", "minLength": 1, "maxLength": 2048 }, "elementId": { "$ref": "#/$defs/id" } } },
+    "disposition": { "type": "object", "additionalProperties": false, "required": ["candidateDigest", "disposition"], "properties": { "candidateDigest": { "$ref": "#/$defs/digest" }, "disposition": { "enum": ["unreviewed", "preferred", "approved", "rejected", "needs-revision", "deferred"] } } },
+    "overall": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "enum": ["no-decision", "rejected-all"] } } }, { "type": "object", "additionalProperties": false, "required": ["kind", "candidateDigest"], "properties": { "kind": { "enum": ["preferred", "approved", "needs-revision"] }, "candidateDigest": { "$ref": "#/$defs/digest" } } }] }
+  }
+}

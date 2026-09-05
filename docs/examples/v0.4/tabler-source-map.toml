@@ -1,0 +1,25 @@
+schema_version = 1
+source_root = "."
+
+[[collection]]
+id = "tabler-outline"
+name = "Tabler outline icons"
+root = "icons/outline"
+identity = "basename"
+prefix = "outline-"
+include_paths = []
+include_trees = ["."]
+exclude_paths = []
+exclude_trees = []
+
+[[collection]]
+id = "tabler-filled"
+name = "Tabler filled icons"
+root = "icons/filled"
+identity = "basename"
+prefix = "filled-"
+include_paths = []
+include_trees = ["."]
+exclude_paths = []
+exclude_trees = []
+

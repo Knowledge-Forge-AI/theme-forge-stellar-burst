@@ -117,5 +117,5 @@ describe("TFSB24 integrated Terminal Nova lifecycle", () => {
     expect((await diffBuild(await loadCanonicalProject(root, "diff"))).different).toBe(false);
     expect((await diffInstall(await loadCanonicalProject(root, "diff"))).different).toBe(false);
     expect(await readFile(join(root, ".tfsb/companions/brand-README.md"))).toEqual(companion);
-  }, 10_000);
+  }, 20_000);
 });

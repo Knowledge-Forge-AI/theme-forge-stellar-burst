@@ -243,4 +243,51 @@ describe("recoverable canonical-tree transaction", () => {
     await expect(access(join(root, ".tfsb"))).rejects.toMatchObject({ code: "ENOENT" });
     expect(await residue(root)).toEqual([]);
   });
+
+  it("invokes validateStagedTree and verifyExternalState at both initial write and pre-promotion boundaries", async () => {
+    const value = await initialized();
+    let validateStagedCount = 0;
+    let verifyExternalCount = 0;
+    const stagesSeen: string[] = [];
+
+    await executeCanonicalTransaction({
+      root: value.root,
+      nextFiles: value.next,
+      expectedSnapshot: value.snapshot,
+      validateStagedTree: (stage) => {
+        validateStagedCount++;
+        stagesSeen.push(stage);
+      },
+      verifyExternalState: () => {
+        verifyExternalCount++;
+      },
+    });
+
+    // Both hooks must run at least twice (initial stage validation + pre-promotion validation)
+    expect(validateStagedCount).toBeGreaterThanOrEqual(2);
+    expect(verifyExternalCount).toBeGreaterThanOrEqual(2);
+    expect(stagesSeen.length).toBeGreaterThanOrEqual(2);
+    expect(stagesSeen[0]).toBe(stagesSeen[1]);
+  });
+
+  it("fails closed and rolls back if validateStagedTree fails at pre-promotion boundary", async () => {
+    const value = await initialized();
+    let invocation = 0;
+
+    await expect(
+      executeCanonicalTransaction({
+        root: value.root,
+        nextFiles: value.next,
+        expectedSnapshot: value.snapshot,
+        validateStagedTree: (_stage) => {
+          invocation++;
+          if (invocation >= 2) {
+            throw new Error("Synthetic pre-promotion stage validation failure");
+          }
+        },
+      }),
+    ).rejects.toMatchObject({ diagnostic: { code: "TFSB_TRANSACTION_FAILED" } });
+
+    expect(await residue(value.root)).toEqual([]);
+  });
 });

@@ -1,0 +1,148 @@
+{
+  "schema": "tfsb.brand-bundle-manifest",
+  "schemaVersion": 1,
+  "packageId": "terminal-nova-brand",
+  "name": "Theme Forge Terminal Nova Brand",
+  "brandVersion": "0.4.0-example.1",
+  "genericManifestByteDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+  "brandPackageDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "brandSystemDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "domainDigests": {
+    "brand": "sha256:0101010101010101010101010101010101010101010101010101010101010101",
+    "consumerProfiles": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "exports": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "qa": "sha256:0202020202020202020202020202020202020202020202020202020202020202",
+    "recipes": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "tokens": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "inventory": [
+    {
+      "assetId": "favicon-on-dark",
+      "family": "terminal-nova",
+      "role": "favicon",
+      "variant": "favicon-on-dark",
+      "bundlePath": "assets/favicon-on-dark.svg",
+      "canonicalAssetDigest": "sha256:0303030303030303030303030303030303030303030303030303030303030303",
+      "svgDigest": "sha256:3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a"
+    },
+    {
+      "assetId": "favicon-on-light",
+      "family": "terminal-nova",
+      "role": "favicon",
+      "variant": "favicon-on-light",
+      "bundlePath": "assets/favicon-on-light.svg",
+      "canonicalAssetDigest": "sha256:0606060606060606060606060606060606060606060606060606060606060606",
+      "svgDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    {
+      "assetId": "mark-monochrome-dark",
+      "family": "terminal-nova",
+      "role": "mark",
+      "variant": "monochrome-on-light",
+      "bundlePath": "assets/mark-monochrome-dark.svg",
+      "canonicalAssetDigest": "sha256:7070707070707070707070707070707070707070707070707070707070707070",
+      "svgDigest": "sha256:7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a"
+    },
+    {
+      "assetId": "mark-monochrome-light",
+      "family": "terminal-nova",
+      "role": "mark",
+      "variant": "monochrome-on-dark",
+      "bundlePath": "assets/mark-monochrome-light.svg",
+      "canonicalAssetDigest": "sha256:8080808080808080808080808080808080808080808080808080808080808080",
+      "svgDigest": "sha256:8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a8a"
+    },
+    {
+      "assetId": "theme-forge-terminal-nova-horizontal-on-dark",
+      "family": "terminal-nova",
+      "role": "lockup-horizontal",
+      "variant": "reversed-on-dark",
+      "bundlePath": "assets/theme-forge-terminal-nova-horizontal-on-dark.svg",
+      "canonicalAssetDigest": "sha256:4040404040404040404040404040404040404040404040404040404040404040",
+      "svgDigest": "sha256:4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a"
+    },
+    {
+      "assetId": "theme-forge-terminal-nova-horizontal-on-light",
+      "family": "terminal-nova",
+      "role": "lockup-horizontal",
+      "variant": "full-color-on-light",
+      "bundlePath": "assets/theme-forge-terminal-nova-horizontal-on-light.svg",
+      "canonicalAssetDigest": "sha256:3030303030303030303030303030303030303030303030303030303030303030",
+      "svgDigest": "sha256:3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b"
+    },
+    {
+      "assetId": "theme-forge-terminal-nova-mark-on-dark",
+      "family": "terminal-nova",
+      "role": "mark",
+      "variant": "reversed-on-dark",
+      "bundlePath": "assets/theme-forge-terminal-nova-mark-on-dark.svg",
+      "canonicalAssetDigest": "sha256:2020202020202020202020202020202020202020202020202020202020202020",
+      "svgDigest": "sha256:2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"
+    },
+    {
+      "assetId": "theme-forge-terminal-nova-mark-on-light",
+      "family": "terminal-nova",
+      "role": "mark",
+      "variant": "full-color-on-light",
+      "bundlePath": "assets/theme-forge-terminal-nova-mark-on-light.svg",
+      "canonicalAssetDigest": "sha256:1010101010101010101010101010101010101010101010101010101010101010",
+      "svgDigest": "sha256:1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"
+    },
+    {
+      "assetId": "theme-forge-terminal-nova-stacked-on-dark",
+      "family": "terminal-nova",
+      "role": "lockup-stacked",
+      "variant": "reversed-on-dark",
+      "bundlePath": "assets/theme-forge-terminal-nova-stacked-on-dark.svg",
+      "canonicalAssetDigest": "sha256:6060606060606060606060606060606060606060606060606060606060606060",
+      "svgDigest": "sha256:6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a6a"
+    },
+    {
+      "assetId": "theme-forge-terminal-nova-stacked-on-light",
+      "family": "terminal-nova",
+      "role": "lockup-stacked",
+      "variant": "full-color-on-light",
+      "bundlePath": "assets/theme-forge-terminal-nova-stacked-on-light.svg",
+      "canonicalAssetDigest": "sha256:5050505050505050505050505050505050505050505050505050505050505050",
+      "svgDigest": "sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+    }
+  ],
+  "companions": [
+    {
+      "id": "software-license",
+      "purpose": "license",
+      "bundlePath": "companions/LICENSE",
+      "canonicalCompanionFile": "LICENSE",
+      "mediaType": "text/plain",
+      "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "required": true
+    },
+    {
+      "id": "terminal-nova-brand-guidance",
+      "purpose": "brand-guidance",
+      "bundlePath": "companions/README-BRAND.md",
+      "canonicalCompanionFile": "README-BRAND.md",
+      "mediaType": "text/markdown",
+      "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "required": true
+    }
+  ],
+  "profiles": [
+    {
+      "id": "astro-starlight",
+      "version": 1,
+      "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "id": "package-distribution",
+      "version": 1,
+      "digest": "sha256:abababababababababababababababababababababababababababababababab"
+    },
+    {
+      "id": "vite-web",
+      "version": 1,
+      "digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+    }
+  ],
+  "brandManifestDigest": "sha256:0505050505050505050505050505050505050505050505050505050505050505"
+}

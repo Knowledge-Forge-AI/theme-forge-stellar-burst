@@ -1,0 +1,34 @@
+schema = "tfsb.brand-package"
+schema_version = 1
+package_id = "core-fixture-brand"
+name = "Core Fixture Brand Package"
+brand_version = "0.4.0-fixture.1"
+families = ["core-fixture"]
+compatible_profiles = []
+brand_system_digest = "sha256:4e10ef25161f37bdd137bcf85fcf1b842b4e0a6512f863d7f2fbba0d8a7e9c4d"
+
+[[companions]]
+id = "fixture-guidance"
+source = "GUIDANCE.md"
+bundle_path = "companions/GUIDANCE.md"
+canonical_companion_file = "GUIDANCE.md"
+media_type = "text/markdown"
+purpose = "brand-guidance"
+digest = "sha256:10a61401be21913c99086526840a27a24991815db9d7044ac1668787e737a9d3"
+required = true
+
+[[inventory]]
+family = "core-fixture"
+role = "mark"
+variant = "standard-light"
+asset = "fixture-mark-on-light"
+canonical_asset_digest = "sha256:8e53627c743ba21b079b281638804f3a9214895686514dbf5fec0c279db71667"
+svg_digest = "sha256:a1bf2b63584d6c5e7832d2e7c29f9137f6f15c4a0d004b9e71c1ee599d75d75f"
+
+[[inventory]]
+family = "core-fixture"
+role = "mark"
+variant = "standard-dark"
+asset = "fixture-mark-on-dark"
+canonical_asset_digest = "sha256:6a95e550c0c3e92793a873251eed3bc888e5e4c4a3355124d5230eaebe479387"
+svg_digest = "sha256:1068a15abd03564d4a48257825914baa14ae26990aad96c0c8f46e2d5a27a15b"

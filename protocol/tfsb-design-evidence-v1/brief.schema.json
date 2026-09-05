@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledge-forge.ai/tfsb/design-evidence/v1/brief.schema.json",
+  "title": "TFSB design brief packet v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schemaVersion", "briefId", "revision", "title", "objective", "context", "targets", "constraints", "materials", "visualEvidence", "briefDigest"],
+  "properties": {
+    "schema": { "const": "tfsb.design-brief" },
+    "schemaVersion": { "const": 1 },
+    "briefId": { "$ref": "#/$defs/id" },
+    "revision": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "title": { "$ref": "#/$defs/text512" },
+    "objective": { "$ref": "#/$defs/text4096" },
+    "context": { "$ref": "#/$defs/context" },
+    "targets": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "$ref": "#/$defs/target" } },
+    "constraints": { "$ref": "#/$defs/constraints" },
+    "materials": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/material" } },
+    "visualEvidence": { "type": "array", "maxItems": 8, "items": { "$ref": "../tfsb-studio-v1/results-1.2.schema.json#/$defs/visualEvidence" } },
+    "briefDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z][a-z0-9]*(?:[-.][a-z0-9]+)*$" },
+    "text512": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "text4096": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "source": { "type": "object", "additionalProperties": false, "required": ["packageId", "brandVersion", "brandSystemDigest"], "properties": { "packageId": { "type": "string", "minLength": 1, "maxLength": 214, "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*|[a-z0-9][a-z0-9._-]*)$" }, "brandVersion": { "type": "string", "minLength": 1, "maxLength": 64 }, "brandSystemDigest": { "$ref": "#/$defs/digest" } } },
+    "context": { "type": "object", "additionalProperties": false, "required": ["corePackageVersion", "studioVersion", "studioProtocolVersion", "project"], "properties": { "corePackageVersion": { "const": "0.4.0" }, "studioVersion": { "const": "0.1.0" }, "studioProtocolVersion": { "const": "1.2" }, "project": { "type": "object", "additionalProperties": false, "required": ["canonicalDigest", "brandSystemDigest"], "properties": { "label": { "type": "string", "maxLength": 256 }, "canonicalDigest": { "$ref": "#/$defs/digest" }, "brandSystemDigest": { "$ref": "#/$defs/digest" } } }, "source": { "$ref": "#/$defs/source" } } },
+    "selector": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["kind", "assetId"], "properties": { "kind": { "const": "asset" }, "assetId": { "$ref": "#/$defs/id" } } }, { "type": "object", "additionalProperties": false, "required": ["kind", "family", "role", "variant"], "properties": { "kind": { "const": "binding" }, "family": { "$ref": "#/$defs/id" }, "role": { "$ref": "#/$defs/id" }, "variant": { "$ref": "#/$defs/id" } } }] },
+    "target": { "type": "object", "additionalProperties": false, "required": ["targetId", "selector", "canonicalAssetDigest", "svgDigest", "purpose"], "properties": { "targetId": { "$ref": "#/$defs/id" }, "selector": { "$ref": "#/$defs/selector" }, "canonicalAssetDigest": { "$ref": "#/$defs/digest" }, "svgDigest": { "$ref": "#/$defs/digest" }, "purpose": { "$ref": "#/$defs/id" } } },
+    "renderTuple": { "type": "object", "additionalProperties": false, "required": ["width", "height", "background"], "properties": { "width": { "type": "integer", "minimum": 16, "maximum": 1024 }, "height": { "type": "integer", "minimum": 16, "maximum": 1024 }, "background": { "type": "string", "maxLength": 128, "pattern": "^(?:transparent|token:[a-z][a-z0-9]*(?:-[a-z0-9]+)*|#[0-9A-F]{8})$" } } },
+    "constraints": { "type": "object", "additionalProperties": false, "required": ["allowedProposalKinds", "requiredTokenIds", "requiredRecipeIds", "qaProfileIds", "renderTuples", "acceptanceCriteria", "prohibitedChanges"], "properties": { "allowedProposalKinds": { "type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": { "enum": ["evidence-only", "derive", "qa-baseline", "consumer-install", "consumer-sync", "export"] } }, "requiredTokenIds": { "type": "array", "maxItems": 128, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }, "requiredRecipeIds": { "type": "array", "maxItems": 128, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }, "qaProfileIds": { "type": "array", "maxItems": 128, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }, "renderTuples": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/renderTuple" } }, "acceptanceCriteria": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/text4096" } }, "prohibitedChanges": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/text4096" } } } },
+    "material": { "type": "object", "additionalProperties": false, "required": ["kind", "identifier", "digest"], "properties": { "kind": { "enum": ["user-supplied", "tfsb-rendered", "third-party", "external-claim"] }, "identifier": { "$ref": "#/$defs/id" }, "digest": { "$ref": "#/$defs/digest" }, "licenseExpression": { "type": "string", "minLength": 1, "maxLength": 256 }, "noticeDigest": { "$ref": "#/$defs/digest" } } }
+  }
+}

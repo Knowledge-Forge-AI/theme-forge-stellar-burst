@@ -1,0 +1,177 @@
+schema = "tfsb.brand"
+schema_version = 1
+enabled_domains = { tokens = true, recipes = true, qa = true, consumer_profiles = true, package = true, exports = true }
+
+[[families]]
+id = "terminal-nova"
+name = "Theme Forge Terminal Nova"
+required_roles = []
+optional_roles = ["lockup-stacked"]
+
+[[variants]]
+family = "terminal-nova"
+id = "full-color-on-light"
+backgrounds = ["light"]
+color_mode = "full-color"
+scale = "standard"
+status = "primary"
+minimum_width_px = 24
+display_order = 10
+
+[[variants]]
+family = "terminal-nova"
+id = "reversed-on-dark"
+backgrounds = ["dark"]
+color_mode = "reversed"
+scale = "standard"
+status = "primary"
+minimum_width_px = 24
+display_order = 20
+
+[[variants]]
+family = "terminal-nova"
+id = "monochrome-on-light"
+backgrounds = ["light"]
+color_mode = "monochrome"
+scale = "standard"
+status = "secondary"
+minimum_width_px = 24
+display_order = 30
+
+[[variants]]
+family = "terminal-nova"
+id = "monochrome-on-dark"
+backgrounds = ["dark"]
+color_mode = "monochrome"
+scale = "standard"
+status = "secondary"
+minimum_width_px = 24
+display_order = 40
+
+[[variants]]
+family = "terminal-nova"
+id = "favicon-on-light"
+backgrounds = ["light"]
+color_mode = "full-color"
+scale = "simplified"
+status = "primary"
+minimum_width_px = 16
+minimum_height_px = 16
+display_order = 50
+
+[[variants]]
+family = "terminal-nova"
+id = "favicon-on-dark"
+backgrounds = ["dark"]
+color_mode = "reversed"
+scale = "simplified"
+status = "primary"
+minimum_width_px = 16
+minimum_height_px = 16
+display_order = 60
+
+[[requirements]]
+family = "terminal-nova"
+role = "mark"
+background = "light"
+scale = "standard"
+
+[[requirements]]
+family = "terminal-nova"
+role = "mark"
+background = "dark"
+scale = "standard"
+
+[[requirements]]
+family = "terminal-nova"
+role = "lockup-horizontal"
+background = "light"
+scale = "standard"
+
+[[requirements]]
+family = "terminal-nova"
+role = "lockup-horizontal"
+background = "dark"
+scale = "standard"
+
+[[requirements]]
+family = "terminal-nova"
+role = "favicon"
+background = "light"
+scale = "simplified"
+
+[[requirements]]
+family = "terminal-nova"
+role = "favicon"
+background = "dark"
+scale = "simplified"
+
+[[bindings]]
+family = "terminal-nova"
+role = "mark"
+variant = "full-color-on-light"
+asset = "theme-forge-terminal-nova-mark-on-light"
+authority = "source"
+
+[[bindings]]
+family = "terminal-nova"
+role = "mark"
+variant = "reversed-on-dark"
+asset = "theme-forge-terminal-nova-mark-on-dark"
+authority = "source"
+
+[[bindings]]
+family = "terminal-nova"
+role = "lockup-horizontal"
+variant = "full-color-on-light"
+asset = "theme-forge-terminal-nova-horizontal-on-light"
+authority = "source"
+
+[[bindings]]
+family = "terminal-nova"
+role = "lockup-horizontal"
+variant = "reversed-on-dark"
+asset = "theme-forge-terminal-nova-horizontal-on-dark"
+authority = "source"
+
+[[bindings]]
+family = "terminal-nova"
+role = "lockup-stacked"
+variant = "full-color-on-light"
+asset = "theme-forge-terminal-nova-stacked-on-light"
+authority = "source"
+
+[[bindings]]
+family = "terminal-nova"
+role = "lockup-stacked"
+variant = "reversed-on-dark"
+asset = "theme-forge-terminal-nova-stacked-on-dark"
+authority = "source"
+
+[[bindings]]
+family = "terminal-nova"
+role = "mark"
+variant = "monochrome-on-dark"
+asset = "mark-monochrome-light"
+authority = "derived"
+
+[[bindings]]
+family = "terminal-nova"
+role = "mark"
+variant = "monochrome-on-light"
+asset = "mark-monochrome-dark"
+authority = "derived"
+
+[[bindings]]
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-light"
+asset = "favicon-on-light"
+authority = "source"
+
+[[bindings]]
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-dark"
+asset = "favicon-on-dark"
+authority = "source"

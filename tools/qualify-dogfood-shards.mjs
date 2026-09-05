@@ -14,12 +14,13 @@ import { zipSync } from "fflate";
  * @typedef {{ mode: string, sha: string, path: string, bytes: Uint8Array, text: string, classification: "directly_importable" | "importable_with_normalization" | "unsupported" | "unsafe", featureCodes: readonly string[] }} GitBlob
  * @typedef {{ name: string, entries: readonly GitBlob[], accessibilityAuthority: "title-only" | "consumer_labelled" | "none", selectionRationale: string, legalDisposition: string, lifecycle: boolean }} ShardDefinition
  * @typedef {{ corpora: readonly CorpusInput[], scratchRoot: string, aggregateOutput?: string }} QualificationOptions
- * @typedef {{ analyze(options: any): Promise<any>, buildProject(root: string): Promise<any>, bundleProject(options: any): Promise<any>, checkProject(root: string): Promise<any>, importProject(options: any): Promise<any>, listProject(root: string): Promise<any>, scanAnalyzeSvg(bytes: Uint8Array, source?: string, virtualPath?: string): any }} ProductApi
+ * @typedef {{ analyze(options: any): Promise<any>, buildProject(root: string): Promise<any>, bundleProject(options: any): Promise<any>, checkProject(root: string): Promise<any>, importProject(options: any): Promise<any>, listProject(root: string): Promise<any>, parseSourceMap(text: string): any, planShard(root: string, map: any, collection: string, paths: readonly string[]): Promise<any>, serializeShardManifest(manifest: any): string, scanAnalyzeSvg(bytes: Uint8Array, source?: string, virtualPath?: string): any }} ProductApi
  */
 
 const textDecoder = new TextDecoder();
 const FIXED_ZIP_TIME = new Date("1980-01-02T00:00:00Z");
 const LOCAL_ONLY = "Local-only tracked-blob evaluation; no redistribution permission is claimed.";
+const PROJECTION_PATH = new URL("../docs/evaluations/v0.4-collection-identity-projection.json", import.meta.url);
 
 /**
  * @param {string} left
@@ -306,6 +307,46 @@ function classificationSummary(entries) {
 }
 
 /**
+ * Qualify the production shard planner from the committed TFSB40 candidate lists.
+ * The manifest is serialized twice but never written into a dogfood checkout.
+ * @param {CorpusInput} input
+ * @param {ProductApi} product
+ */
+async function qualifyProductShardPlans(input, product) {
+  const projection = JSON.parse(await readFile(PROJECTION_PATH, "utf8"));
+  const collections = projection.collections.filter(/** @param {any} collection */ (collection) => collection.corpusId === input.id);
+  const results = [];
+  for (const collection of collections) {
+    const sourceMapText = `schema_version = 1\nsource_root = "."\n\n[[collection]]\nid = ${JSON.stringify(collection.collectionId)}\nname = ${JSON.stringify(collection.collectionId)}\nroot = ${JSON.stringify(collection.collectionRoot)}\nidentity = ${JSON.stringify(collection.identityStrategy)}\nprefix = ${JSON.stringify(collection.prefix)}\ninclude_paths = []\ninclude_trees = ["."]\nexclude_paths = []\nexclude_trees = []\n`;
+    const parsedMap = product.parseSourceMap(sourceMapText);
+    if (!parsedMap.ok) throw new Error(`${input.id}/${collection.collectionId} source-map fixture did not parse.`);
+    for (const candidate of collection.shardCandidates) {
+      const first = await product.planShard(input.checkout, parsedMap.value, collection.collectionId, candidate.membership);
+      const second = await product.planShard(input.checkout, parsedMap.value, collection.collectionId, candidate.membership);
+      if (!first.ok || !second.ok) {
+        const codes = [...new Set([...(first.diagnostics ?? []), ...(second.diagnostics ?? [])].map((diagnostic) => diagnostic.code))].sort(compareText);
+        if (input.id !== "thesvg") throw new Error(`${input.id}/${collection.collectionId}/${candidate.requestedSize} product shard failed: ${codes.join(",")}.`);
+        results.push({ collectionId: collection.collectionId, requestedSize: candidate.requestedSize, status: "rejected", diagnosticCodes: codes });
+        continue;
+      }
+      const firstBytes = product.serializeShardManifest(first.value);
+      const secondBytes = product.serializeShardManifest(second.value);
+      if (firstBytes !== secondBytes) throw new Error(`${input.id}/${collection.collectionId}/${candidate.requestedSize} product shard was nondeterministic.`);
+      results.push({
+        collectionId: collection.collectionId,
+        requestedSize: candidate.requestedSize,
+        status: "qualified",
+        assetCount: first.value.assetCount,
+        membershipDigest: first.value.membershipDigest,
+        sourceSnapshotDigest: first.value.sourceSnapshotDigest,
+        manifestDigest: digest(firstBytes),
+      });
+    }
+  }
+  return results;
+}
+
+/**
  * @param {ShardDefinition} shard
  * @param {string} directory
  * @param {ProductApi} product
@@ -372,6 +413,7 @@ async function qualifyCorpus(input, scratchRoot, product) {
   await rm(directory, { recursive: true, force: true });
   await mkdir(directory, { recursive: true });
   const shards = [];
+  const productShardPlans = await qualifyProductShardPlans(input, product);
   for (const shard of shardDefinitions(input, product)) {
     if (shard.entries.length === 0) throw new Error(`${shard.name} has no representative entries.`);
     const shardDirectory = join(directory, shard.name);
@@ -408,7 +450,7 @@ async function qualifyCorpus(input, scratchRoot, product) {
   }
   const after = repositoryState(input);
   if (stableJson(after) !== stableJson(before)) throw new Error(`${input.id} checkout state changed during qualification.`);
-  return { corpus: input.id, origin: before.origin, revision: input.revision, before: { head: before.head, dirty: before.dirty }, after: { head: after.head, dirty: after.dirty }, shards };
+  return { corpus: input.id, origin: before.origin, revision: input.revision, before: { head: before.head, dirty: before.dirty }, after: { head: after.head, dirty: after.dirty }, productShardPlans, shards };
 }
 
 /**
@@ -427,6 +469,9 @@ async function loadProduct() {
       checkProject: product.checkProject,
       importProject: product.importProject,
       listProject: product.listProject,
+      parseSourceMap: product.parseSourceMap,
+      planShard: product.planShard,
+      serializeShardManifest: product.serializeShardManifest,
       scanAnalyzeSvg: scanner.scanAnalyzeSvg,
     };
   } catch (error) {

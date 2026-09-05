@@ -1,0 +1,38 @@
+{
+  "kind": "tfsb-bundle-manifest",
+  "schemaVersion": 2,
+  "generator": {
+    "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
+    "version": "0.3.0"
+  },
+  "projectName": "core-fixture",
+  "files": [
+    {
+      "type": "asset",
+      "path": "assets/fixture-mark-on-dark.svg",
+      "assetId": "fixture-mark-on-dark",
+      "sha256": "1068a15abd03564d4a48257825914baa14ae26990aad96c0c8f46e2d5a27a15b"
+    },
+    {
+      "type": "asset",
+      "path": "assets/fixture-mark-on-light.svg",
+      "assetId": "fixture-mark-on-light",
+      "sha256": "a1bf2b63584d6c5e7832d2e7c29f9137f6f15c4a0d004b9e71c1ee599d75d75f"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand-package.toml",
+      "sha256": "d205c6db34f0af25d6657a8133593d1d67b50dda8e4cfc34973450dd141c7bd4"
+    },
+    {
+      "type": "file",
+      "path": "brand/brand.toml",
+      "sha256": "1017ebaca28269b4d4397e84bf29696ddea3f615ef1a8e5a6d67606a369c8b41"
+    },
+    {
+      "type": "companion",
+      "path": "companions/GUIDANCE.md",
+      "sha256": "10a61401be21913c99086526840a27a24991815db9d7044ac1668787e737a9d3"
+    }
+  ]
+}

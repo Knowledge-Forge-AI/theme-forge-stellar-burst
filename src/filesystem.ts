@@ -24,7 +24,7 @@ export type FlatDirectorySnapshot =
   | { readonly kind: "absent" }
   | ({ readonly kind: "directory"; readonly files: ReadonlyMap<string, FileSnapshot> } & FileIdentity);
 
-function identity(stat: Stats): FileIdentity {
+export function identity(stat: Stats): FileIdentity {
   return {
     dev: stat.dev,
     ino: stat.ino,
@@ -49,7 +49,10 @@ export async function optionalLstat(path: string): Promise<Stats | undefined> {
   }
 }
 
-async function readOpenedFile(handle: FileHandle, size: number): Promise<Buffer> {
+export async function readOpenedFile(handle: FileHandle, size: number, maxBytes?: number): Promise<Buffer> {
+  if (maxBytes !== undefined && size > maxBytes) {
+    throw new Error("File exceeds maxBytes");
+  }
   const bytes = Buffer.alloc(size);
   let offset = 0;
   while (offset < size) {
@@ -58,6 +61,40 @@ async function readOpenedFile(handle: FileHandle, size: number): Promise<Buffer>
     offset += result.bytesRead;
   }
   return bytes.subarray(0, offset);
+}
+
+export type ReadFn = (
+  buffer: Uint8Array,
+  offset: number,
+  length: number,
+  position: number | null,
+) => Promise<{ bytesRead: number; buffer: Uint8Array }>;
+
+export async function readExactBuffer(
+  handle: FileHandle,
+  length: number,
+  position: number,
+  ctx: DiagnosticContext,
+  maxAllowedLength: number,
+  truncateCode: string = "ARCHIVE_INVALID_ZIP",
+  truncateMessage: string = "ZIP structure is truncated.",
+  customRead?: ReadFn,
+): Promise<Buffer> {
+  if (!Number.isInteger(length) || length < 0 || length > maxAllowedLength) {
+    fail(ctx, truncateCode, "ZIP structure size is invalid.");
+  }
+  const buffer = Buffer.allocUnsafe(length);
+  let totalRead = 0;
+  while (totalRead < length) {
+    const { bytesRead } = customRead
+      ? await customRead(buffer, totalRead, length - totalRead, position + totalRead)
+      : await handle.read(buffer, totalRead, length - totalRead, position + totalRead);
+    if (bytesRead === 0) {
+      fail(ctx, truncateCode, truncateMessage);
+    }
+    totalRead += bytesRead;
+  }
+  return buffer;
 }
 
 export async function readRegularFileSnapshot(

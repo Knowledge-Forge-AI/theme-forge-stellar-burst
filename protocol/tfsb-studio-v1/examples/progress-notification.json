@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","method":"$/progress","params":{"requestId":"analyze-1","stage":"scanning","completed":32,"total":64}}

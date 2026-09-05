@@ -1,0 +1,14 @@
+schema_version = 1
+source_root = "."
+
+[[collection]]
+id = "terminal-nova-brand"
+name = "Theme Forge Terminal Nova brand"
+root = "svg"
+identity = "basename"
+prefix = ""
+include_paths = []
+include_trees = ["."]
+exclude_paths = []
+exclude_trees = []
+

@@ -9,8 +9,12 @@ import {
 } from "./schema-dispatch.js";
 import { serializeSvgV2 } from "./schema2-svg.js";
 import { serializeSvg } from "./svg.js";
-import { snapshotCanonicalTree, snapshotsEqual, type CanonicalSnapshot } from "./transaction.js";
+import { snapshotCanonicalTree, snapshotsEqual, snapshotsEqualIgnoringDirectoryMetadata, type CanonicalSnapshot } from "./transaction.js";
 import type { Result } from "./types.js";
+
+import { BRAND_FILE_INVENTORY } from "./brand/brand-files.js";
+import { loadBrandProject, type LoadedBrandProject } from "./brand/brand-core.js";
+import { parseConsumerProfilesToml, type ConsumerProfilesModel } from "./brand/consumer-profile.js";
 
 export interface LoadedProject {
   readonly root: string;
@@ -23,6 +27,9 @@ export interface LoadedProject {
   readonly installDestinations: ReadonlyMap<string, readonly string[]>;
   readonly companionDestinations: ReadonlyMap<string, readonly string[]>;
   readonly snapshot: CanonicalSnapshot;
+  readonly brand?: LoadedBrandProject;
+  readonly localConsumerProfiles?: ConsumerProfilesModel;
+  readonly consumerLockBytes?: Uint8Array;
 }
 
 export const MAX_LIFECYCLE_ASSETS = 128;
@@ -45,9 +52,17 @@ export function enforceMutationAssetLimit(
 export async function verifyLoadedProjectSnapshot(
   project: Pick<LoadedProject, "root" | "snapshot">,
   operation: DiagnosticContext["operation"],
+  ignoredCanonicalFiles: readonly string[] = [],
 ): Promise<void> {
-  const current = await snapshotCanonicalTree(project.root, false, operation);
-  if (!snapshotsEqual(project.snapshot, current)) {
+  if (ignoredCanonicalFiles.some((path) => !/^\.tfsb\/\.brand\.lock\.json\.tfsb-consumer-stage-[a-f0-9]{32}$/.test(path))) {
+    fail(context(operation), "TRANSACTION_INVALID_PLAN", "Only an authenticated consumer lock stage may be excluded from canonical revalidation.");
+  }
+  const ignored = new Set(ignoredCanonicalFiles);
+  const current = await snapshotCanonicalTree(project.root, false, operation, ignored);
+  const equal = ignored.size === 0
+    ? snapshotsEqual(project.snapshot, current)
+    : snapshotsEqualIgnoringDirectoryMetadata(project.snapshot, current, new Set([".tfsb"]));
+  if (!equal) {
     fail(
       { operation, domain: "transaction" },
       "CANONICAL_CHANGED_DURING_PLAN",
@@ -200,6 +215,37 @@ async function decodeCanonicalProjectSnapshot(
       ),
     );
   }
+  const provenanceBytes = snapshot.files.get(".tfsb/provenance.json")?.bytes;
+  if (provenanceBytes !== undefined) {
+    canonicalFiles.set(".tfsb/provenance.json", provenanceBytes);
+  }
+  for (const entry of BRAND_FILE_INVENTORY) {
+    const file = snapshot.files.get(entry.canonicalPath);
+    if (file !== undefined) {
+      canonicalFiles.set(entry.canonicalPath, file.bytes);
+    }
+  }
+  const consumerLockBytes = snapshot.files.get(".tfsb/brand.lock.json")?.bytes;
+  if (consumerLockBytes !== undefined) canonicalFiles.set(".tfsb/brand.lock.json", consumerLockBytes);
+  for (const [path, file] of snapshot.files) {
+    if (path.startsWith(".tfsb/derived/") || path.startsWith(".tfsb/brand-baselines/")) {
+      canonicalFiles.set(path, file.bytes);
+    }
+  }
+
+  const assetMap = new Map<string, AnyNormalizedAsset>(assets.map((asset) => [asset.id, asset]));
+  const brand = loadBrandProject(snapshot.files, assetMap, ctx);
+  let localConsumerProfiles: ConsumerProfilesModel | undefined;
+  if (brand === undefined) {
+    const localBytes = snapshot.files.get(".tfsb/consumer-profiles.toml")?.bytes;
+    if (localBytes !== undefined) {
+      let localText: string;
+      try { localText = new TextDecoder("utf-8", { fatal: true }).decode(localBytes); }
+      catch { fail(ctx, "SCHEMA_INVALID_SYNTAX", "consumer-profiles.toml must be valid UTF-8.", ".tfsb/consumer-profiles.toml"); }
+      localConsumerProfiles = unwrap(parseConsumerProfilesToml(localText, ".tfsb/consumer-profiles.toml"));
+    }
+  }
+
   return {
     root,
     project,
@@ -211,5 +257,8 @@ async function decodeCanonicalProjectSnapshot(
     installDestinations,
     companionDestinations,
     snapshot,
+    ...(brand === undefined ? {} : { brand }),
+    ...(localConsumerProfiles === undefined ? {} : { localConsumerProfiles }),
+    ...(consumerLockBytes === undefined ? {} : { consumerLockBytes }),
   };
 }

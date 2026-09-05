@@ -1,0 +1,175 @@
+schema = "tfsb.consumer-profiles"
+schema_version = 1
+
+[[profiles]]
+id = "astro-starlight"
+version = 1
+compatible_package = "terminal-nova-brand"
+minimum_brand_version = "0.4.0-example.1"
+maximum_brand_version_exclusive = "1.0.0"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-mark-on-light"
+destination = "docs/src/assets/brand/theme-forge-terminal-nova-mark-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-mark-on-dark"
+destination = "docs/src/assets/brand/theme-forge-terminal-nova-mark-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-horizontal-on-light"
+destination = "docs/src/assets/brand/theme-forge-terminal-nova-horizontal-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-horizontal-on-dark"
+destination = "docs/src/assets/brand/theme-forge-terminal-nova-horizontal-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-stacked-on-light"
+destination = "docs/src/assets/brand/theme-forge-terminal-nova-stacked-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-stacked-on-dark"
+destination = "docs/src/assets/brand/theme-forge-terminal-nova-stacked-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "favicon-on-light"
+destination = "docs/public/favicon-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "favicon-on-light"
+destination = "docs/public/favicon.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "favicon-on-dark"
+destination = "docs/public/favicon-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+companion = "terminal-nova-brand-guidance"
+destination = "README-BRAND.md"
+requirement = "required"
+collision = "error"
+
+[[profiles]]
+id = "vite-web"
+version = 1
+compatible_package = "terminal-nova-brand"
+minimum_brand_version = "0.4.0-example.1"
+maximum_brand_version_exclusive = "1.0.0"
+
+[[profiles.outputs]]
+family = "terminal-nova"
+role = "mark"
+variant = "full-color-on-light"
+destination = "src/assets/brand/terminal-nova-mark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+family = "terminal-nova"
+role = "favicon"
+variant = "favicon-on-light"
+destination = "public/favicon.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles]]
+id = "package-distribution"
+version = 1
+compatible_package = "terminal-nova-brand"
+minimum_brand_version = "0.4.0-example.1"
+maximum_brand_version_exclusive = "1.0.0"
+
+[[profiles.outputs]]
+family = "terminal-nova"
+role = "mark"
+variant = "full-color-on-light"
+destination = "brand/dist/theme-forge-terminal-nova-mark-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+family = "terminal-nova"
+role = "mark"
+variant = "reversed-on-dark"
+destination = "brand/dist/theme-forge-terminal-nova-mark-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-horizontal-on-light"
+destination = "brand/dist/theme-forge-terminal-nova-horizontal-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-horizontal-on-dark"
+destination = "brand/dist/theme-forge-terminal-nova-horizontal-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-stacked-on-light"
+destination = "brand/dist/theme-forge-terminal-nova-stacked-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "theme-forge-terminal-nova-stacked-on-dark"
+destination = "brand/dist/theme-forge-terminal-nova-stacked-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "mark-monochrome-light"
+destination = "brand/dist/mark-monochrome-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "mark-monochrome-dark"
+destination = "brand/dist/mark-monochrome-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "favicon-on-light"
+destination = "brand/dist/favicon-on-light.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+asset = "favicon-on-dark"
+destination = "brand/dist/favicon-on-dark.svg"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+companion = "terminal-nova-brand-guidance"
+destination = "brand/README.md"
+requirement = "required"
+collision = "error"
+
+[[profiles.outputs]]
+companion = "software-license"
+destination = "brand/LICENSE"
+requirement = "required"
+collision = "error"

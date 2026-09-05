@@ -1,0 +1,130 @@
+{
+  "briefDigest": "sha256:9ffa909b428e21dd78db8730780cebaa006707828c47e888a715cb5249d16af4",
+  "briefId": "terminal-nova-mark",
+  "constraints": {
+    "acceptanceCriteria": [
+      "The mark remains legible at sixteen pixels.",
+      "Unicode Café labels remain NFC."
+    ],
+    "allowedProposalKinds": [
+      "consumer-install",
+      "derive",
+      "evidence-only"
+    ],
+    "prohibitedChanges": [
+      "Do not change package, project, or plan authority."
+    ],
+    "qaProfileIds": [
+      "profile.compact"
+    ],
+    "renderTuples": [
+      {
+        "background": "transparent",
+        "height": 16,
+        "width": 16
+      },
+      {
+        "background": "token:canvas-dark",
+        "height": 128,
+        "width": 256
+      }
+    ],
+    "requiredRecipeIds": [
+      "mark-small"
+    ],
+    "requiredTokenIds": [
+      "color.canvas",
+      "color.mark"
+    ]
+  },
+  "context": {
+    "corePackageVersion": "0.4.0",
+    "project": {
+      "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "canonicalDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "label": "Terminal Nova demo"
+    },
+    "source": {
+      "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "brandVersion": "0.3.0",
+      "packageId": "@knowledge-forge-ai/theme-forge-stellar-burst"
+    },
+    "studioProtocolVersion": "1.2",
+    "studioVersion": "0.1.0"
+  },
+  "materials": [
+    {
+      "digest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16",
+      "identifier": "brand-mark-current",
+      "kind": "tfsb-rendered"
+    }
+  ],
+  "objective": "Compare profile: compact and align / center treatments while preserving the current brand system.",
+  "revision": 1,
+  "schema": "tfsb.design-brief",
+  "schemaVersion": 1,
+  "targets": [
+    {
+      "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "purpose": "mark",
+      "selector": {
+        "assetId": "brand-mark",
+        "kind": "asset"
+      },
+      "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "targetId": "brand-mark"
+    },
+    {
+      "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "purpose": "wordmark",
+      "selector": {
+        "family": "terminal-nova",
+        "kind": "binding",
+        "role": "wordmark",
+        "variant": "primary"
+      },
+      "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "targetId": "brand-wordmark"
+    }
+  ],
+  "title": "Terminal Nova Café mark review",
+  "visualEvidence": [
+    {
+      "artifacts": [
+        {
+          "byteLength": 82,
+          "bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGUlEQVR4nGMQVDJuoAQzjBowasCoAcPFAACgXuYBD4KZjgAAAABJRU5ErkJggg==",
+          "decodedPixelDigest": "sha256:e5ab37b1d73edaf2a95de70af5057c2377d37e8d0641feecfc581869ec3bf789",
+          "encoding": "base64",
+          "height": 16,
+          "mediaType": "image/png",
+          "pngDigest": "sha256:91c35429c3e0547842b113c93e23f42676ba579030153b248c06b06c0d1c38a1",
+          "role": "current",
+          "width": 16
+        }
+      ],
+      "brandSystemDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "configuration": {
+        "background": "transparent",
+        "height": 16,
+        "width": 16
+      },
+      "evidenceDigest": "sha256:02baceb7084d7fc8a1cb9f58089e83259ac22e908bea3a86c4db4e688e629e16",
+      "kind": "project-render",
+      "projectDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "renderer": {
+        "id": "resvg-png-v1",
+        "platformClaim": "darwin-arm64",
+        "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+        "version": "2.6.2"
+      },
+      "schema": "tfsb.studio-visual-evidence",
+      "schemaVersion": 1,
+      "target": {
+        "assetId": "brand-mark",
+        "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "svgDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  ]
+}

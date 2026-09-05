@@ -1,0 +1,19 @@
+schema_version = 1
+id = "design-assets"
+name = "Design asset workspace"
+
+[[project]]
+id = "terminal-nova-brand"
+path = "projects/terminal-nova-brand"
+collections = ["terminal-nova-brand"]
+
+[[project]]
+id = "tabler-outline-actions"
+path = "projects/tabler-outline-actions"
+collections = ["tabler-outline"]
+
+[[project]]
+id = "tabler-filled-actions"
+path = "projects/tabler-filled-actions"
+collections = ["tabler-filled"]
+

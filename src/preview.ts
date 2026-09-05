@@ -24,6 +24,7 @@ import {
 } from "./project.js";
 import { compareUtf8 } from "./provenance.js";
 import { findProjectRoot, resolveConfinedPath, validatePreviewOutputLayout } from "./root.js";
+import { inspectPlanRetention, type PlanRetentionInspection } from "./plan-retention.js";
 import { withCanonicalMutationLock } from "./transaction.js";
 import { TOOL_VERSION } from "./version.js";
 
@@ -140,8 +141,14 @@ export interface PreviewOptions {
 export interface PreviewTransactionHooks {
   readonly afterStage?: () => void | Promise<void>;
   readonly afterBackup?: () => void | Promise<void>;
+  /** Last cancellable point, immediately before the first target rename. */
+  readonly beforePromotion?: () => void | Promise<void>;
   readonly afterPromote?: () => void | Promise<void>;
   readonly beforeBackupCleanup?: () => void | Promise<void>;
+}
+
+export interface PreviewPlanningHooks {
+  readonly checkCancelled?: () => void | Promise<void>;
 }
 
 interface PreviewDirectorySnapshot {
@@ -407,7 +414,8 @@ function createMarker(outputDirectory: string, project: LoadedProject, files: Re
   return { kind: PREVIEW_MARKER_KIND, schemaVersion: 1, toolVersion: TOOL_VERSION, outputDirectory, files: inventory, assets };
 }
 
-export async function planPreview(options: PreviewOptions = {}): Promise<PreviewPlan> {
+export async function planPreviewWithHooks(options: PreviewOptions = {}, hooks: PreviewPlanningHooks = {}): Promise<PreviewPlan> {
+  await hooks.checkCancelled?.();
   const root = await findProjectRoot(options.root, "preview", options.root !== undefined);
   const outputDirectory = options.output ?? DEFAULT_PREVIEW_OUTPUT;
   const outputPath = await resolveConfinedPath(root, outputDirectory, "preview");
@@ -415,18 +423,25 @@ export async function planPreview(options: PreviewOptions = {}): Promise<Preview
   enforceMutationAssetLimit(project, "preview");
   validatePreviewOutputLayout(project.project, outputDirectory);
   const targetSnapshot = await capturePreviewTarget(outputPath, outputDirectory);
+  await hooks.checkCancelled?.();
   const evidence = await deriveEvidence(project);
   const generatedFiles = new Map<string, Uint8Array>();
   generatedFiles.set("index.html", Buffer.from(renderHtml(project, evidence.assets, evidence.companions, evidence.buildExtra), "utf8"));
   generatedFiles.set("preview.css", Buffer.from(PREVIEW_CSS, "utf8"));
   for (const asset of [...project.assets].sort((left, right) => compareUtf8(left.id, right.id))) generatedFiles.set(`assets/${asset.filename}`, Buffer.from(project.outputs.get(asset.filename)!));
+  await hooks.checkCancelled?.();
   const marker = createMarker(outputDirectory, project, generatedFiles);
   generatedFiles.set(PREVIEW_MARKER_FILENAME, Buffer.from(serializePreviewMarker(marker), "utf8"));
   await verifyLoadedProjectSnapshot(project, "preview");
   const fileResult = Object.freeze({ index: "index.html" as const, stylesheet: "preview.css" as const, marker: PREVIEW_MARKER_FILENAME, assets: Object.freeze(evidence.assets.map((asset) => `assets/${asset.filename}`)) });
   const plan = Object.freeze({ outputDirectory, replaced: targetSnapshot.kind === "directory", assetCount: evidence.assets.length, companionCount: evidence.companions.length, files: fileResult, assets: evidence.assets, companions: evidence.companions, buildExtra: evidence.buildExtra, openRequested: options.open === true, [previewPlanBrand]: true as const });
+  await hooks.checkCancelled?.();
   previewPlanInternals.set(plan, { root, project, outputPath, outputDirectory, generatedFiles: new Map(generatedFiles), targetSnapshot, opener: options.opener ?? defaultOpener(), openRequested: options.open === true });
   return plan;
+}
+
+export async function planPreview(options: PreviewOptions = {}): Promise<PreviewPlan> {
+  return planPreviewWithHooks(options, {});
 }
 
 async function openResult(internals: PreviewPlanInternals): Promise<PreviewOpenResult> {
@@ -470,11 +485,13 @@ export async function executePreviewPlan(plan: PreviewPlan, hooks: PreviewTransa
       const beforeRename = await capturePreviewTarget(internals.outputPath, internals.outputDirectory);
       if (!samePreviewSnapshot(internals.targetSnapshot, beforeRename)) fail(context("transaction"), "PREVIEW_TARGET_CHANGED_DURING_PLAN", "Preview target changed after planning.", internals.outputDirectory);
       if (beforeRename.kind === "directory") {
+        await hooks.beforePromotion?.();
         await rename(internals.outputPath, backup);
         backupCreated = true;
         await hooks.afterBackup?.();
       }
       if ((await optionalLstat(internals.outputPath)) !== undefined) fail(context("transaction"), "PREVIEW_TARGET_CHANGED_DURING_PLAN", "Preview target appeared during promotion.", internals.outputDirectory);
+      if (beforeRename.kind !== "directory") await hooks.beforePromotion?.();
       await rename(stage, internals.outputPath);
       promoted = true;
       await hooks.afterPromote?.();
@@ -507,4 +524,11 @@ export async function executePreviewPlan(plan: PreviewPlan, hooks: PreviewTransa
 
 export async function previewProject(options: PreviewOptions = {}, hooks: PreviewTransactionHooks = {}): Promise<PreviewResult> {
   return executePreviewPlan(await planPreview(options), hooks);
+}
+
+/** Internal retention seam; not re-exported by the package root. */
+export function inspectPreviewPlanRetention(plan: PreviewPlan): PlanRetentionInspection {
+  const internals = previewPlanInternals.get(plan);
+  if (internals === undefined) throw new Error("Preview plan was not produced by this planner instance.");
+  return inspectPlanRetention([plan, internals]);
 }

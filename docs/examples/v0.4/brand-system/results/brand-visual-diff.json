@@ -1,0 +1,32 @@
+{
+  "schema": "tfsb.brand-visual-diff",
+  "schemaVersion": 1,
+  "caseId": "mark-clear-space",
+  "target": "terminal-nova/mark/monochrome-on-dark",
+  "before": {
+    "canonicalAssetDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "modelDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "svgDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "after": {
+    "canonicalAssetDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "modelDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "svgDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "renderer": {
+    "id": "resvg-png-v1",
+    "version": "qualification-pinned",
+    "qualificationId": "example-only",
+    "platformClaim": "darwin-arm64"
+  },
+  "configuration": { "width": 64, "height": 64, "background": "token:near-black" },
+  "changedPixels": 0,
+  "maximumChannelDelta": 0,
+  "changedBounds": null,
+  "beforeDecodedPixelDigest": "sha256:4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+  "afterDecodedPixelDigest": "sha256:4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe",
+  "beforePngDigest": "sha256:039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",
+  "afterPngDigest": "sha256:039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",
+  "claim": "pixel-equal-for-this-renderer-and-case-only",
+  "resultDigest": "sha256:157024531054c30ca8acba0c3e50212bcbf2e8d7372a36c9d8e5285a4f8254ac"
+}

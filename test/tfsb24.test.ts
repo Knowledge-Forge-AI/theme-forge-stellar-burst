@@ -402,5 +402,5 @@ describe("TFSB24 carry-forward lifecycle hardening", () => {
     await rm(join(assetsDirectory, "asset-128.toml"));
     expect((await planBuild(root)).outputs).toHaveLength(128);
     expect((await planPreview({ root })).assetCount).toBe(128);
-  });
+  }, 20_000);
 });

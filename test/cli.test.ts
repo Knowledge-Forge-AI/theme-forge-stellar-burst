@@ -1,6 +1,7 @@
 import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { realpathSync } from "node:fs";
 
 import { zipSync } from "fflate";
 import { afterEach, describe, expect, it } from "vitest";
@@ -72,6 +73,7 @@ describe("tfsb CLI", () => {
       expect(help.stdout()).toContain("Usage:");
       expect(help.stdout()).toContain("tfsb import");
       expect(help.stdout()).toContain("tfsb reconcile");
+      expect(help.stdout()).toContain("tfsb shard");
       expect(help.stdout()).toContain("tfsb build");
       expect(help.stdout()).toContain("tfsb install");
       expect(help.stdout()).toContain("tfsb check");
@@ -86,6 +88,47 @@ describe("tfsb CLI", () => {
       expect(version.stdout()).toBe(`${TOOL_VERSION}\n`);
       expect(version.stderr()).toBe("");
     }
+  });
+
+  it("plans, writes, and materializes a curated shard through the CLI", async () => {
+    const base = realpathSync(await mkdtemp(join(tmpdir(), "tfsb-cli-shard-")));
+    roots.push(base);
+    const source = join(base, "source");
+    const project = join(base, "project");
+    await mkdir(join(source, "icons"), { recursive: true });
+    await mkdir(project);
+    await writeFile(join(source, "icons", "mark.svg"), await readFile(join(process.cwd(), "test/fixtures/tftn-icon-candidate-v1/theme-forge-terminal-nova-mark.svg")));
+    const sourceMap = join(base, "source-map.toml");
+    await writeFile(sourceMap, `schema_version = 1
+source_root = "."
+
+[[collection]]
+id = "icons"
+name = "Icons"
+root = "."
+identity = "basename"
+prefix = ""
+include_paths = []
+include_trees = ["icons"]
+exclude_paths = []
+exclude_trees = []
+`);
+    const paths = join(base, "paths.txt");
+    await writeFile(paths, "icons/mark.svg\n");
+    const manifest = join(base, "shard.toml");
+    const planned = capture();
+    expect(await runCli(["shard", source, "--source-map", sourceMap, "--collection", "icons", "--paths-file", paths, "--json"], base, planned.io)).toBe(0);
+    expect(JSON.parse(planned.stdout())).toMatchObject({ command: "shard", data: { planOnly: true, manifestWritten: false, assetCount: 1 } });
+    const written = capture();
+    expect(await runCli(["shard", source, "--source-map", sourceMap, "--collection", "icons", "--paths-file", paths, "--manifest-output", manifest], base, written.io)).toBe(0);
+    expect(written.stdout()).toContain("Shard manifest written");
+    const imported = capture();
+    expect(await runCli(["import", source, "--root", project, "--source-map", sourceMap, "--shard-manifest", manifest, "--normalize", "exact-common"], base, imported.io), imported.stderr()).toBe(0);
+    expect(imported.stdout()).toContain("Selected assets: 1");
+    expect(await readFile(join(project, ".tfsb", "assets", "mark.toml"), "utf8")).toContain('id = "mark"');
+    const reconciled = capture();
+    expect(await runCli(["reconcile", source, "--root", project, "--source-map", sourceMap, "--shard-manifest", manifest, "--json"], base, reconciled.io), reconciled.stderr()).toBe(0);
+    expect(JSON.parse(reconciled.stdout())).toMatchObject({ command: "reconcile", data: { sourceKind: "directory", changed: false, blocked: false } });
   });
 
   it("runs import, discovered-root build, clean check, and list", async () => {
