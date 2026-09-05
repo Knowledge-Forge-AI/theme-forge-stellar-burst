@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
+import { isDerivedReceiptPath, isFixedBrandFilePath } from "./brand/brand-files.js";
 import { fail, type DiagnosticContext } from "./diagnostics.js";
 import { optionalLstat, readRegularFileSnapshot } from "./filesystem.js";
 import type { LoadedProject } from "./project.js";
@@ -79,7 +80,7 @@ function hashMap(value: unknown, keyKind: "source" | "output"): Record<string, s
   for (const key of Object.keys(value).sort(compareUtf8)) {
     const digest = value[key];
     const validKey = keyKind === "source"
-      ? (key === ".tfsb/project.toml" || /^\.tfsb\/(?:assets\/[a-z0-9]+(?:-[a-z0-9]+)*\.toml|companions\/[^/]+|provenance\.json)$/.test(key))
+      ? (key === ".tfsb/project.toml" || isFixedBrandFilePath(key) || isDerivedReceiptPath(key) || /^\.tfsb\/(?:assets\/[a-z0-9]+(?:-[a-z0-9]+)*\.toml|companions\/[^/]+|provenance\.json)$/.test(key))
       : /^[A-Za-z0-9][A-Za-z0-9._-]*\.svg$/.test(key);
     if (!validKey || key.includes("\0") || typeof digest !== "string" || !RAW_SHA256.test(digest)) return undefined;
     result[key] = digest;

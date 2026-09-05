@@ -7,6 +7,7 @@ import { optionalLstat, readRegularFileSnapshot } from "./filesystem.js";
 import { loadCanonicalProject, verifyLoadedProjectSnapshot, type LoadedProject } from "./project.js";
 import { compareUtf8, parseImportProvenance, unwrapProvenance, type ImportProvenanceV1, type ProvenanceRecordV1 } from "./provenance.js";
 import { parseImportProvenanceV2, unwrapProvenanceV2, type ProvenanceRecordV2 } from "./provenance2.js";
+import { parseImportProvenanceV3, unwrapProvenanceV3, type ProvenanceRecordV3 } from "./provenance3.js";
 import { BUILD_RECEIPT_FILENAME, type BuildReceiptProjectPolicyV3 } from "./receipt.js";
 import { findProjectRoot } from "./root.js";
 import type { AnyNormalizedAsset } from "./schema-dispatch.js";
@@ -28,6 +29,8 @@ export interface ProvenanceDiffRecord {
   readonly acceptedCanonicalPresent?: boolean;
   readonly acceptedCanonicalDigest?: Sha256Digest;
   readonly acceptedArchiveDigest?: Sha256Digest;
+  readonly sourceKind?: "archive" | "directory";
+  readonly acceptedSourceDigest?: Sha256Digest;
   readonly priorResolution?: "aligned" | "canonical";
   readonly relation: ProvenanceRelation;
 }
@@ -77,10 +80,49 @@ function context(domain: DiagnosticContext["domain"] = "project"): DiagnosticCon
 function unwrap<T>(result: Result<T>): T { if (result.ok) return result.value; const first = result.diagnostics[0]; if (first === undefined) throw new Error("Diagnostic result was unexpectedly empty."); throw new DiagnosticError(first); }
 function provenanceKey(record: ProvenanceRecordV1): string { return record.type === "asset" ? `asset:${record.assetId}` : `companion:${record.canonicalPath.slice(".tfsb/companions/".length)}`; }
 function provenanceKeyV2(record: ProvenanceRecordV2): string { return record.type === "asset" ? `asset:${record.assetId}` : `companion:${record.canonicalPath.slice(".tfsb/companions/".length)}`; }
+function provenanceKeyV3(record: ProvenanceRecordV3): string { return record.type === "asset" ? `asset:${record.assetId}` : `companion:${record.canonicalPath.slice(".tfsb/companions/".length)}`; }
 
 export async function diffProvenance(project: LoadedProject): Promise<ProvenanceDiffResult> {
   if (project.project.schemaVersion === 2) {
     const bytes = project.snapshot.files.get(".tfsb/provenance.json")?.bytes;
+    const raw = bytes === undefined ? undefined : Buffer.from(bytes).toString("utf8");
+    let schemaVersion: unknown;
+    if (raw !== undefined) {
+      try { schemaVersion = (JSON.parse(raw) as { readonly schemaVersion?: unknown }).schemaVersion; } catch { /* the selected parser returns the closed diagnostic */ }
+    }
+    if (raw !== undefined && schemaVersion === 3) {
+      const provenance = unwrapProvenanceV3(parseImportProvenanceV3(raw, ".tfsb/provenance.json"));
+      const recordsByKey = new Map(provenance.records.map((record) => [provenanceKeyV3(record), record]));
+      const current = new Map<string, { kind: "asset" | "companion"; digest: Sha256Digest }>();
+      for (const asset of project.assets) current.set(`asset:${asset.id}`, { kind: "asset", digest: computeAssetSemanticDigest(asset) });
+      for (const [file, value] of project.companions) current.set(`companion:${file}`, { kind: "companion", digest: computeCompanionByteDigest(value) });
+      const keys = [...new Set([...recordsByKey.keys(), ...current.keys()])].sort(compareUtf8);
+      const records: ProvenanceDiffRecord[] = keys.map((key) => {
+        const accepted = recordsByKey.get(key); const now = current.get(key);
+        if (accepted === undefined) return { key, kind: now!.kind, currentPresent: true, currentDigest: now!.digest, relation: "untracked_current_record" };
+        const source = accepted.source;
+        const acceptedDigest = accepted.type === "asset" ? accepted.migration?.afterDigest ?? source?.canonicalDigest ?? undefined : accepted.source.canonicalDigest ?? undefined;
+        const sourceCandidate = source === null ? undefined : source.kind === "archive" ? source.archiveCanonicalDigest : source.sourceCanonicalDigest ?? undefined;
+        let relation: ProvenanceRelation;
+        if (now === undefined) relation = "canonical_missing";
+        else if (acceptedDigest === undefined) relation = "untracked_current_record";
+        else if (now.digest === acceptedDigest) relation = accepted.type === "asset" && accepted.migration !== null || source === null || source.resolution === "canonical" || sourceCandidate !== acceptedDigest ? "accepted_divergence" : "aligned";
+        else if (sourceCandidate !== undefined && now.digest === sourceCandidate) relation = "checkpoint_convergence";
+        else relation = "canonical_changed_since_decision";
+        return {
+          key,
+          kind: accepted.type,
+          currentPresent: now !== undefined,
+          ...(now === undefined ? {} : { currentDigest: now.digest }),
+          ...(acceptedDigest === undefined ? {} : { acceptedCanonicalPresent: true, acceptedCanonicalDigest: acceptedDigest }),
+          ...(source === null ? {} : { sourceKind: source.kind, ...(sourceCandidate === undefined ? {} : { acceptedSourceDigest: sourceCandidate }), ...(source.kind === "archive" ? { acceptedArchiveDigest: source.archiveCanonicalDigest } : {}), priorResolution: source.resolution }),
+          relation,
+        };
+      });
+      const result: ProvenanceDiffResult = { baseline: "provenance", records, different: records.some((record) => !["aligned", "accepted_divergence"].includes(record.relation)) };
+      await verifyLoadedProjectSnapshot(project, "diff");
+      return result;
+    }
     const provenance = bytes === undefined
       ? { kind: "tfsb-import-provenance" as const, schemaVersion: 2 as const, records: [] }
       : unwrapProvenanceV2(parseImportProvenanceV2(Buffer.from(bytes).toString("utf8"), ".tfsb/provenance.json"));
@@ -150,7 +192,16 @@ export async function diffProvenance(project: LoadedProject): Promise<Provenance
 interface CandidateArchive { readonly assets: ReadonlyMap<string, AnyNormalizedAsset>; readonly companions: ReadonlyMap<string, Uint8Array>; }
 async function loadArchiveCandidates(project: LoadedProject, archivePath: string): Promise<CandidateArchive> {
   const provenanceBytes = project.snapshot.files.get(".tfsb/provenance.json")?.bytes;
-  const provenance = provenanceBytes === undefined ? undefined : unwrapProvenance(parseImportProvenance(Buffer.from(provenanceBytes).toString("utf8"), ".tfsb/provenance.json"));
+  const provenanceText = provenanceBytes === undefined ? undefined : Buffer.from(provenanceBytes).toString("utf8");
+  let provenanceSchema: unknown;
+  if (provenanceText !== undefined) {
+    try { provenanceSchema = (JSON.parse(provenanceText) as { readonly schemaVersion?: unknown }).schemaVersion; } catch { /* parser below owns malformed schema-1 input */ }
+  }
+  const provenance = provenanceText === undefined
+    ? undefined
+    : project.project.schemaVersion === 1 || provenanceSchema === 1
+      ? unwrapProvenance(parseImportProvenance(provenanceText, ".tfsb/provenance.json"))
+      : undefined;
   const byEntry = new Map((provenance?.records ?? []).map((record) => [record.entryName, record]));
   let manifest: Awaited<ReturnType<typeof readManifestArchive>> | undefined;
   try { manifest = await readManifestArchive(archivePath, [], [], { allowNoSvgs: true, operation: "diff" }); }
@@ -246,6 +297,14 @@ function compareAsset(id: string, before: AnyNormalizedAsset, after: AnyNormaliz
   return changes;
 }
 
+export function diffAssetModels(
+  current: AnyNormalizedAsset,
+  proposed: AnyNormalizedAsset,
+): { readonly different: boolean; readonly changes: readonly ArchiveSemanticChange[] } {
+  const changes = compareAsset(current.id, current, proposed);
+  return { different: changes.length > 0, changes };
+}
+
 export async function diffArchive(project: LoadedProject, archivePath: string): Promise<ArchiveDiffResult> {
   if (project.project.schemaVersion === 2) return diffArchiveV2(project, archivePath);
   const candidate = await loadArchiveCandidates(project, archivePath);
@@ -269,7 +328,11 @@ export async function diffArchive(project: LoadedProject, archivePath: string): 
 
 async function diffArchiveV2(project: LoadedProject, archivePath: string): Promise<ArchiveDiffResult> {
   const provenanceBytes = project.snapshot.files.get(".tfsb/provenance.json")?.bytes;
-  if (provenanceBytes === undefined) {
+  let provenanceSchema: unknown;
+  if (provenanceBytes !== undefined) {
+    try { provenanceSchema = (JSON.parse(Buffer.from(provenanceBytes).toString("utf8")) as { readonly schemaVersion?: unknown }).schemaVersion; } catch { /* frozen parser below owns malformed input */ }
+  }
+  if (provenanceBytes === undefined || provenanceSchema === 3) {
     const candidate = await loadArchiveCandidates(project, archivePath);
     const currentAssets = new Map<string, AnyNormalizedAsset>(project.assets.map((asset) => [asset.id, asset]));
     const changes: ArchiveSemanticChange[] = [];

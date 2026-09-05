@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledge-forge.ai/protocol/tfsb-studio-v1/requests.schema.json",
+  "title": "TFSB Studio protocol 1.0 requests and client notifications",
+  "$defs": {
+    "id": { "$ref": "envelope.schema.json#/$defs/id" },
+    "nonce": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "workspaceHandle": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "projectHandle": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sourceHandle": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "token": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+    "idText": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "minLength": 1, "maxLength": 256 },
+    "relativeIdentity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)(?:\\.|\\.\\.)(?:/|$))(?!.*(?:^|/) )(?!.*(?:^|/)[^/]*[. ](?:/|$)).+$"
+    },
+    "absolutePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384,
+      "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionNonce"],
+      "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" } }
+    },
+    "workspaceOpenParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionNonce", "path"],
+      "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "path": { "$ref": "#/$defs/absolutePath" } }
+    },
+    "projectOpenParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionNonce", "path"],
+      "properties": {
+        "sessionNonce": { "$ref": "#/$defs/nonce" }, "path": { "$ref": "#/$defs/absolutePath" },
+        "mode": { "enum": ["existing", "import-target"] }
+      }
+    },
+    "sourceOpenParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionNonce", "path"],
+      "properties": {
+        "sessionNonce": { "$ref": "#/$defs/nonce" }, "path": { "$ref": "#/$defs/absolutePath" },
+        "purpose": { "enum": ["content", "source-map", "normalization-map", "shard-manifest"] }
+      }
+    },
+    "assetListScope": { "oneOf": [
+      { "type": "object", "additionalProperties": false, "required": ["kind", "projectHandle"], "properties": { "kind": { "const": "project" }, "projectHandle": { "$ref": "#/$defs/projectHandle" } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "workspaceHandle"], "properties": { "kind": { "const": "workspace" }, "workspaceHandle": { "$ref": "#/$defs/workspaceHandle" } } }
+    ] },
+    "assetGetScope": { "oneOf": [
+      { "type": "object", "additionalProperties": false, "required": ["kind", "projectHandle", "assetId"], "properties": { "kind": { "const": "project" }, "projectHandle": { "$ref": "#/$defs/projectHandle" }, "assetId": { "$ref": "#/$defs/idText" } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "workspaceHandle", "projectId", "assetId"], "properties": { "kind": { "const": "workspace" }, "workspaceHandle": { "$ref": "#/$defs/workspaceHandle" }, "projectId": { "$ref": "#/$defs/idText" }, "assetId": { "$ref": "#/$defs/idText" } } }
+    ] },
+    "sourceMapAuthority": { "oneOf": [
+      { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "source-contained" } } },
+      { "type": "object", "additionalProperties": false, "required": ["kind", "sourceMapHandle"], "properties": { "kind": { "const": "handle" }, "sourceMapHandle": { "$ref": "#/$defs/sourceHandle" } } }
+    ] },
+    "relativeSelection": { "type": "array", "maxItems": 128, "uniqueItems": true, "items": { "$ref": "#/$defs/relativeIdentity" } },
+    "relativeCompanionSelection": { "type": "array", "maxItems": 1024, "uniqueItems": true, "items": { "$ref": "#/$defs/relativeIdentity" } },
+    "collectionSelection": { "type": "array", "maxItems": 128, "uniqueItems": true, "items": { "$ref": "#/$defs/idText" } },
+    "resolution": {
+      "type": "object", "additionalProperties": false, "required": ["key", "choice"],
+      "properties": { "key": { "type": "string", "minLength": 1, "maxLength": 1024 }, "choice": { "enum": ["archive", "canonical", "source"] } }
+    },
+    "rename": {
+      "type": "object", "additionalProperties": false, "required": ["from", "to"],
+      "properties": { "from": { "type": "string", "minLength": 1, "maxLength": 1024 }, "to": { "$ref": "#/$defs/relativeIdentity" } }
+    },
+    "removal": {
+      "type": "object", "additionalProperties": false, "required": ["key"],
+      "properties": { "key": { "type": "string", "minLength": 1, "maxLength": 1024 } }
+    },
+    "assetEditPlanParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionNonce", "projectHandle", "assetId", "proposedToml"],
+      "properties": {
+        "sessionNonce": { "$ref": "#/$defs/nonce" }, "projectHandle": { "$ref": "#/$defs/projectHandle" },
+        "assetId": { "$ref": "#/$defs/idText" }, "proposedToml": { "type": "string", "minLength": 1, "maxLength": 8388608 }
+      }
+    },
+    "importPlanParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionNonce", "projectHandle", "sourceHandle", "schemaVersion"],
+      "properties": {
+        "sessionNonce": { "$ref": "#/$defs/nonce" }, "projectHandle": { "$ref": "#/$defs/projectHandle" }, "sourceHandle": { "$ref": "#/$defs/sourceHandle" },
+        "schemaVersion": { "const": 2 }, "archiveMode": { "enum": ["ordinary", "manifest"] },
+        "selections": { "$ref": "#/$defs/relativeSelection" }, "companions": { "$ref": "#/$defs/relativeCompanionSelection" }, "collections": { "$ref": "#/$defs/collectionSelection" },
+        "normalization": { "enum": ["none", "exact-common"] }, "normalizationMapHandle": { "$ref": "#/$defs/sourceHandle" },
+        "sourceMapAuthority": { "$ref": "#/$defs/sourceMapAuthority" }, "shardManifestHandle": { "$ref": "#/$defs/sourceHandle" }
+      },
+      "allOf": [
+        { "if": { "required": ["normalizationMapHandle"] }, "then": { "required": ["normalization"], "properties": { "normalization": { "const": "exact-common" } } } },
+        { "if": { "required": ["shardManifestHandle"] }, "then": { "not": { "required": ["selections"], "properties": { "selections": { "minItems": 1 } } } } }
+      ]
+    },
+    "reconcilePlanParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionNonce", "projectHandle", "sourceHandle"],
+      "properties": {
+        "sessionNonce": { "$ref": "#/$defs/nonce" }, "projectHandle": { "$ref": "#/$defs/projectHandle" }, "sourceHandle": { "$ref": "#/$defs/sourceHandle" },
+        "selections": { "$ref": "#/$defs/relativeSelection" }, "companions": { "$ref": "#/$defs/relativeCompanionSelection" }, "collections": { "$ref": "#/$defs/collectionSelection" },
+        "resolutions": { "type": "array", "maxItems": 1024, "items": { "$ref": "#/$defs/resolution" } },
+        "renames": { "type": "array", "maxItems": 1024, "items": { "$ref": "#/$defs/rename" } }, "companionRenames": { "type": "array", "maxItems": 1024, "items": { "$ref": "#/$defs/rename" } },
+        "removals": { "type": "array", "maxItems": 1024, "items": { "$ref": "#/$defs/removal" } }, "companionRemovals": { "type": "array", "maxItems": 1024, "items": { "$ref": "#/$defs/removal" } },
+        "normalization": { "enum": ["none", "exact-common"] }, "normalizationMapHandle": { "$ref": "#/$defs/sourceHandle" }, "sourceMapAuthority": { "$ref": "#/$defs/sourceMapAuthority" },
+        "shardManifestHandle": { "$ref": "#/$defs/sourceHandle" }, "acceptedSourceMapDigest": { "$ref": "#/$defs/digest" },
+        "acceptedSourceKindChange": { "const": "archive-to-directory" }, "acceptedNormalizationPolicyDigest": { "$ref": "#/$defs/digest" }
+      },
+      "allOf": [
+        { "if": { "required": ["normalizationMapHandle"] }, "then": { "required": ["normalization"], "properties": { "normalization": { "const": "exact-common" } } } }
+      ]
+    },
+    "projectOnlyParams": {
+      "type": "object", "additionalProperties": false, "required": ["sessionNonce", "projectHandle"],
+      "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "projectHandle": { "$ref": "#/$defs/projectHandle" } }
+    },
+    "migratePlanParams": {
+      "type": "object", "additionalProperties": false, "required": ["sessionNonce", "projectHandle", "targetSchemaVersion"],
+      "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "projectHandle": { "$ref": "#/$defs/projectHandle" }, "targetSchemaVersion": { "const": 2 } }
+    },
+    "previewPlanParams": {
+      "type": "object", "additionalProperties": false, "required": ["sessionNonce", "projectHandle"],
+      "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "projectHandle": { "$ref": "#/$defs/projectHandle" }, "outputDirectory": { "$ref": "#/$defs/relativeIdentity" } }
+    },
+    "discardPlanParams": {
+      "type": "object", "additionalProperties": false, "required": ["sessionNonce", "planToken"],
+      "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "planToken": { "$ref": "#/$defs/token" } }
+    },
+    "applyPlanParams": {
+      "type": "object", "additionalProperties": false, "required": ["sessionNonce", "planToken", "expectedPlanDigest"],
+      "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "planToken": { "$ref": "#/$defs/token" }, "expectedPlanDigest": { "$ref": "#/$defs/digest" } }
+    },
+    "initialize": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "method", "params"],
+      "properties": {
+        "jsonrpc": { "const": "2.0" }, "id": { "$ref": "#/$defs/id" }, "method": { "const": "initialize" },
+        "params": {
+          "type": "object", "additionalProperties": false, "required": ["protocol", "minVersion", "maxVersion", "client", "capabilities"],
+          "properties": {
+            "protocol": { "const": "tfsb.studio" }, "minVersion": { "const": "1.0" }, "maxVersion": { "const": "1.0" },
+            "client": { "type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 128 }, "version": { "type": "string", "minLength": 1, "maxLength": 64 } } },
+            "capabilities": { "type": "object", "additionalProperties": false, "required": ["progress", "cancellation"], "properties": { "progress": { "type": "boolean" }, "cancellation": { "type": "boolean" } } }
+          }
+        }
+      }
+    },
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "id", "method", "params"],
+      "properties": { "jsonrpc": { "const": "2.0" }, "id": { "$ref": "#/$defs/id" }, "method": { "type": "string" }, "params": { "type": "object" } }
+    },
+    "notification": {
+      "type": "object", "additionalProperties": false, "required": ["jsonrpc", "method", "params"],
+      "properties": { "jsonrpc": { "const": "2.0" }, "method": { "type": "string" }, "params": { "type": "object" } }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/initialize" },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "shutdown" }, "params": { "$ref": "#/$defs/session" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "workspace.open" }, "params": { "$ref": "#/$defs/workspaceOpenParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "project.open" }, "params": { "$ref": "#/$defs/projectOpenParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "source.open" }, "params": { "$ref": "#/$defs/sourceOpenParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "workspace.status" }, "params": { "type": "object", "additionalProperties": false, "required": ["sessionNonce", "workspaceHandle", "mode"], "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "workspaceHandle": { "$ref": "#/$defs/workspaceHandle" }, "mode": { "enum": ["discovery", "check"] } } } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "enum": ["project.list", "preview.status"] }, "params": { "$ref": "#/$defs/projectOnlyParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "asset.list" }, "params": { "type": "object", "additionalProperties": false, "required": ["sessionNonce", "scope", "pageSize"], "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "scope": { "$ref": "#/$defs/assetListScope" }, "pageSize": { "type": "integer", "minimum": 1, "maximum": 128 }, "cursor": { "type": "string", "minLength": 1, "maxLength": 16384 } } } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "asset.get" }, "params": { "type": "object", "additionalProperties": false, "required": ["sessionNonce", "scope"], "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "scope": { "$ref": "#/$defs/assetGetScope" } } } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "enum": ["asset.validate", "asset.diff"] }, "params": { "type": "object", "additionalProperties": false, "required": ["sessionNonce", "projectHandle", "assetId", "toml"], "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "projectHandle": { "$ref": "#/$defs/projectHandle" }, "assetId": { "$ref": "#/$defs/idText" }, "toml": { "type": "string", "minLength": 1, "maxLength": 8388608 } } } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "source.analyze" }, "params": { "type": "object", "additionalProperties": false, "required": ["sessionNonce", "sourceHandle", "includeDetails", "pageSize"], "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "sourceHandle": { "$ref": "#/$defs/sourceHandle" }, "includeDetails": { "type": "boolean" }, "pageSize": { "type": "integer", "minimum": 1, "maximum": 128 }, "cursor": { "type": "string", "minLength": 1, "maxLength": 16384 } } } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "asset.edit.plan" }, "params": { "$ref": "#/$defs/assetEditPlanParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "project.import.plan" }, "params": { "$ref": "#/$defs/importPlanParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "project.reconcile.plan" }, "params": { "$ref": "#/$defs/reconcilePlanParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "project.migrate.plan" }, "params": { "$ref": "#/$defs/migratePlanParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "project.fmt.plan" }, "params": { "$ref": "#/$defs/projectOnlyParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "project.build.plan" }, "params": { "$ref": "#/$defs/projectOnlyParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "project.install.plan" }, "params": { "$ref": "#/$defs/projectOnlyParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "preview.plan" }, "params": { "$ref": "#/$defs/previewPlanParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "plan.discard" }, "params": { "$ref": "#/$defs/discardPlanParams" } } },
+    { "$ref": "#/$defs/request", "properties": { "method": { "const": "plan.apply" }, "params": { "$ref": "#/$defs/applyPlanParams" } } },
+    { "$ref": "#/$defs/notification", "properties": { "method": { "const": "initialized" }, "params": { "$ref": "#/$defs/session" } } },
+    { "$ref": "#/$defs/notification", "properties": { "method": { "const": "$/cancelRequest" }, "params": { "type": "object", "additionalProperties": false, "required": ["sessionNonce", "id"], "properties": { "sessionNonce": { "$ref": "#/$defs/nonce" }, "id": { "$ref": "#/$defs/id" } } } } },
+    { "$ref": "#/$defs/notification", "properties": { "method": { "const": "exit" }, "params": { "type": "object", "additionalProperties": false, "maxProperties": 0 } } }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "schema": "tfsb.raster-receipt",
+  "schemaVersion": 1,
+  "adapter": {
+    "adapterId": "resvg-png-v1",
+    "companionPackage": "@knowledge-forge-ai/tfsb-raster-resvg",
+    "companionVersion": "0.0.0-tfsb47f",
+    "backend": "wasm",
+    "rendererPackage": "@resvg/resvg-wasm",
+    "rendererVersion": "2.6.2",
+    "rendererBuildDigest": "sha256:22bf6e9f9a100d972da0411a69c5ba504367fc1fa87b3b64e3f35e53926d2d70",
+    "nodeMajor": 22,
+    "platformClaim": "darwin-arm64",
+    "qualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11"
+  },
+  "source": {
+    "assetId": "favicon-on-light",
+    "canonicalAssetDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "svgDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "brandSystemDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "exportAuthority": {
+    "rawExportFileDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "exportDomainDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "profileId": "web-icons",
+    "profileDigest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+    "outputId": "apple-touch-180",
+    "outputConfigDigest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+  },
+  "output": {
+    "destination": "brand/export/apple-touch-icon.png",
+    "width": 180,
+    "height": 180,
+    "purpose": "apple-touch-icon",
+    "fit": "contain-pad",
+    "background": "transparent",
+    "colorSpace": "srgb",
+    "alpha": "straight",
+    "pngDigest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+    "decodedPixelDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "evidence": {
+    "toolVersion": "0.3.0",
+    "receiptDigest": "sha256:ff7fb3a69f721d4931ff75af45a9a422640b3487c299cc70b9c5c7bdd635e039"
+  }
+}

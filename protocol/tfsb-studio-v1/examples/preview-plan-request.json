@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"preview-plan-1","method":"preview.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","outputDirectory":".tfsb-preview"}}

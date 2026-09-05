@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"asset-edit-plan-1","method":"asset.edit.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","assetId":"mark","proposedToml":"schema_version = 2\nid = \"mark\"\n"}}

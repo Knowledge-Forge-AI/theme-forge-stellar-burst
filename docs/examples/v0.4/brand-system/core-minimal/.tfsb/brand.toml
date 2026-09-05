@@ -1,0 +1,51 @@
+schema = "tfsb.brand"
+schema_version = 1
+enabled_domains = { tokens = false, recipes = false, qa = false, consumer_profiles = false, package = true, exports = false }
+
+[[families]]
+id = "core-fixture"
+name = "Core Fixture Brand"
+required_roles = []
+optional_roles = []
+
+[[variants]]
+family = "core-fixture"
+id = "standard-light"
+backgrounds = ["light"]
+color_mode = "full-color"
+scale = "standard"
+status = "primary"
+display_order = 0
+
+[[variants]]
+family = "core-fixture"
+id = "standard-dark"
+backgrounds = ["dark"]
+color_mode = "reversed"
+scale = "standard"
+status = "primary"
+display_order = 1
+
+[[requirements]]
+family = "core-fixture"
+role = "mark"
+background = "light"
+
+[[requirements]]
+family = "core-fixture"
+role = "mark"
+background = "dark"
+
+[[bindings]]
+family = "core-fixture"
+role = "mark"
+variant = "standard-light"
+asset = "fixture-mark-on-light"
+authority = "source"
+
+[[bindings]]
+family = "core-fixture"
+role = "mark"
+variant = "standard-dark"
+asset = "fixture-mark-on-dark"
+authority = "source"

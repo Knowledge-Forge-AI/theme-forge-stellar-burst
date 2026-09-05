@@ -1,0 +1,26 @@
+schema_version = 1
+collection_id = "tabler-outline"
+source_map_basis = "tfsb-source-map-v1"
+source_map_digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+source_snapshot_basis = "tfsb-directory-snapshot-v1"
+source_snapshot_digest = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+membership_basis = "tfsb-shard-membership-v1"
+membership_digest = "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+asset_count = 2
+selected_bytes = 1114
+profile = "tfsb-svg-common-v0.3"
+directly_importable = 0
+normalization_required = 2
+unsupported = 0
+unsafe = 0
+[[asset]]
+source_path = "accessible.svg"
+asset_id = "outline-accessible"
+source_digest = "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+source_bytes = 557
+
+[[asset]]
+source_path = "ad.svg"
+asset_id = "outline-ad"
+source_digest = "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+source_bytes = 557

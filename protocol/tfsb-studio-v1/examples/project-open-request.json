@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":"open-1","method":"project.open","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","path":"/selected/example/project"}}

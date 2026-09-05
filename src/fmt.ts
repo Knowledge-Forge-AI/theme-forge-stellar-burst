@@ -16,6 +16,7 @@ import {
   type CanonicalSnapshot,
   type TransactionHooks,
 } from "./transaction.js";
+import { inspectPlanRetention, type PlanRetentionInspection } from "./plan-retention.js";
 import type { Result } from "./types.js";
 
 const formatPlanBrand: unique symbol = Symbol("tfsb-format-plan");
@@ -47,6 +48,10 @@ interface FormatPlanInternals {
 
 const formatPlanInternals = new WeakMap<FormatPlan, FormatPlanInternals>();
 
+export interface FormatPlanningHooks {
+  readonly checkCancelled?: () => void | Promise<void>;
+}
+
 function unwrap<T>(result: Result<T>): T {
   if (result.ok) return result.value;
   const first = result.diagnostics[0];
@@ -54,13 +59,15 @@ function unwrap<T>(result: Result<T>): T {
   throw new DiagnosticError(first);
 }
 
-export async function planFormat(rootInput?: string): Promise<FormatPlan> {
+export async function planFormatWithHooks(rootInput?: string, hooks: FormatPlanningHooks = {}): Promise<FormatPlan> {
+  await hooks.checkCancelled?.();
   const root = await findProjectRoot(rootInput, "fmt", rootInput !== undefined);
   const snapshot = await snapshotCanonicalTree(root, false, "fmt");
   const project = await loadCanonicalProjectFromSnapshot(snapshot, "fmt");
   const nextFiles = new Map([...snapshot.files].map(([path, file]) => [path, file.bytes]));
   const changedPaths: string[] = [];
   for (const [path, file] of snapshot.files) {
+    await hooks.checkCancelled?.();
     if (path !== ".tfsb/project.toml" && !path.startsWith(".tfsb/assets/")) continue;
     const before = path === ".tfsb/project.toml"
       ? project.project
@@ -83,9 +90,14 @@ export async function planFormat(rootInput?: string): Promise<FormatPlan> {
   if (!snapshotsEqual(snapshot, current)) {
     fail({ operation: "fmt", domain: "transaction" }, "CANONICAL_CHANGED_DURING_PLAN", "Canonical tree changed during formatting inspection.", ".tfsb");
   }
+  await hooks.checkCancelled?.();
   const plan = Object.freeze({ changed: changedPaths.length > 0, paths: Object.freeze(changedPaths), [formatPlanBrand]: true as const });
   formatPlanInternals.set(plan, { root, snapshot, nextFiles, assetCount: project.assets.length });
   return plan;
+}
+
+export async function planFormat(rootInput?: string): Promise<FormatPlan> {
+  return planFormatWithHooks(rootInput, {});
 }
 
 export async function executeFormat(plan: FormatPlan, hooks: TransactionHooks = {}): Promise<void> {
@@ -96,6 +108,20 @@ export async function executeFormat(plan: FormatPlan, hooks: TransactionHooks = 
   enforceMutationAssetLimit(internals.assetCount, "fmt");
   if (!plan.changed) return;
   await executeCanonicalTransaction({ root: internals.root, nextFiles: internals.nextFiles, expectedSnapshot: internals.snapshot, hooks, operation: "fmt" });
+}
+
+/** Internal retention seam; not re-exported by the package root. */
+export function inspectFormatPlanRetention(plan: FormatPlan): PlanRetentionInspection {
+  const internals = formatPlanInternals.get(plan);
+  if (internals === undefined) throw new Error("Format plan was not produced by this planner instance.");
+  return inspectPlanRetention([plan, internals]);
+}
+
+/** Internal service summary seam; preserves the public changed-path contract. */
+export function formatPlanCanonicalPaths(plan: FormatPlan): readonly string[] {
+  const internals = formatPlanInternals.get(plan);
+  if (internals === undefined) throw new Error("Format plan was not produced by this planner instance.");
+  return Object.freeze([...internals.snapshot.files.keys()].sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right))));
 }
 
 export async function formatProject(options: FormatOptions = {}, hooks: TransactionHooks = {}): Promise<FormatResult> {

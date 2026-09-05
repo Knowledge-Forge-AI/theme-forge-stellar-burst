@@ -3,6 +3,7 @@ import { mkdir, rename, rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
 import { inspectBuildSnapshot } from "./build.js";
+import { inspectDerivedAuthority } from "./brand/derive.js";
 import { DiagnosticError, fail, type DiagnosticContext } from "./diagnostics.js";
 import {
   durableWrite,
@@ -22,6 +23,7 @@ import {
 } from "./project.js";
 import { compareUtf8 } from "./provenance.js";
 import { resolveConfinedPath } from "./root.js";
+import { inspectPlanRetention, type PlanRetentionInspection } from "./plan-retention.js";
 import { withCanonicalMutationLock } from "./transaction.js";
 
 const installPlanBrand: unique symbol = Symbol("tfsb-install-plan");
@@ -58,6 +60,10 @@ export interface InstallTestHooks {
   readonly beforeCleanup?: (index: number) => void | Promise<void>;
 }
 
+export interface InstallPlanningHooks {
+  readonly checkCancelled?: () => void | Promise<void>;
+}
+
 interface StagedInstall extends InstallExecutionItem {
   readonly stage: string;
   readonly backup: string;
@@ -86,10 +92,18 @@ function privateItems(items: readonly InstallExecutionItem[]): readonly InstallE
   return Object.freeze(items.map((item) => Object.freeze({ ...item, bytes: Buffer.from(item.bytes) })));
 }
 
-export async function planInstall(root: string): Promise<InstallPlan> {
+export async function planInstallWithHooks(root: string, hooks: InstallPlanningHooks = {}): Promise<InstallPlan> {
+  await hooks.checkCancelled?.();
   const ctx = context();
   const project = await loadCanonicalProject(root, "install");
   enforceMutationAssetLimit(project, "install");
+  if (project.brand?.recipesModel !== undefined) {
+    const inspection = inspectDerivedAuthority(project.snapshot.files, { operation: "install", domain: "brand" });
+    const blocked = inspection.entries.find((entry) => entry.state !== "unchanged");
+    if (blocked !== undefined) {
+      fail(ctx, "DERIVED_AUTHORITY_BLOCKED", `Install requires current derived authority; '${blocked.targetAssetId}' is ${blocked.state}.`, blocked.targetAssetId);
+    }
+  }
   const build = await inspectBuildSnapshot(project, "install");
   if (build.inspection.missing.length > 0 || build.inspection.extra.length > 0 || build.inspection.different.length > 0) {
     fail(ctx, "INSTALL_STALE_BUILD", "Install requires exact current canonical build outputs.");
@@ -100,12 +114,14 @@ export async function planInstall(root: string): Promise<InstallPlan> {
   const destinations = new Set<string>();
   const destinationSnapshots = new Map<string, FileSnapshot>();
   for (const install of project.project.installs) {
+    await hooks.checkCancelled?.();
     const asset = assets.get(install.asset);
     if (asset === undefined) throw new Error("Validated install asset unexpectedly disappeared.");
     const built = build.snapshot.files.get(asset.filename);
     if (built === undefined || built.kind !== "file") throw new Error("Validated build output unexpectedly disappeared.");
     const resolved = project.installDestinations.get(install.asset) ?? [];
     for (const [destinationIndex, destination] of resolved.entries()) {
+      await hooks.checkCancelled?.();
       if (destinations.has(destination)) fail(ctx, "INSTALL_DESTINATION_COLLISION", "Install destination is duplicated.");
       destinations.add(destination);
       destinationSnapshots.set(destination, await destinationSnapshot(destination));
@@ -123,6 +139,7 @@ export async function planInstall(root: string): Promise<InstallPlan> {
     if (bytes === undefined) throw new Error("Validated companion unexpectedly disappeared.");
     const resolved = project.companionDestinations.get(companion.file) ?? [];
     for (const [destinationIndex, destination] of resolved.entries()) {
+      await hooks.checkCancelled?.();
       if (destinations.has(destination)) fail(ctx, "INSTALL_DESTINATION_COLLISION", "Install destination is duplicated.");
       destinations.add(destination);
       destinationSnapshots.set(destination, await destinationSnapshot(destination));
@@ -137,6 +154,7 @@ export async function planInstall(root: string): Promise<InstallPlan> {
   }
   items.sort((left, right) => compareUtf8(left.configuredDestination, right.configuredDestination));
   await verifyLoadedProjectSnapshot(project, "install");
+  await hooks.checkCancelled?.();
   const exposedItems = publicItems(items);
   const plan = Object.freeze({ items: exposedItems, [installPlanBrand]: true as const });
   installPlanInternals.set(plan, {
@@ -146,6 +164,10 @@ export async function planInstall(root: string): Promise<InstallPlan> {
     destinationSnapshots,
   });
   return plan;
+}
+
+export async function planInstall(root: string): Promise<InstallPlan> {
+  return planInstallWithHooks(root, {});
 }
 
 async function verifyDestinationSnapshots(internals: InstallPlanInternals): Promise<void> {
@@ -248,4 +270,11 @@ export async function installProject(root: string, dryRun = false, hooks: Instal
   const plan = await planInstall(root);
   if (!dryRun) await executeInstall(plan, hooks);
   return plan;
+}
+
+/** Internal retention seam; not re-exported by the package root. */
+export function inspectInstallPlanRetention(plan: InstallPlan): PlanRetentionInspection {
+  const internals = installPlanInternals.get(plan);
+  if (internals === undefined) throw new Error("Install plan was not produced by this planner instance.");
+  return inspectPlanRetention([plan, internals]);
 }

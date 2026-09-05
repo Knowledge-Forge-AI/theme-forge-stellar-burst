@@ -1,0 +1,72 @@
+{
+  "schema": "tfsb.raster-straight-alpha-golden-v1",
+  "historicalQualificationId": "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+  "corpusDigest": "sha256:ce81af04ab04d05b35d5d6dc20272c7275975df3056f11396a309d647d1fdb51",
+  "origin": "R2D straight-alpha correction; historical PNG bytes preserved",
+  "cases": [
+    {
+      "id": "solid-fill",
+      "decodedPixelDigest": "sha256:071cae1acd9f38907222c770e611ba43fea0ade431c883ea8a88824e0aadd1c8"
+    },
+    {
+      "id": "stroke",
+      "decodedPixelDigest": "sha256:30e57e64a50a6dd9724ef347326533d04a22f8d0c5fb551947a675c8a0e360bc"
+    },
+    {
+      "id": "rgba-alpha",
+      "decodedPixelDigest": "sha256:6e72a970feb373e3ec80b88cbfc54ef9df38e8b18fa2971723b8150eec25f6cd"
+    },
+    {
+      "id": "gradient-equal",
+      "decodedPixelDigest": "sha256:04cdb2d7525d6d46caf0d90481e2486180417721d0b2b821b4aebba9a727068e"
+    },
+    {
+      "id": "gradient-distinct",
+      "decodedPixelDigest": "sha256:246241613cf29fcf620f39114c28572d4435877a1043de9359aa7309f2fe0670"
+    },
+    {
+      "id": "transforms",
+      "decodedPixelDigest": "sha256:52a4382b225ecfaf13b369e14d727efd62ba1085cb61f39e722393bb67b5798e"
+    },
+    {
+      "id": "path",
+      "decodedPixelDigest": "sha256:3be0286ed5556a9870759c7ea820f9c4d31fd258daf885b7530eb5a0c5469433"
+    },
+    {
+      "id": "primitives",
+      "decodedPixelDigest": "sha256:3e47308db661d15c9fdb6210c011894d3d431524feb4ab1870380f2f46f2d659"
+    },
+    {
+      "id": "recursive-groups",
+      "decodedPixelDigest": "sha256:7581b9de8da80dbf89e9abe5f38048e7da353cec533e9bb01d8a738a485f1693"
+    },
+    {
+      "id": "definitions",
+      "decodedPixelDigest": "sha256:f19e7b204a8f119d3901ec6c758af08e37c6ecb8d4cdca42436b9f45b26281e5"
+    },
+    {
+      "id": "accessibility",
+      "decodedPixelDigest": "sha256:da0da6a44c8b2d8f056dc15fc74ff80477ffe65fc369450eee221a701389d027"
+    },
+    {
+      "id": "derived-asset",
+      "decodedPixelDigest": "sha256:212d555b6653799ad25ae08aadad73a8ef19305498f04b2386ea1db5ac461f30"
+    },
+    {
+      "id": "terminal-nova-favicon",
+      "decodedPixelDigest": "sha256:8fb70c357949d21f5604698d1b244e254336efd6924504bf6aaacb5decad68a1"
+    },
+    {
+      "id": "terminal-nova-mark",
+      "decodedPixelDigest": "sha256:9b7bb7358d5e0adf7c9a2c8609c93455f2f1189175139fb0510e78dc4eba228e"
+    },
+    {
+      "id": "terminal-nova-horizontal",
+      "decodedPixelDigest": "sha256:bb175c799f6133026f09808d942dee9db4bbadb41d4bd613a69698d16290ad92"
+    },
+    {
+      "id": "terminal-nova-stacked",
+      "decodedPixelDigest": "sha256:171dd1d7e0921bd13257aa0818c291a593e6e4678021b927053b7adfe3a00236"
+    }
+  ]
+}

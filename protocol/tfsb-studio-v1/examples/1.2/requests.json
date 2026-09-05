@@ -1,0 +1,23 @@
+[
+  {"jsonrpc":"2.0","id":"init-1.2","method":"initialize","params":{"protocol":"tfsb.studio","minVersion":"1.0","maxVersion":"1.2","client":{"name":"studio","version":"0.1.0"},"capabilities":{"progress":true,"cancellation":true}}},
+  {"jsonrpc":"2.0","id":"source-bundle","method":"source.open","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","path":"/trusted/brand-bundle.zip","purpose":"brand-bundle"}},
+  {"jsonrpc":"2.0","id":"source-npm","method":"source.open","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","path":"/trusted/node_modules/@vendor/brand","purpose":"npm-installed-package"}},
+  {"jsonrpc":"2.0","id":"brand-status","method":"brand.status","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE"}},
+  {"jsonrpc":"2.0","id":"family-list","method":"brand.family.list","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","pageSize":64}},
+  {"jsonrpc":"2.0","id":"token-list","method":"brand.token.list","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","pageSize":64}},
+  {"jsonrpc":"2.0","id":"recipe-graph","method":"brand.recipe.graph","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE"}},
+  {"jsonrpc":"2.0","id":"qa-profile","method":"brand.qa.profile.get","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","profileId":"release"}},
+  {"jsonrpc":"2.0","id":"qa-result","method":"brand.qa.result.get","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","profileId":"release"}},
+  {"jsonrpc":"2.0","id":"brand-diff","method":"brand.diff","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","sourceHandle":"source_REDACTED_EXAMPLE_HANDLE"}},
+  {"jsonrpc":"2.0","id":"consumer-profiles","method":"brand.consumer.profile.list","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","sourceHandles":["source_REDACTED_EXAMPLE_HANDLE"],"pageSize":64}},
+  {"jsonrpc":"2.0","id":"consumer-lock","method":"brand.consumer.lock.status","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","sourceHandles":["source_REDACTED_EXAMPLE_HANDLE"]}},
+  {"jsonrpc":"2.0","id":"export-capability","method":"brand.export.capability","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE"}},
+  {"jsonrpc":"2.0","id":"export-status","method":"brand.export.status","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","pageSize":64}},
+  {"jsonrpc":"2.0","id":"derive-plan","method":"brand.derive.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","selection":{"kind":"all"}}},
+  {"jsonrpc":"2.0","id":"baseline-plan","method":"brand.qa.baseline.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","profileId":"release","caseId":"logo-baseline"}},
+  {"jsonrpc":"2.0","id":"consumer-install","method":"brand.consumer.install.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","sourceHandles":["source_REDACTED_EXAMPLE_HANDLE"],"profiles":["vendor-brand/basic"]}},
+  {"jsonrpc":"2.0","id":"consumer-sync","method":"brand.consumer.sync.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","sourceHandles":["source_REDACTED_EXAMPLE_HANDLE"]}},
+  {"jsonrpc":"2.0","id":"export-plan","method":"brand.export.plan","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","profileId":"release"}},
+  {"jsonrpc":"2.0","id":"qa-profile-list","method":"brand.qa.profile.list","params":{"sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","pageSize":64}},
+  {"jsonrpc":"2.0","id":"visual-current","method":"brand.visual.evidence.get","params":{"kind":"project-render","sessionNonce":"REDACTED_EXAMPLE_NONCE","projectHandle":"project_REDACTED_EXAMPLE_HANDLE","target":{"kind":"asset","assetId":"brand-mark"},"width":64,"height":64,"background":"transparent"}}
+]

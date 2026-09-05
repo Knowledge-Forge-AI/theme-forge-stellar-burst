@@ -1,0 +1,24 @@
+schema_version = 2
+id = "fixture-mark-on-dark"
+filename = "fixture-mark-on-dark.svg"
+
+[canvas]
+width = 24
+height = 24
+view_box = "0 0 24 24"
+
+[accessibility]
+mode = "labelled"
+title = "Core Fixture Mark on Dark"
+title_id = "tfsb-fixture-mark-on-dark-title"
+
+[presentation]
+fill = "#FFFFFF"
+
+[[elements]]
+type = "rect"
+x = 2
+y = 2
+width = 20
+height = 20
+corner_radius = 4

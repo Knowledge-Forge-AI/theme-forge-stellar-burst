@@ -22,7 +22,7 @@ async function existingStat(path: string): Promise<Awaited<ReturnType<typeof lst
 async function recoveryResidue(root: string): Promise<readonly string[]> {
   const entries = await readdir(root, { withFileTypes: true });
   return entries
-    .filter((entry) => entry.name.startsWith(".tfsb-stage-") || entry.name.startsWith(".tfsb-backup-"))
+    .filter((entry) => entry.name.startsWith(".tfsb-stage-") || entry.name.startsWith(".tfsb-backup-") || /^\.tfsb-consumer-transaction-[a-f0-9]{32}\.json$/.test(entry.name))
     .map((entry) => entry.name)
     .sort();
 }

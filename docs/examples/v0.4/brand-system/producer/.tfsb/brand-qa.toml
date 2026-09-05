@@ -1,0 +1,81 @@
+schema = "tfsb.brand-qa"
+schema_version = 1
+
+[[profiles]]
+id = "terminal-nova-release"
+renderer = "required"
+formats = ["json", "markdown", "html"]
+cases = [
+  "family-completeness",
+  "external-content",
+  "favicon-small-size",
+  "mark-clear-space",
+  "horizontal-minimum",
+  "stacked-minimum",
+  "favicon-baseline-light"
+]
+
+[[cases]]
+id = "family-completeness"
+kind = "inventory"
+family = "terminal-nova"
+
+[[cases]]
+id = "external-content"
+kind = "external-reference"
+family = "terminal-nova"
+forbid_external_urls = true
+forbid_external_images = true
+forbid_external_uses = true
+forbid_external_styles = true
+forbid_external_fonts = true
+
+[[cases]]
+id = "favicon-small-size"
+kind = "small-size-visibility"
+family = "terminal-nova"
+role = "favicon"
+sizes = [[16, 16], [24, 24], [32, 32], [48, 48]]
+backgrounds = ["token:warm-white", "token:near-black"]
+minimum_visible_pixels = 20
+
+[[cases]]
+id = "mark-clear-space"
+kind = "visible-padding"
+family = "terminal-nova"
+role = "mark"
+sizes = [[24, 24], [64, 64], [128, 128]]
+backgrounds = ["token:warm-white", "token:near-black"]
+minimum_padding_token = "clear-space"
+
+[[cases]]
+id = "horizontal-minimum"
+kind = "clipping"
+family = "terminal-nova"
+role = "lockup-horizontal"
+sizes = [[240, 67], [480, 133]]
+backgrounds = ["token:warm-white", "token:near-black"]
+forbidden_edge_pixels = 0
+
+[[cases]]
+id = "stacked-minimum"
+kind = "clipping"
+family = "terminal-nova"
+role = "lockup-stacked"
+sizes = [[160, 143], [320, 285]]
+backgrounds = ["token:warm-white", "token:near-black"]
+forbidden_edge_pixels = 0
+
+[[cases]]
+id = "favicon-baseline-light"
+kind = "baseline"
+asset = "favicon-on-light"
+sizes = [[32, 32]]
+backgrounds = ["token:warm-white"]
+baseline_path = ".tfsb/brand-baselines/terminal-nova-release/favicon-baseline-light.png"
+baseline_digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+renderer_id = "resvg-png-v1"
+renderer_version = "qualification-pinned"
+platform_claim = "darwin-arm64"
+canonical_asset_digest = "sha256:0606060606060606060606060606060606060606060606060606060606060606"
+svg_digest = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"

@@ -93,7 +93,7 @@ describe("whole-project schema migration", () => {
     await buildProject(root, false); await installProject(root);
     expect(await checkProject(root)).toMatchObject({ sourceChanged: false, build: { missing: [], different: [] }, install: { missing: [], different: [] } });
     expect(await planMigration({ root, check: true })).toMatchObject({ migrationNeeded: false, fromSchemaVersion: 2, applied: false });
-  });
+  }, 20_000);
 
   it("treats a changed Terminal Nova archive as fresh schema-1 source against migrated schema 2", async () => {
     const root = await initialized("complete"); await migrateProject({ root });

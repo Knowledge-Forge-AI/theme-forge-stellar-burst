@@ -1,6 +1,6 @@
 {
   "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Declarative SVG compiler, transactional installer, and drift checker",
   "keywords": [
     "svg",
@@ -32,23 +32,39 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./studio-protocol/v1": {
+      "types": "./dist/service-protocol/v1-types.d.ts",
+      "import": "./dist/service-protocol/v1-types.js"
+    },
+    "./design-evidence/v1": {
+      "types": "./dist/design-evidence/index.d.ts",
+      "import": "./dist/design-evidence/index.js"
     }
   },
   "bin": {
-    "tfsb": "./dist/cli.js"
+    "tfsb": "./dist/cli.js",
+    "tfsb-studio-service": "./dist/service-protocol/server-cli.js"
   },
   "files": [
     "dist",
+    "protocol/tfsb-studio-v1",
+    "protocol/tfsb-design-evidence-v1",
+    "native/directory-snapshot/prebuilds",
     "NOTICE",
     "COMMERCIAL-LICENSE.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "build:native": "node tools/build-directory-snapshot-native.mjs",
+    "check:native": "node tools/build-directory-snapshot-native.mjs --check",
+    "qualify:package": "node tools/qualify-directory-snapshot-package.mjs && node tools/qualify-studio-service-package.mjs",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --project=chromium --update-snapshots",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.visual.json && tsc -p tsconfig.tools.json",
     "audit:dogfood": "npm run build && node tools/audit-dogfood-corpus.mjs",
     "qualify:dogfood": "npm run build && node tools/qualify-dogfood-shards.mjs",
+    "test:terminal-nova:portable": "vitest run test/terminal-nova-brand-hardening.test.ts test/tfsb48-r2-svg-parity.test.ts test/tfsb48-r2-core-matrix.test.ts",
     "pretest": "npm run build",
     "test": "vitest run"
   },
@@ -58,9 +74,12 @@
     "smol-toml": "1.8.0"
   },
   "devDependencies": {
+    "@openpgp/web-stream-tools": "0.3.1",
     "@playwright/test": "1.62.1",
     "@types/node": "22.20.1",
+    "openpgp": "6.3.1",
     "typescript": "7.0.2",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "yaml": "2.9.0"
   }
 }

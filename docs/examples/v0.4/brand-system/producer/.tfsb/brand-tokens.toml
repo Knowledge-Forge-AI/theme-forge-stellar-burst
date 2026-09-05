@@ -1,0 +1,60 @@
+schema = "tfsb.brand-tokens"
+schema_version = 1
+
+[[colors]]
+id = "molten-orange"
+value = "#FF8A3DFF"
+
+[[colors]]
+id = "intermediate-rose"
+value = "#E45A9EFF"
+
+[[colors]]
+id = "deep-violet"
+value = "#8B5CF6FF"
+
+[[colors]]
+id = "gunmetal"
+value = "#262A33FF"
+
+[[colors]]
+id = "warm-white"
+value = "#FFF8F0FF"
+
+[[colors]]
+id = "near-black"
+value = "#111318FF"
+
+[[colors]]
+id = "black"
+value = "#000000FF"
+
+[[gradients]]
+id = "nova-spectrum"
+kind = "linear"
+units = "object-bounding-box-millionth"
+x1 = 0
+y1 = 0
+x2 = 1000000
+y2 = 1000000
+
+[[gradients.stops]]
+offset = 0
+color_token = "molten-orange"
+
+[[gradients.stops]]
+offset = 500000
+color_token = "intermediate-rose"
+
+[[gradients.stops]]
+offset = 1000000
+color_token = "deep-violet"
+
+[[dimensions]]
+id = "clear-space"
+unit = "percent-millionth"
+value = 166667
+
+[[opacities]]
+id = "fully-opaque"
+value = 1000000
