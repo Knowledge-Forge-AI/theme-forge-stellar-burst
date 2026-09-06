@@ -23,6 +23,7 @@ function portable(value) { return value.replace(/\\/gu, "/"); }
 async function regularFiles(dir) {
   const files = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...await regularFiles(full));
     else if (entry.isFile()) files.push(full);

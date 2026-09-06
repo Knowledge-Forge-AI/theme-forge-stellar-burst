@@ -20,6 +20,7 @@ function portable(value) {
 async function regularFiles(path) {
   const output = [];
   for (const entry of await readdir(path, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
     const full = join(path, entry.name);
     if (entry.isSymbolicLink()) throw new Error(`Artifact symlink is forbidden: ${entry.name}`);
     if (entry.isDirectory()) output.push(...await regularFiles(full));
