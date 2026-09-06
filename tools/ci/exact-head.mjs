@@ -100,7 +100,13 @@ export async function validateExactHead(options = {}) {
       checkedOutTree = execFileSync("git", ["-C", repoRoot, "rev-parse", "HEAD^{tree}"], { encoding: "utf8" }).trim();
       checkedOutParents = execFileSync("git", ["-C", repoRoot, "rev-list", "--parents", "-n", "1", "HEAD"], { encoding: "utf8" }).trim().split(/\s+/u).slice(1);
       const porcelain = execFileSync("git", ["-C", repoRoot, "status", "--porcelain=v1"], { encoding: "utf8" }).trim();
-      isClean = porcelain === "";
+      const lines = porcelain ? porcelain.split(/\r?\n/u).map((line) => line.trim()).filter(Boolean) : [];
+      const dirty = lines.filter((line) => {
+        if (/^\?\?\s+\.downloaded-artifacts(?:\/|$)/u.test(line)) return false;
+        if (/^\?\?\s+\.test-reports(?:\/|$)/u.test(line)) return false;
+        return true;
+      });
+      isClean = dirty.length === 0;
     } catch (err) {
       throw new Error(`[EXACT_HEAD_FAIL] Failed to inspect git checkout: ${err instanceof Error ? err.message : String(err)}`);
     }
