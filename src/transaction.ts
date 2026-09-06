@@ -399,11 +399,18 @@ export function snapshotsEqualIgnoringDirectoryMetadata(
 }
 
 async function syncPath(path: string): Promise<void> {
-  const handle = await open(path, "r");
   try {
-    await handle.sync();
-  } finally {
-    await handle.close();
+    const handle = await open(path, "r");
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch (error: any) {
+    if (process.platform === "win32" && (error?.code === "EPERM" || error?.code === "EISDIR" || error?.code === "EINVAL")) {
+      return;
+    }
+    throw error;
   }
 }
 
