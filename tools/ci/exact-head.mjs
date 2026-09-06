@@ -145,7 +145,10 @@ export async function validateExactHead(options = {}) {
     ? "test"
     : process.env.npm_execpath
       ? execFileSync(process.execPath, [process.env.npm_execpath, "--version"], { encoding: "utf8" }).trim()
-      : execFileSync(process.platform === "win32" ? "npm.cmd" : "npm", ["--version"], { encoding: "utf8" }).trim();
+      : execFileSync(process.platform === "win32" ? "npm.cmd" : "npm", ["--version"], {
+          encoding: "utf8",
+          shell: process.platform === "win32",
+        }).trim();
 
   const receipt = {
     schema: "tfsb.ci-exact-head-receipt",

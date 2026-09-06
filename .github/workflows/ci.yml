@@ -433,6 +433,7 @@ jobs:
         run: |
           rm -rf .test-reports/supply-chain/workflow-checks
           mv .test-reports/workflow-checks .test-reports/supply-chain/workflow-checks
+          find .test-reports/supply-chain -type f -size 0 -delete
       - name: Bind supply-chain artifacts
         run: |
           node tools/ci/artifact-manifest.mjs --root .test-reports/supply-chain --output .test-reports/supply-chain/artifact-manifest.json --job supply-chain --require receipt.json --require root-package.syft.json --require root-package.spdx.json --require root-package.cdx.json --require root-package.grype.json --require root-package.grype.sarif --require root-package.receipt.json --require workflow-checks/actionlint.result.json --require workflow-checks/zizmor.result.json --require workflow-checks/betterleaks.result.json --require workflow-checks/workflow-checks.receipt.json --require workflow-checks/betterleaks.report.json
