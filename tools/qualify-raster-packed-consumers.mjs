@@ -22,7 +22,8 @@ async function command(file, args, cwd, expected = 0, denyNetwork = false) {
   } else {
     delete env.NODE_OPTIONS;
   }
-  try { const result = await execute(file, args, { cwd, env, maxBuffer: 16 * 1_048_576 }); if (expected !== 0) throw new Error(`Expected exit ${expected}.`); return { status: 0, ...result }; }
+  const isCmd = typeof file === "string" && /\.(cmd|bat)$/i.test(file);
+  try { const result = await execute(file, args, { cwd, env, maxBuffer: 16 * 1_048_576, ...(isCmd ? { shell: true } : {}) }); if (expected !== 0) throw new Error(`Expected exit ${expected}.`); return { status: 0, ...result }; }
   catch (error) { if (!(error instanceof Error)) throw new Error("Non-error process failure."); const failure = /** @type {Error & {code?: number | string, stdout?: string, stderr?: string}} */ (error); const status = typeof failure.code === "number" ? failure.code : 1; if (status !== expected) throw error; return { status, stdout: failure.stdout ?? "", stderr: failure.stderr ?? "" }; }
 }
 
