@@ -291,7 +291,7 @@ jobs:
       - name: Run packed-consumer qualification with network denial
         shell: bash
         run: |
-          npm exec -- node tools/qualify-raster-packed-consumers.mjs "$TFSB_RASTER_REPORT_DIR/root-package.tgz" "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz" > "$TFSB_RASTER_REPORT_DIR/packed-consumer-report.json"
+          node tools/qualify-raster-packed-consumers.mjs "$TFSB_RASTER_REPORT_DIR/root-package.tgz" "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz" > "$TFSB_RASTER_REPORT_DIR/packed-consumer-report.json"
       - name: Bind raster companion artifact bytes
         shell: bash
         run: node tools/ci/artifact-manifest.mjs --root "$TFSB_RASTER_REPORT_DIR" --output "$TFSB_RASTER_REPORT_DIR/artifact-manifest.json" --job raster-companion --matrix "tuple=$TFSB_TUPLE" --require receipt.json --require raster-report.json --require packed-consumer-report.json --require root-package.tgz --require root-pack-manifest.json --require raster-companion.tgz --require raster-pack-manifest.json
