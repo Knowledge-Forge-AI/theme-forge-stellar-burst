@@ -133,8 +133,8 @@ async function executeCheck(tool, provenance, args, root, outputDir) {
   });
   const stdout = sanitizeOutput(String(result.stdout ?? ""), root);
   const stderr = sanitizeOutput(String(result.stderr ?? ""), root);
-  await writeFile(stdoutPath, stdout, "utf8");
-  await writeFile(stderrPath, stderr, "utf8");
+  await writeFile(stdoutPath, stdout.length > 0 ? (stdout.endsWith("\n") ? stdout : `${stdout}\n`) : "[none]\n", "utf8");
+  await writeFile(stderrPath, stderr.length > 0 ? (stderr.endsWith("\n") ? stderr : `${stderr}\n`) : "[none]\n", "utf8");
   const status = result.error || result.status !== 0 ? "fail" : "pass";
   const record = {
     schema: "tfsb.workflow-check-result-v1",
