@@ -21,7 +21,15 @@ export function rgbaPng(width: number, height: number, rgba: Uint8Array): Uint8A
   return Uint8Array.from([...Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10), ...chunk("IHDR", ihdr), ...chunk("IDAT", deflateSync(scanlines)), ...chunk("IEND", new Uint8Array())]);
 }
 
-export const fakeDescriptor: RasterAdapterDescriptor = Object.freeze({ adapterId: "resvg-png-v1", companionPackage: "@knowledge-forge-ai/tfsb-raster-resvg", companionVersion: "0.0.0-test", backend: "wasm", rendererPackage: "@resvg/resvg-wasm", rendererVersion: "2.6.2", rendererBuildDigest: `sha256:${"1".repeat(64)}`, nodeMajor: Number(process.versions.node.split(".")[0]), platformClaim: `${process.platform}-${process.arch}`, qualificationId: "test-only-fixed-capability" });
+function hostPlatformClaim(): string {
+  if (process.platform === "darwin" && process.arch === "arm64") return "darwin-arm64";
+  if (process.platform === "darwin" && process.arch === "x64") return "darwin-x64";
+  if (process.platform === "linux" && process.arch === "x64") return "linux-x64-gnu";
+  if (process.platform === "win32" && process.arch === "x64") return "windows-x64";
+  return `${process.platform}-${process.arch}`;
+}
+
+export const fakeDescriptor: RasterAdapterDescriptor = Object.freeze({ adapterId: "resvg-png-v1", companionPackage: "@knowledge-forge-ai/tfsb-raster-resvg", companionVersion: "0.0.0-test", backend: "wasm", rendererPackage: "@resvg/resvg-wasm", rendererVersion: "2.6.2", rendererBuildDigest: `sha256:${"1".repeat(64)}`, nodeMajor: Number(process.versions.node.split(".")[0]), platformClaim: hostPlatformClaim(), qualificationId: "test-only-fixed-capability" });
 
 export function fakeRasterCapability(rendererDigit = "1"): RasterCapabilityStatus {
   const descriptor = Object.freeze({ ...fakeDescriptor, rendererBuildDigest: `sha256:${rendererDigit.repeat(64)}` as const });
