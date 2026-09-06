@@ -10,7 +10,7 @@ import { createConsumerBundle, createConsumerProject, PROFILE_ID } from "../bran
 import { createDeriveProject } from "./brand-test-helper.js";
 import { createRasterCapabilityFromModule, type RasterRenderRequest } from "../../src/brand/raster-capability.js";
 import { executeBrandQaBaselineUpdatePlan, planBrandQaBaselineUpdate } from "../../src/brand/qa-baseline.js";
-import { rgbaPng, setupRasterProject } from "../brand/raster-test-helper.js";
+import { fakeDescriptor, rgbaPng, setupRasterProject } from "../brand/raster-test-helper.js";
 
 const roots: string[] = [];
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
@@ -82,7 +82,7 @@ describe("Studio brand plan methods", () => {
       rendererVersion: "2.6.2",
       rendererBuildDigest: "sha256:22bf6e9f9a100d972da0411a69c5ba504367fc1fa87b3b64e3f35e53926d2d70" as const,
       nodeMajor: 22,
-      platformClaim: "darwin-arm64",
+      platformClaim: fakeDescriptor.platformClaim,
       qualificationId: "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
     });
     const capability = createRasterCapabilityFromModule({
@@ -98,13 +98,18 @@ describe("Studio brand plan methods", () => {
     const session = new StudioSession(); await session.negotiate("1.1"); session.rasterCapability = capability;
     const opened = await session.handles.openProject(await realpath(root)) as { readonly projectHandle: string };
     const methods = new MutationMethods(session);
-    const planned = await execute(methods, "brand.export.plan", { sessionNonce: session.nonce, projectHandle: opened.projectHandle, profileId: "web-icons" });
-    expect(planned).toMatchObject({ method: "brand.export.plan", summary: { profileId: "web-icons", counts: { create: 1 } } });
-    expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: planned.planToken, expectedPlanDigest: planned.planDigest })).toEqual({ applied: true, method: "brand.export.plan" });
-    expect(existsSync(join(root, "public/icon.png"))).toBe(true);
-    const baseline = await execute(methods, "brand.qa.baseline.plan", { sessionNonce: session.nonce, projectHandle: opened.projectHandle, profileId: "visual", caseId: "golden" });
-    expect(baseline).toMatchObject({ method: "brand.qa.baseline.plan", summary: { profileId: "visual", caseId: "golden", renderer: { rendererBuildDigest: descriptor.rendererBuildDigest } } });
-    expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: baseline.planToken, expectedPlanDigest: baseline.planDigest })).toEqual({ applied: true, method: "brand.qa.baseline.plan" });
+    if (fakeDescriptor.platformClaim === "darwin-arm64") {
+      const planned = await execute(methods, "brand.export.plan", { sessionNonce: session.nonce, projectHandle: opened.projectHandle, profileId: "web-icons" });
+      expect(planned).toMatchObject({ method: "brand.export.plan", summary: { profileId: "web-icons", counts: { create: 1 } } });
+      expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: planned.planToken, expectedPlanDigest: planned.planDigest })).toEqual({ applied: true, method: "brand.export.plan" });
+      expect(existsSync(join(root, "public/icon.png"))).toBe(true);
+      const baseline = await execute(methods, "brand.qa.baseline.plan", { sessionNonce: session.nonce, projectHandle: opened.projectHandle, profileId: "visual", caseId: "golden" });
+      expect(baseline).toMatchObject({ method: "brand.qa.baseline.plan", summary: { profileId: "visual", caseId: "golden", renderer: { rendererBuildDigest: descriptor.rendererBuildDigest } } });
+      expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: baseline.planToken, expectedPlanDigest: baseline.planDigest })).toEqual({ applied: true, method: "brand.qa.baseline.plan" });
+    } else {
+      await expect(execute(methods, "brand.export.plan", { sessionNonce: session.nonce, projectHandle: opened.projectHandle, profileId: "web-icons" })).rejects.toMatchObject({ symbolicCode: "METHOD_CAPABILITY_UNAVAILABLE" });
+      await expect(execute(methods, "brand.qa.baseline.plan", { sessionNonce: session.nonce, projectHandle: opened.projectHandle, profileId: "visual", caseId: "golden" })).rejects.toMatchObject({ symbolicCode: "METHOD_CAPABILITY_UNAVAILABLE" });
+    }
     await session.shutdown();
   });
 
@@ -121,7 +126,7 @@ describe("Studio brand plan methods", () => {
       rendererVersion: "2.6.2",
       rendererBuildDigest: "sha256:22bf6e9f9a100d972da0411a69c5ba504367fc1fa87b3b64e3f35e53926d2d70" as const,
       nodeMajor: 22,
-      platformClaim: "darwin-arm64",
+      platformClaim: fakeDescriptor.platformClaim,
       qualificationId: "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
     });
     const capability = createRasterCapabilityFromModule({
@@ -157,15 +162,20 @@ describe("Studio brand plan methods", () => {
     expect(syncPlan).toMatchObject({ method: "brand.consumer.sync.plan", summary: { operation: "sync" } });
     expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: syncPlan.planToken, expectedPlanDigest: syncPlan.planDigest })).toEqual({ applied: true, method: "brand.consumer.sync.plan" });
 
-    // 4. brand.qa.baseline.plan
-    const baselinePlan = await execute(methods, "brand.qa.baseline.plan", { sessionNonce: session.nonce, projectHandle: rasterOpened.projectHandle, profileId: "visual", caseId: "golden" });
-    expect(baselinePlan).toMatchObject({ method: "brand.qa.baseline.plan", summary: { profileId: "visual", caseId: "golden" } });
-    expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: baselinePlan.planToken, expectedPlanDigest: baselinePlan.planDigest })).toEqual({ applied: true, method: "brand.qa.baseline.plan" });
+    if (fakeDescriptor.platformClaim === "darwin-arm64") {
+      // 4. brand.qa.baseline.plan
+      const baselinePlan = await execute(methods, "brand.qa.baseline.plan", { sessionNonce: session.nonce, projectHandle: rasterOpened.projectHandle, profileId: "visual", caseId: "golden" });
+      expect(baselinePlan).toMatchObject({ method: "brand.qa.baseline.plan", summary: { profileId: "visual", caseId: "golden" } });
+      expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: baselinePlan.planToken, expectedPlanDigest: baselinePlan.planDigest })).toEqual({ applied: true, method: "brand.qa.baseline.plan" });
 
-    // 5. brand.export.plan
-    const exportPlan = await execute(methods, "brand.export.plan", { sessionNonce: session.nonce, projectHandle: rasterOpened.projectHandle, profileId: "web-icons" });
-    expect(exportPlan).toMatchObject({ method: "brand.export.plan", summary: { profileId: "web-icons", counts: { create: 1 } } });
-    expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: exportPlan.planToken, expectedPlanDigest: exportPlan.planDigest })).toEqual({ applied: true, method: "brand.export.plan" });
+      // 5. brand.export.plan
+      const exportPlan = await execute(methods, "brand.export.plan", { sessionNonce: session.nonce, projectHandle: rasterOpened.projectHandle, profileId: "web-icons" });
+      expect(exportPlan).toMatchObject({ method: "brand.export.plan", summary: { profileId: "web-icons", counts: { create: 1 } } });
+      expect(await execute(methods, "plan.apply", { sessionNonce: session.nonce, planToken: exportPlan.planToken, expectedPlanDigest: exportPlan.planDigest })).toEqual({ applied: true, method: "brand.export.plan" });
+    } else {
+      await expect(execute(methods, "brand.qa.baseline.plan", { sessionNonce: session.nonce, projectHandle: rasterOpened.projectHandle, profileId: "visual", caseId: "golden" })).rejects.toMatchObject({ symbolicCode: "METHOD_CAPABILITY_UNAVAILABLE" });
+      await expect(execute(methods, "brand.export.plan", { sessionNonce: session.nonce, projectHandle: rasterOpened.projectHandle, profileId: "web-icons" })).rejects.toMatchObject({ symbolicCode: "METHOD_CAPABILITY_UNAVAILABLE" });
+    }
 
     await session.shutdown();
   });

@@ -18,7 +18,7 @@ async function command(file, args, cwd, expected = 0, denyNetwork = false) {
   if (denyNetwork) {
     const preload = process.env.TFSB_NETWORK_DENIAL_PRELOAD;
     if (preload === undefined || preload === "") throw new Error("TFSB_NETWORK_DENIAL_PRELOAD is required for render qualification.");
-    env.NODE_OPTIONS = `--import=${resolve(preload)}`;
+    env.NODE_OPTIONS = `--import=${pathToFileURL(resolve(preload)).href}`;
   } else {
     delete env.NODE_OPTIONS;
   }

@@ -100,7 +100,8 @@ describe("workspace list aggregation", () => {
     await expect(listWorkspace({ workspaceFile: join(root, "workspace.toml") })).rejects.toMatchObject({ diagnostic: { code: "WORKSPACE_INVALID_FILENAME" } });
   });
 
-  it("qualifies 1,024 streamed children and a multi-thousand record view", { timeout: 60_000 }, async () => {
+  // Standard macOS x64 runners need extra time for this filesystem-scale fixture.
+  it("qualifies 1,024 streamed children and a multi-thousand record view", { timeout: 120_000 }, async () => {
     const childScaleRoot = temp();
     const childProjects = Array.from({ length: 1024 }, (_, index) => ({ id: `p-${index}`, path: `projects/${index}` }));
     for (const project of childProjects) child(childScaleRoot, project.path, []);

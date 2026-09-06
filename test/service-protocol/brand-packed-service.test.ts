@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { fakeDescriptor } from "../brand/raster-test-helper.js";
+
 const roots: string[] = []; const tarballs: string[] = [];
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); for (const path of tarballs.splice(0)) await rm(path, { force: true }); });
 
@@ -41,8 +43,14 @@ describe("packed Studio brand protocol service", () => {
     const resvgSource = join(companionRoot, "node_modules/@resvg"), resvgTarget = join(consumer, "node_modules/@resvg"); if (existsSync(resvgSource)) await symlink(resvgSource, resvgTarget);
     const companionProbe = spawnSync(process.execPath, ["--input-type=module", "-e", "import('@knowledge-forge-ai/tfsb-raster-resvg').then((value)=>console.log(JSON.stringify(value.descriptor)))"], { cwd: consumer, encoding: "utf8" });
     expect(companionProbe.status, companionProbe.stderr).toBe(0);
-    const available = initialize(service, "1.1", "1.1", consumer); expect(available.result.capabilities.brand.raster).toMatchObject({ available: true, adapterId: "resvg-png-v1", rendererVersion: "2.6.2", platformClaim: "darwin-arm64" });
-    expect(available.result.capabilities.brand.methods).toMatchObject({ qaBaselinePlan: true, exportPlan: true });
+    const available = initialize(service, "1.1", "1.1", consumer);
+    if (fakeDescriptor.platformClaim === "darwin-arm64") {
+      expect(available.result.capabilities.brand.raster).toMatchObject({ available: true, adapterId: "resvg-png-v1", rendererVersion: "2.6.2", platformClaim: "darwin-arm64" });
+      expect(available.result.capabilities.brand.methods).toMatchObject({ qaBaselinePlan: true, exportPlan: true });
+    } else {
+      expect(available.result.capabilities.brand.raster).toEqual({ available: false });
+      expect(available.result.capabilities.brand.methods).toMatchObject({ qaBaselinePlan: false, exportPlan: false });
+    }
     await writeFile(join(companionInstalled, "index.js"), "this is not valid JavaScript\n");
     const corrupt = initialize(service, "1.1", "1.1", consumer); expect(corrupt.result.capabilities.brand.raster).toEqual({ available: false });
     await rm(companionInstalled, { recursive: true, force: true });
