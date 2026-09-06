@@ -286,7 +286,8 @@ jobs:
       - name: Run raster companion test with network denial
         shell: bash
         run: |
-          NODE_OPTIONS="--import=$TFSB_NETWORK_DENIAL_PRELOAD" node tools/qualify-raster-resvg.mjs --expected-tuple "$TFSB_TUPLE" > "$TFSB_RASTER_REPORT_DIR/raster-report.json"
+          PRELOAD_URL=$(node --input-type=module -e 'import { pathToFileURL } from "node:url"; console.log(pathToFileURL(process.env.TFSB_NETWORK_DENIAL_PRELOAD).href);')
+          NODE_OPTIONS="--import=$PRELOAD_URL" node tools/qualify-raster-resvg.mjs --expected-tuple "$TFSB_TUPLE" > "$TFSB_RASTER_REPORT_DIR/raster-report.json"
       - name: Run packed-consumer qualification with network denial
         shell: bash
         run: |
