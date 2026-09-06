@@ -270,7 +270,21 @@ export function disposeRasterExportPlan(plan: RasterExportPlan): void { const in
 /** Internal Studio retention seam; not re-exported from the package root. */
 export function inspectRasterExportPlanRetention(plan: RasterExportPlan): PlanRetentionInspection { const internals = planInternals.get(plan); if (internals === undefined) throw new Error("Raster export plan was not produced by this planner instance."); return inspectPlanRetention([plan, internals]); }
 
-async function sync(path: string): Promise<void> { const handle = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0)); try { await handle.sync(); } finally { await handle.close(); } }
+async function sync(path: string): Promise<void> {
+  try {
+    const handle = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch (error: any) {
+    if (process.platform === "win32" && (error?.code === "EPERM" || error?.code === "EISDIR" || error?.code === "EINVAL")) {
+      return;
+    }
+    throw error;
+  }
+}
 async function durableWrite(path: string, bytes: Uint8Array): Promise<void> { await writeFile(path, bytes, { flag: "wx", mode: 0o600 }); await sync(path); }
 async function sameState(path: string, expected: FileState, maxBytes: number): Promise<boolean> { const current = await fileState(path, maxBytes); return current.kind === expected.kind && current.dev === expected.dev && current.ino === expected.ino && current.digest === expected.digest; }
 
