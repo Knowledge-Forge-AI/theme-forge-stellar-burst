@@ -8,7 +8,7 @@ const execute = promisify(execFile), worker = new URL("./raster-qualification-wo
 const args = process.argv.slice(2);
 if (Number(process.versions.node.split(".")[0]) !== 22) throw new Error("Raster execution requires Node major 22.");
 if (args.length !== 2 || args[0] !== "--expected-tuple" || !["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"].includes(args[1] ?? "")) throw new Error("An explicit closed --expected-tuple is required.");
-const corpusBytes = await readFile(new URL("../test/fixtures/raster-golden/corpus.json", import.meta.url));
+const corpusBytes = Buffer.from((await readFile(new URL("../test/fixtures/raster-golden/corpus.json", import.meta.url), "utf8")).replace(/\r\n/g, "\n"), "utf8");
 /** @param {Uint8Array} bytes */
 const sha = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 /** @type {readonly (readonly [string, string])[]} */
