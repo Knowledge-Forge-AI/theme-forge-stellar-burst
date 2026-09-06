@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Validates pull request context and exact HEAD checkout.
@@ -217,7 +218,7 @@ export async function validateExactHead(options = {}) {
   return receipt;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname)) {
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
   /** @type {string | undefined} */
   let outputPath;
   /** @type {string | undefined} */
