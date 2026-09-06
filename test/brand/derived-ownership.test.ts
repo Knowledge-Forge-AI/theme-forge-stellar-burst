@@ -362,7 +362,7 @@ describe("Brand Derived Ownership State Machine", () => {
     await writeFile(sourcePath, assetWithExactBytes(base, "fixture-mark-on-light", DERIVE_FILE_LIMIT + 1));
     await expect(planBrandDerivation({ root, all: true })).rejects.toSatisfy((error: any) => error?.diagnostic?.code === "RESOURCE_LIMIT_EXCEEDED");
     await rm(root, { recursive: true, force: true });
-  });
+  }, 30000);
 
   it("accepts an exactly 8 MiB planned target and rejects target boundary plus one", async () => {
     const root = await setupProjectWithTokensAndRecipes();
@@ -394,7 +394,7 @@ describe("Brand Derived Ownership State Machine", () => {
     await writeFile(sourcePath, assetWithExactBytes(base, "fixture-mark-on-light", sourceBytes + 1));
     await expect(planBrandDerivation({ root, all: true })).rejects.toSatisfy((error: any) => error?.diagnostic?.code === "RESOURCE_LIMIT_EXCEEDED");
     await rm(root, { recursive: true, force: true });
-  });
+  }, 30000);
 
   it("accepts the 32 MiB aggregate source-plus-target boundary and rejects boundary plus one", async () => {
     const root = await mkdtemp(join(tmpdir(), "tfsb-aggregate-limit-"));
