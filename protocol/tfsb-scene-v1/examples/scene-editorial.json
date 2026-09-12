@@ -1,0 +1,176 @@
+{
+  "schema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profile": "editorial",
+  "artboard": {
+    "width": 960,
+    "height": 540,
+    "viewBox": [0, 0, 960, 540],
+    "policy": "contain"
+  },
+  "accessibility": {
+    "mode": "labelled",
+    "title": "Editorial Figure Callout",
+    "desc": "Documentation figure highlighting cryptographic digest verification and immutable data boundaries",
+    "focusable": false
+  },
+  "tokenBindings": {
+    "paper-bg": "#fcfbfa",
+    "ink-primary": "#1e293b",
+    "ink-secondary": "#64748b",
+    "editorial-gold": "#b45309",
+    "editorial-teal": "#0f766e"
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "id": "card",
+      "x": 40,
+      "y": 40,
+      "width": 880,
+      "height": 460,
+      "rx": 6,
+      "ry": 6,
+      "presentation": {
+        "fill": { "type": "token", "name": "paper-bg" },
+        "stroke": { "type": "token", "name": "ink-secondary" },
+        "strokeWidth": 1.5
+      }
+    },
+    {
+      "type": "rect",
+      "id": "accentBar",
+      "x": 40,
+      "y": 40,
+      "width": 880,
+      "height": 8,
+      "rx": 2,
+      "ry": 2,
+      "presentation": {
+        "fill": { "type": "token", "name": "editorial-gold" }
+      }
+    },
+    {
+      "type": "group",
+      "id": "emblemGroup",
+      "bounds": [80, 80, 100, 100],
+      "children": [
+        {
+          "type": "circle",
+          "id": "emblemOuter",
+          "cx": 130,
+          "cy": 130,
+          "r": 40,
+          "presentation": {
+            "fill": { "type": "none" },
+            "stroke": { "type": "token", "name": "editorial-teal" },
+            "strokeWidth": 2,
+            "strokeDasharray": [3, 3]
+          }
+        },
+        {
+          "type": "circle",
+          "id": "emblemInner",
+          "cx": 130,
+          "cy": 130,
+          "r": 24,
+          "presentation": {
+            "fill": { "type": "token", "name": "editorial-teal" },
+            "opacity": 0.15
+          }
+        },
+        {
+          "type": "polygon",
+          "id": "emblemPoly",
+          "points": [
+            [130, 105],
+            [145, 120],
+            [145, 140],
+            [130, 155],
+            [115, 140],
+            [115, 120]
+          ],
+          "presentation": {
+            "fill": { "type": "none" },
+            "stroke": { "type": "token", "name": "editorial-gold" },
+            "strokeWidth": 2
+          }
+        }
+      ]
+    },
+    {
+      "type": "label",
+      "id": "figNum",
+      "text": "FIGURE 4.2 -- CRYPTOGRAPHIC INTEGRITY GATES",
+      "x": 220,
+      "y": 80,
+      "scale": 1.3,
+      "color": { "type": "token", "name": "editorial-gold" },
+      "align": "left"
+    },
+    {
+      "type": "label",
+      "id": "figHead",
+      "text": "DETERMINISTIC DIGEST RECEIPTS",
+      "x": 220,
+      "y": 110,
+      "scale": 2.2,
+      "color": { "type": "token", "name": "ink-primary" },
+      "align": "left"
+    },
+    {
+      "type": "label",
+      "id": "figBody",
+      "text": "EVERY COMPILED VECTOR SCENE BINDS ITS EXACT SOURCE DIGEST,\nGLYPH CATALOG DIGEST, AND RESOLVED COLOR TOKEN DIGEST.\nNO SILENT MUTATION OCCURS ACROSS PUBLICATION BOUNDARIES.",
+      "x": 220,
+      "y": 155,
+      "scale": 1.1,
+      "lineSpacing": 14,
+      "color": { "type": "token", "name": "ink-secondary" },
+      "align": "left"
+    },
+    {
+      "type": "rect",
+      "id": "calloutBox",
+      "x": 80,
+      "y": 260,
+      "width": 800,
+      "height": 180,
+      "rx": 4,
+      "ry": 4,
+      "presentation": {
+        "fill": { "type": "solid", "color": "#f1f5f9" },
+        "stroke": { "type": "token", "name": "editorial-teal" },
+        "strokeWidth": 1
+      }
+    },
+    {
+      "type": "label",
+      "id": "codeLabel",
+      "text": "RECEIPT BINDING: sha256:28494496... [FORGE-GRID-V1-CATALOG]\nSOURCE STATUS  : VERIFIED REPRODUCIBLE (CANONICAL UTF-8)\nSTATUS         : ACCEPTED FOR RELEASE PUBLICATION",
+      "x": 110,
+      "y": 290,
+      "scale": 1.2,
+      "lineSpacing": 16,
+      "color": { "type": "token", "name": "editorial-teal" },
+      "align": "left"
+    }
+  ],
+  "layout": [
+    {
+      "type": "anchor",
+      "target": "calloutBox",
+      "targetAnchor": "top",
+      "relativeTo": "card",
+      "relativeToAnchor": "top",
+      "offsetY": 220
+    }
+  ],
+  "provenance": {
+    "author": "Theme Forge Stellar Burst Authors",
+    "license": "AGPL-3.0-or-later",
+    "created": "2026-09-08T20:00:00Z",
+    "note": "Original first-party editorial figure vector composition."
+  }
+}

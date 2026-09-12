@@ -1,12 +1,12 @@
 // @ts-check
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { ensureToolWithProvenance, hostPlatformTuple } from "./run-syft-grype.mjs";
+import { ensureToolWithProvenance } from "./run-syft-grype.mjs";
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const TOOL_NAMES = ["actionlint", "zizmor", "betterleaks"];
@@ -115,11 +115,10 @@ async function executeCheck(tool, provenance, args, root, outputDir) {
   const stdoutPath = join(outputDir, `${tool}.stdout.log`);
   const stderrPath = join(outputDir, `${tool}.stderr.log`);
   const resultPath = join(outputDir, `${tool}.result.json`);
-  const isolatedHome = join(tmpdir(), "tfsb-workflow-check-home", hostPlatformTuple());
+  const isolatedHome = await mkdtemp(join(tmpdir(), "tfsb-workflow-check-home-"));
   const configHome = join(isolatedHome, "config");
   const cacheHome = join(isolatedHome, "cache");
   const tempHome = join(isolatedHome, "tmp");
-  await mkdir(isolatedHome, { recursive: true });
   const env = isolatedCheckEnvironment(tool, isolatedHome);
   await mkdir(configHome, { recursive: true });
   await mkdir(cacheHome, { recursive: true });
@@ -176,7 +175,7 @@ export async function runWorkflowChecks(options) {
   if (!existsSync(root)) throw new Error(`[WORKFLOW_CHECK_FAIL] Root not found: ${basename(root)}`);
   await mkdir(outputDir, { recursive: true });
   const workflowFiles = await discoverWorkflowFiles(root);
-  const toolsDir = resolve(options.toolsDir ?? process.env.TFSB_TOOL_CACHE ?? join(tmpdir(), "tfsb-workflow-tools", hostPlatformTuple()));
+  const toolsDir = resolve(options.toolsDir ?? process.env.TFSB_TOOL_CACHE ?? await mkdtemp(join(tmpdir(), "tfsb-workflow-tools-")));
   /** @type {any[]} */
   const results = [];
 

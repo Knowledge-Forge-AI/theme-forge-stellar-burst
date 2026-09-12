@@ -2,7 +2,8 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -76,9 +77,25 @@ export async function createArtifactManifest(options) {
  */
 export async function extractReleaseArchive(options) {
   const archive = resolve(options.archivePath), destination = resolve(options.destination);
-  const archiveInfo = await lstat(archive);
-  if (!archiveInfo.isFile() || archiveInfo.isSymbolicLink()) throw new Error("Release archive must be a regular file.");
-  const digest = sha256Hex(await readFile(archive));
+  if (!(constants.O_NOFOLLOW > 0) || !(constants.O_NONBLOCK > 0)) {
+    throw new Error("Release archive inspection requires no-follow and nonblocking file support.");
+  }
+  const handle = await open(archive, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o600);
+  /** @type {Buffer} */
+  let archiveBytes;
+  try {
+    const before = await handle.stat();
+    if (!before.isFile()) throw new Error("Release archive must be a regular file.");
+    archiveBytes = await handle.readFile();
+    const after = await handle.stat();
+    if (before.size !== archiveBytes.length || before.size !== after.size ||
+        before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs) {
+      throw new Error("Release archive changed while reading.");
+    }
+  } finally {
+    await handle.close();
+  }
+  const digest = sha256Hex(archiveBytes);
   let expected = options.expectedSha256;
   if (options.manifestPath) {
     const manifestPath = resolve(options.manifestPath);
@@ -91,12 +108,12 @@ export async function extractReleaseArchive(options) {
   const strip = options.stripComponents ?? 0;
   if (![0, 1].includes(strip)) throw new Error("Only zero or one release archive prefix may be stripped.");
   execFileSync("python3", ["-c", String.raw`
-import os,pathlib,shutil,sys,tarfile,unicodedata
-archive,dest,strip=sys.argv[1],pathlib.Path(sys.argv[2]),int(sys.argv[3])
+import io,os,pathlib,shutil,sys,tarfile,unicodedata
+dest,strip=pathlib.Path(sys.argv[1]),int(sys.argv[2])
 for parent in [dest,*dest.parents]:
  if parent.is_symlink() and not (str(parent) in ("/var","/tmp") and os.path.realpath(parent)=="/private"+str(parent)): raise ValueError("archive destination has a symlink ancestor")
 if dest.exists() and (not dest.is_dir() or any(dest.iterdir())): raise ValueError("archive destination must be empty")
-with tarfile.open(archive,"r:gz") as tf:
+with tarfile.open(fileobj=io.BytesIO(sys.stdin.buffer.read()),mode="r:gz") as tf:
  entries=[]; seen=set()
  for member in tf.getmembers():
   name=member.name
@@ -123,7 +140,7 @@ with tarfile.open(archive,"r:gz") as tf:
   path.parent.mkdir(parents=True,exist_ok=True)
   with tf.extractfile(member) as src, path.open("xb") as out: shutil.copyfileobj(src,out)
   path.chmod(member.mode & 0o777)
-`, archive, destination, String(strip)], { stdio: "pipe" });
+`, destination, String(strip)], { input: archiveBytes, stdio: "pipe" });
   return { archiveSha256: digest, status: "pass" };
 }
 

@@ -43,10 +43,11 @@ import { TOOL_VERSION } from "./version.js";
 import { checkWorkspace } from "./workspace-check.js";
 import { listWorkspace } from "./workspace-list.js";
 import { previewWorkspace } from "./workspace-preview.js";
+import { runSceneCli } from "./scene-cli.js";
 
 export const HUMAN_DISPLAY_THRESHOLD = 50;
-const JSON_COMMANDS = new Set<JsonCommand>(["import", "check", "list", "reconcile", "diff", "bundle", "fmt", "preview", "analyze", "migrate", "shard", "derive", "qa", "consumer", "export"]);
-const COMMANDS = ["import", "bundle", "reconcile", "build", "install", "check", "list", "diff", "fmt", "preview", "analyze", "migrate", "shard", "derive", "qa", "consumer", "export", "evidence"] as const;
+const JSON_COMMANDS = new Set<JsonCommand>(["import", "check", "list", "reconcile", "diff", "bundle", "fmt", "preview", "analyze", "migrate", "shard", "derive", "qa", "consumer", "export", "scene"]);
+const COMMANDS = ["import", "bundle", "reconcile", "build", "install", "check", "list", "diff", "fmt", "preview", "analyze", "migrate", "shard", "derive", "qa", "consumer", "export", "evidence", "scene"] as const;
 
 const USAGE = `Usage:
   tfsb import <directory-or-archive> --root <project-root> [--brand-package] [--source-map <file> --collection <id> ...] [--shard-manifest <file> | --select <path> ...] [--schema 1|2] [--manifest] [--companion <path> ...] [--record-provenance] [--normalize exact-common] [--normalization-map <file>] [--dry-run] [--json]
@@ -75,6 +76,9 @@ const USAGE = `Usage:
   tfsb consumer adopt --profile <package/profile> ... [--param ...] [--source-bundle <zip> ...] [--source-package <dir> ...] [--root <path>] [--dry-run] [--json]
   tfsb evidence validate <packet> [--json]
   tfsb evidence inspect <packet> [--json]
+  tfsb scene validate <json> [--json]
+  tfsb scene inspect <json> [--json]
+  tfsb scene compile <json> --output <absent.svg> [--dry-run] [--json]
 
 Options:
   -h, --help            Show this help and exit
@@ -194,6 +198,9 @@ export async function runCli(argv: readonly string[], cwd = process.cwd(), io: C
   if ((command === "--version" || command === "-v") && rest.length === 0) { io.stdout(`${TOOL_VERSION}\n`); return 0; }
   if (!command) { io.stderr(`USAGE_ERROR: Command required.\n${USAGE}\n`); return 1; }
   if (!(COMMANDS as readonly string[]).includes(command)) { io.stderr(`USAGE_ERROR: Unknown command '${command}'.\n${USAGE}\n`); return 1; }
+  if (command === "scene") {
+    return await runSceneCli(rest, cwd, io);
+  }
   let jsonMode = false;
   try {
     let parsed: ReturnType<typeof parseCommandArgs>;

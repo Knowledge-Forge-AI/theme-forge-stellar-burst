@@ -29,6 +29,7 @@ export type DiagnosticOperation =
   | "export"
   | "discover";
 export type DiagnosticDomain =
+  | "scene"
   | "project-toml"
   | "asset-toml"
   | "svg"

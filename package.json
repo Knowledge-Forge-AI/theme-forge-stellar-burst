@@ -1,6 +1,6 @@
 {
   "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Declarative SVG compiler, transactional installer, and drift checker",
   "keywords": [
     "svg",
@@ -40,6 +40,10 @@
     "./design-evidence/v1": {
       "types": "./dist/design-evidence/index.d.ts",
       "import": "./dist/design-evidence/index.js"
+    },
+    "./scene/v1": {
+      "types": "./dist/scene/index.d.ts",
+      "import": "./dist/scene/index.js"
     }
   },
   "bin": {
@@ -50,6 +54,7 @@
     "dist",
     "protocol/tfsb-studio-v1",
     "protocol/tfsb-design-evidence-v1",
+    "protocol/tfsb-scene-v1",
     "native/directory-snapshot/prebuilds",
     "NOTICE",
     "COMMERCIAL-LICENSE.md"
