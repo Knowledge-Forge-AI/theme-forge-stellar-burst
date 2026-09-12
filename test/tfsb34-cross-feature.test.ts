@@ -146,14 +146,12 @@ describe("TFSB34 combined v0.3 qualification", () => {
   it("validates package payload, dependencies, and file allowlist against repository policy", () => {
     const pkg = JSON.parse(readRepoFile("package.json")) as {
       name: string;
-      version: string;
       files: string[];
       dependencies: Record<string, string>;
       exports: Record<string, unknown>;
       bin: Record<string, string>;
     };
     expect(pkg.name).toBe("@knowledge-forge-ai/theme-forge-stellar-burst");
-    expect(pkg.version).toBe("0.5.0");
     expect(pkg.files).toEqual(["dist", "protocol/tfsb-studio-v1", "protocol/tfsb-design-evidence-v1", "protocol/tfsb-scene-v1", "native/directory-snapshot/prebuilds", "NOTICE", "COMMERCIAL-LICENSE.md"]);
     expect(pkg.dependencies).toEqual({
       "@xmldom/xmldom": "0.9.12",

@@ -2,7 +2,8 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, mkdir, open, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -76,9 +77,24 @@ export async function createArtifactManifest(options) {
  */
 export async function extractReleaseArchive(options) {
   const archive = resolve(options.archivePath), destination = resolve(options.destination);
-  const archiveInfo = await lstat(archive);
-  if (!archiveInfo.isFile() || archiveInfo.isSymbolicLink()) throw new Error("Release archive must be a regular file.");
-  const archiveBytes = await readFile(archive);
+  if (!(constants.O_NOFOLLOW > 0) || !(constants.O_NONBLOCK > 0)) {
+    throw new Error("Release archive inspection requires no-follow and nonblocking file support.");
+  }
+  const handle = await open(archive, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o600);
+  /** @type {Buffer} */
+  let archiveBytes;
+  try {
+    const before = await handle.stat();
+    if (!before.isFile()) throw new Error("Release archive must be a regular file.");
+    archiveBytes = await handle.readFile();
+    const after = await handle.stat();
+    if (before.size !== archiveBytes.length || before.size !== after.size ||
+        before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs) {
+      throw new Error("Release archive changed while reading.");
+    }
+  } finally {
+    await handle.close();
+  }
   const digest = sha256Hex(archiveBytes);
   let expected = options.expectedSha256;
   if (options.manifestPath) {

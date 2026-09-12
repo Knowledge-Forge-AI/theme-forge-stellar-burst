@@ -1,4 +1,5 @@
-import { access, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -292,12 +293,15 @@ describe("publishSceneSvg", () => {
       dryRun: false,
     });
 
-    const stat = await lstat(outputPath);
-    expect(stat.isFile()).toBe(true);
-    expect(stat.mode & 0o777).toBe(0o600);
-
-    const content = await readFile(outputPath, "utf8");
-    expect(content).toBe(sampleSvg);
+    const handle = await open(outputPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o600);
+    try {
+      const stat = await handle.stat();
+      expect(stat.isFile()).toBe(true);
+      expect(stat.mode & 0o777).toBe(0o600);
+      expect(await handle.readFile("utf8")).toBe(sampleSvg);
+    } finally {
+      await handle.close();
+    }
 
     const remaining = await readdir(dir);
     expect(remaining).toEqual(["output.svg"]);

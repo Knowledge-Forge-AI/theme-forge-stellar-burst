@@ -4,26 +4,67 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  readCandidatePackageIdentity,
+  validatePackageUnderTest,
+  isMainScript,
+} from "./package-qualification-identity.mjs";
 
 // Explicit caller-owned scratch destination; no publication or lifecycle scripts.
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const destination = process.argv[2];
-if (!destination) throw new Error("Supply an empty qualification scratch directory.");
-const work = resolve(destination);
-mkdirSync(work, { recursive: false });
-const packDir = join(work, "pack");
-const consumer = join(work, "consumer");
-mkdirSync(packDir); mkdirSync(consumer);
-/** @param {string} command @param {string[]} args @param {string} cwd */
-const run = (command, args, cwd) => execFileSync(command, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-/** @param {string | Uint8Array} bytes */
-const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
-/** @type {Array<{filename:string, files:Array<{path:string}>, entryCount:number}>} */
-const packResults = JSON.parse(run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", packDir], root));
-const pack = packResults[0]; assert(pack);
-const packedTarball = join(packDir, pack.filename);
-const tarball = process.argv[3] ? resolve(process.argv[3]) : packedTarball;
-assert.equal(hash(readFileSync(tarball)), hash(readFileSync(packedTarball)), "Frozen artifact differs from qualified package bytes");
+const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * Qualifies the scene package against caller-supplied destination directory and optional frozen tarball.
+ *
+ * @param {{ destination?: string, packageUnderTest?: string, tarball?: string, repositoryRoot?: string, stdout?: boolean }} [options]
+ * @returns {Record<string, unknown>}
+ */
+export function qualifyScenePackage(options = {}) {
+  const root = options.repositoryRoot ? resolve(options.repositoryRoot) : defaultRoot;
+  const candidatePkg = readCandidatePackageIdentity(root);
+  let destination = options.destination;
+  let tarballArg = options.packageUnderTest ?? options.tarball;
+
+  if (!destination) {
+    const args = process.argv.slice(2);
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if (arg === undefined) throw new Error("Missing qualification argument.");
+      if (arg === "--package-under-test") {
+        i++;
+        const value = args[i];
+        if (!value || value.startsWith("-")) throw new Error("Missing value for --package-under-test.");
+        if (tarballArg) throw new Error("Duplicate --package-under-test argument.");
+        tarballArg = validatePackageUnderTest(value);
+      } else if (arg.startsWith("--package-under-test=")) {
+        if (tarballArg) throw new Error("Duplicate --package-under-test argument.");
+        tarballArg = validatePackageUnderTest(arg.slice("--package-under-test=".length));
+      } else if (!destination && !arg.startsWith("-")) {
+        destination = arg;
+      } else if (!tarballArg && !arg.startsWith("-")) {
+        tarballArg = validatePackageUnderTest(arg);
+      } else {
+        throw new Error(`Unexpected argument: ${arg}`);
+      }
+    }
+  }
+
+  if (!destination) throw new Error("Supply an empty qualification scratch directory.");
+  const work = resolve(destination);
+  mkdirSync(work, { recursive: false });
+  const packDir = join(work, "pack");
+  const consumer = join(work, "consumer");
+  mkdirSync(packDir); mkdirSync(consumer);
+  /** @param {string} command @param {string[]} args @param {string} cwd */
+  const run = (command, args, cwd) => execFileSync(command, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  /** @param {string | Uint8Array} bytes */
+  const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
+  /** @type {Array<{filename:string, files:Array<{path:string}>, entryCount:number}>} */
+  const packResults = JSON.parse(run("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", packDir], root));
+  const pack = packResults[0]; assert(pack);
+  const packedTarball = join(packDir, pack.filename);
+  const tarball = tarballArg ? resolve(tarballArg) : packedTarball;
+  assert.equal(hash(readFileSync(tarball)), hash(readFileSync(packedTarball)), "Frozen artifact differs from qualified package bytes");
 const members = pack.files.map(({ path }) => path).sort();
 assert.equal(pack.entryCount, members.length);
 assert(members.includes("dist/scene/index.js"));
@@ -57,11 +98,12 @@ for (const path of members) {
 }
 writeFileSync(join(consumer, "package.json"), JSON.stringify({ private: true, type: "module" }) + "\n");
 run("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], consumer);
-const packageRoot = join(consumer, "node_modules/@knowledge-forge-ai/theme-forge-stellar-burst");
+const packageRoot = join(consumer, "node_modules", ...candidatePkg.name.split("/"));
 const packageFile = join(packageRoot, "package.json");
 const pkg = JSON.parse(readFileSync(packageFile, "utf8"));
-assert.equal(pkg.version, "0.5.0");
-assert.deepEqual(pkg.dependencies, { "@xmldom/xmldom": "0.9.12", fflate: "0.8.3", "smol-toml": "1.8.0" });
+assert.equal(pkg.name, candidatePkg.name);
+assert.equal(pkg.version, candidatePkg.version);
+assert.deepEqual(pkg.dependencies, candidatePkg.dependencies);
 assert.deepEqual(pkg.exports, {
   ".": {
     "types": "./dist/index.d.ts",
@@ -120,10 +162,13 @@ console.log(JSON.stringify(result));
 `;
 writeFileSync(join(consumer, "smoke.mjs"), smoke);
 const before = run(process.execPath, ["smoke.mjs"], consumer);
-pkg.version = "0.5.1";
+const originalVersion = candidatePkg.version;
+const [major, minor, patch] = originalVersion.split(".").map(Number);
+const bumpedVersion = `${major}.${minor}.${(patch ?? 0) + 1}`;
+pkg.version = bumpedVersion;
 writeFileSync(packageFile, JSON.stringify(pkg, null, 2) + "\n");
 assert.equal(run(process.execPath, ["smoke.mjs"], consumer), before, "Package patch changed scene evidence");
-pkg.version = "0.5.0";
+pkg.version = originalVersion;
 writeFileSync(packageFile, JSON.stringify(pkg, null, 2) + "\n");
 /** @type {Array<{name:string,svgDigest:string,receipt:any}>} */
 const outputs = JSON.parse(before);
@@ -307,6 +352,14 @@ for (const { name, svg } of cliDenials) {
   assert.equal(existsSync(denialDestPath), false, `No target must be created on rejection for ${name}`);
 }
 
-const report = { schema: "tfsb.scene-package-qualification-v1", packageVersion: "0.4.0", tarballSha256: hash(readFileSync(tarball)), memberCount: members.length, members, installedConsumer: true, scriptsDisabled: true, patchIndependence: true, compilerLevelForwardAcceptance: true, cliPublication, fixtures: outputs, importer: { installedApi: true, classification: importerApiOutput.classification, sourceSha256: importerApiOutput.sourceSha256, canonicalSceneSha256: importerApiOutput.canonicalSceneSha256, svgDigest: importerApiOutput.svgDigest, receipt: importerApiOutput.receipt, features: importerApiOutput.features, normalizations: importerApiOutput.normalizations, reasonCodes: importerApiOutput.reasonCodes, cliPublication: true, deterministicJson: true, existingTargetGuarded: true, symlinkGuarded: true, rejectionsPassed: cliDenials.length } };
-writeFileSync(join(work, "report.json"), JSON.stringify(report, null, 2) + "\n");
-console.log(JSON.stringify({ ...report, members: undefined, fixtures: outputs.map(({ name, svgDigest }) => ({ name, svgDigest })) }, null, 2));
+  const report = { schema: "tfsb.scene-package-qualification-v1", packageVersion: candidatePkg.version, tarballSha256: hash(readFileSync(tarball)), memberCount: members.length, members, installedConsumer: true, scriptsDisabled: true, patchIndependence: true, compilerLevelForwardAcceptance: true, cliPublication, fixtures: outputs, importer: { installedApi: true, classification: importerApiOutput.classification, sourceSha256: importerApiOutput.sourceSha256, canonicalSceneSha256: importerApiOutput.canonicalSceneSha256, svgDigest: importerApiOutput.svgDigest, receipt: importerApiOutput.receipt, features: importerApiOutput.features, normalizations: importerApiOutput.normalizations, reasonCodes: importerApiOutput.reasonCodes, cliPublication: true, deterministicJson: true, existingTargetGuarded: true, symlinkGuarded: true, rejectionsPassed: cliDenials.length } };
+  writeFileSync(join(work, "report.json"), JSON.stringify(report, null, 2) + "\n");
+  if (options.stdout !== false) {
+    console.log(JSON.stringify({ ...report, members: undefined, fixtures: outputs.map(({ name, svgDigest }) => ({ name, svgDigest })) }, null, 2));
+  }
+  return report;
+}
+
+if (process.argv[1] && isMainScript(import.meta.url)) {
+  qualifyScenePackage();
+}
