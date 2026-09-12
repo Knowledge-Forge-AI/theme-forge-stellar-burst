@@ -56,12 +56,15 @@ coverage/
 htmlcov/
 reports/
 .test-reports/
+test-results/
 .downloaded-artifacts/
 
 # Generated output
 dist/
 apps/studio/src-tauri/binaries/
 apps/studio/src-tauri/sidecar-payload/
+apps/studio/src-tauri/loom-payload/
+apps/studio/public/preview/
 apps/studio/src-tauri/.sidecar-stage-*/
 apps/studio/src-tauri/.sidecar-recovery-*/
 build/
@@ -94,6 +97,9 @@ lerna-debug.log*
 # Astro / Starlight
 .astro/
 .github/content-cache/
+packages/stellar-loom/fixture/src/styles/*
+!packages/stellar-loom/fixture/src/styles/catalog-consumer.css
+!packages/stellar-loom/fixture/src/styles/neutral.css
 
 # ============================================================================
 # Python
@@ -137,3 +143,6 @@ INSTALL.md
 
 # Generated public composition qualification outputs
 .outbox/compositions/
+
+# Authenticated generated scene runtime; rebuilt from explicit archive input.
+apps/studio/src-tauri/scene-payload/

@@ -78,7 +78,8 @@ export async function extractReleaseArchive(options) {
   const archive = resolve(options.archivePath), destination = resolve(options.destination);
   const archiveInfo = await lstat(archive);
   if (!archiveInfo.isFile() || archiveInfo.isSymbolicLink()) throw new Error("Release archive must be a regular file.");
-  const digest = sha256Hex(await readFile(archive));
+  const archiveBytes = await readFile(archive);
+  const digest = sha256Hex(archiveBytes);
   let expected = options.expectedSha256;
   if (options.manifestPath) {
     const manifestPath = resolve(options.manifestPath);
@@ -91,12 +92,12 @@ export async function extractReleaseArchive(options) {
   const strip = options.stripComponents ?? 0;
   if (![0, 1].includes(strip)) throw new Error("Only zero or one release archive prefix may be stripped.");
   execFileSync("python3", ["-c", String.raw`
-import os,pathlib,shutil,sys,tarfile,unicodedata
-archive,dest,strip=sys.argv[1],pathlib.Path(sys.argv[2]),int(sys.argv[3])
+import io,os,pathlib,shutil,sys,tarfile,unicodedata
+dest,strip=pathlib.Path(sys.argv[1]),int(sys.argv[2])
 for parent in [dest,*dest.parents]:
  if parent.is_symlink() and not (str(parent) in ("/var","/tmp") and os.path.realpath(parent)=="/private"+str(parent)): raise ValueError("archive destination has a symlink ancestor")
 if dest.exists() and (not dest.is_dir() or any(dest.iterdir())): raise ValueError("archive destination must be empty")
-with tarfile.open(archive,"r:gz") as tf:
+with tarfile.open(fileobj=io.BytesIO(sys.stdin.buffer.read()),mode="r:gz") as tf:
  entries=[]; seen=set()
  for member in tf.getmembers():
   name=member.name
@@ -123,7 +124,7 @@ with tarfile.open(archive,"r:gz") as tf:
   path.parent.mkdir(parents=True,exist_ok=True)
   with tf.extractfile(member) as src, path.open("xb") as out: shutil.copyfileobj(src,out)
   path.chmod(member.mode & 0o777)
-`, archive, destination, String(strip)], { stdio: "pipe" });
+`, destination, String(strip)], { input: archiveBytes, stdio: "pipe" });
   return { archiveSha256: digest, status: "pass" };
 }
 

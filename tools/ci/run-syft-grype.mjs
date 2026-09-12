@@ -2,7 +2,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
-  chmod,
   copyFile,
   lstat,
   mkdir,
@@ -145,20 +144,21 @@ function findPathBinary(toolName) {
 }
 
 /**
- * @param {string} archivePath
+ * @param {Buffer} archiveBytes
  * @param {{binary_path: string}} asset
  * @param {string} toolName
  */
-async function extractPinnedBinary(archivePath, asset, toolName) {
+async function extractPinnedBinary(archiveBytes, asset, toolName) {
   if (isAbsolute(asset.binary_path) || asset.binary_path.split(/[\\/]/u).includes("..")) {
     throw new Error(`[TOOL_BOOTSTRAP_FAIL] Unsafe binary path for ${toolName}: ${asset.binary_path}`);
   }
 
   const extractionDir = await mkdtemp(join(tmpdir(), `tfsb-${toolName}-`));
   try {
-    execFileSync("tar", ["-xzf", archivePath, "-C", extractionDir, "--", asset.binary_path], {
+    execFileSync("tar", ["-xzf", "-", "-C", extractionDir, "--", asset.binary_path], {
+      input: archiveBytes,
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"]
     });
     const extractedPath = resolve(extractionDir, asset.binary_path);
     const extractedInfo = await lstat(extractedPath);
@@ -251,12 +251,32 @@ async function ensureVerifiedArchive(toolsDir, archiveName, expectedDigest, url,
   }
 
   return {
-    path: archivePath,
+    bytes,
     filename: archiveName,
     sha256: expectedDigest,
     source,
     url
   };
+}
+
+/** @param {string} path */
+async function requirePrivateToolDirectory(path) {
+  await mkdir(path, { recursive: true, mode: 0o700 });
+  const info = await lstat(path);
+  const uid = process.getuid?.();
+  if (!info.isDirectory() || info.isSymbolicLink() || (info.mode & 0o077) !== 0 || (uid !== undefined && info.uid !== uid)) {
+    throw new Error("[TOOL_BOOTSTRAP_FAIL] Tool cache must be an owner-controlled private directory.");
+  }
+  // Canonical ancestors may include system aliases, but must not allow another
+  // user to replace the private cache directory. Root-owned sticky tmp is safe.
+  for (let parent = dirname(await realpath(path)); ; parent = dirname(parent)) {
+    const parentInfo = await stat(parent);
+    const trustedOwner = uid === undefined || parentInfo.uid === 0 || parentInfo.uid === uid;
+    if (!trustedOwner || ((parentInfo.mode & 0o022) !== 0 && (parentInfo.mode & 0o1000) === 0)) {
+      throw new Error("[TOOL_BOOTSTRAP_FAIL] Tool cache must have owner-controlled private directory ancestry.");
+    }
+    if (dirname(parent) === parent) break;
+  }
 }
 
 /**
@@ -277,8 +297,12 @@ export async function ensureToolWithProvenance(toolName, toolsDir) {
   if (!asset) throw new Error(`[TOOL_BOOTSTRAP_FAIL] Tool "${toolName}" has no asset for "${tuple}".`);
 
   const resolvedToolsDir = resolve(toolsDir);
+  await requirePrivateToolDirectory(resolvedToolsDir);
   const binDir = join(resolvedToolsDir, "bin");
-  await mkdir(binDir, { recursive: true });
+  // Existing cached candidates are read only; never execute their mutable path.
+  if (existsSync(binDir) && (await lstat(binDir)).isSymbolicLink()) {
+    throw new Error("[TOOL_BOOTSTRAP_FAIL] Tool cache bin must be a private directory, not a symlink.");
+  }
   const targetBinPath = cacheBinaryPath(toolName, resolvedToolsDir);
 
   // Preflight local candidates before archive acquisition. This makes the
@@ -303,18 +327,15 @@ export async function ensureToolWithProvenance(toolName, toolsDir) {
     asset.url,
     toolName
   );
-  const pinnedBinary = await extractPinnedBinary(archive.path, asset, toolName);
+  const pinnedBinary = await extractPinnedBinary(archive.bytes, asset, toolName);
 
   if (candidate && candidate.sha256 !== pinnedBinary.sha256) {
     throw new Error(`[TOOL_BOOTSTRAP_FAIL] ${source.replace("-verified", "")} ${toolName} binary does not match the authenticated ${asset.archive} payload.`);
   }
 
-  let executablePath = candidate?.path;
-  if (!executablePath) {
-    await writeFile(targetBinPath, pinnedBinary.bytes, { mode: 0o755 });
-    await chmod(targetBinPath, 0o755);
-    executablePath = targetBinPath;
-  }
+  const executionDir = await mkdtemp(join(tmpdir(), `tfsb-verified-${toolName}-`));
+  const executablePath = join(executionDir, toolName);
+  await writeFile(executablePath, pinnedBinary.bytes, { mode: 0o500, flag: "wx" });
 
   const executableInfo = await inspectBinaryCandidate(executablePath, { label: `${source} ${toolName}`, allowSymlink: source === "path-verified" });
   if (!executableInfo || executableInfo.sha256 !== pinnedBinary.sha256) {
@@ -917,16 +938,15 @@ export async function runSupplyChainScan(options) {
     }
   }
 
-  const toolsDir = resolve(options.toolsDir ?? join(tmpdir(), "tfsb-supply-chain-tools", hostPlatformTuple()));
+  const toolsDir = resolve(options.toolsDir ?? await mkdtemp(join(tmpdir(), "tfsb-supply-chain-tools-")));
   const syft = await ensureToolWithProvenance("syft", toolsDir);
   const grype = await ensureToolWithProvenance("grype", toolsDir);
 
   // Scanner configuration must not inherit the private operator's home,
   // module caches, or config files. Keep the runtime state in temporary
   // scratch and record only sanitized tool provenance in the receipt.
-  const isolatedHome = join(tmpdir(), "tfsb-supply-chain-home", hostPlatformTuple());
-  await mkdir(isolatedHome, { recursive: true });
-  const databaseCache = join(tmpdir(), "tfsb-grype-db", hostPlatformTuple());
+  const isolatedHome = await mkdtemp(join(tmpdir(), "tfsb-supply-chain-home-"));
+  const databaseCache = join(isolatedHome, "grype-db");
   const scanEnv = isolatedScanEnvironment(isolatedHome, databaseCache);
   // Syft's file-metadata cataloger records source paths verbatim. Omit those
   // descriptive file components so retained SBOMs remain host-path-free while

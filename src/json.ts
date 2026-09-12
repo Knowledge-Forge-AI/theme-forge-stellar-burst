@@ -14,9 +14,10 @@ import type { DirectoryReconciliationClassification, DirectoryReconciliationPlan
 import type { NormalizationLedgerV1 } from "./normalization-ledger.js";
 import type { NormalizationPolicyIdentityV1 } from "./normalization-policy.js";
 import type { Diagnostic } from "./types.js";
+import type { SceneMetrics, SceneReceipt, VectorScene } from "./scene/types.js";
 
 export const JSON_RESULT_SCHEMA_VERSION = 1 as const;
-export type JsonCommand = "import" | "check" | "list" | "reconcile" | "diff" | "bundle" | "fmt" | "preview" | "analyze" | "migrate" | "shard" | "derive" | "qa" | "consumer" | "export";
+export type JsonCommand = "import" | "check" | "list" | "reconcile" | "diff" | "bundle" | "fmt" | "preview" | "analyze" | "migrate" | "shard" | "derive" | "qa" | "consumer" | "export" | "scene";
 export type JsonStatus = "ok" | "drift" | "conflict" | "unavailable" | "error";
 export type JsonExitCode = 0 | 1 | 2 | 3;
 
@@ -131,6 +132,56 @@ export type WorkspaceListJsonData = WorkspaceListResult;
 export type WorkspaceCheckJsonData = WorkspaceCheckResult;
 export type WorkspacePreviewJsonData = WorkspacePreviewResult;
 
+export interface SceneValidateJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "validate";
+  readonly valid: true;
+  readonly metrics: SceneMetrics;
+  readonly scene: VectorScene;
+}
+
+export interface SceneInspectJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "inspect";
+  readonly valid: true;
+  readonly metrics: SceneMetrics;
+  readonly receipt: SceneReceipt;
+  readonly warnings: readonly string[];
+  readonly scene: VectorScene;
+}
+
+export interface SceneCompileJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "compile";
+  readonly valid: true;
+  readonly output: string;
+  readonly dryRun: boolean;
+  readonly written: boolean;
+  readonly cleanupResidue: string | null;
+  readonly receipt: SceneReceipt;
+  readonly metrics: SceneMetrics;
+}
+
+export interface SceneImportSvgJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "import-svg";
+  readonly valid?: boolean;
+  readonly classification: string;
+  readonly reasons: readonly string[];
+  readonly reasonCodes?: readonly string[];
+  readonly sourceSha256: string;
+  readonly normalizations: readonly string[];
+  readonly written: boolean;
+  readonly output?: string;
+  readonly metrics?: SceneMetrics;
+}
+
+export type SceneJsonData =
+  | SceneValidateJsonData
+  | SceneInspectJsonData
+  | SceneCompileJsonData
+  | SceneImportSvgJsonData;
+
 function safeRelative(value: string): boolean {
   return value !== "" && !value.includes("\0") && !isAbsolute(value) && !/^[A-Za-z]:[\\/]/.test(value) &&
     !value.startsWith("~") && !value.includes("\\") && !value.split("/").some((part) => part === ".." || part === "");
@@ -141,6 +192,7 @@ function safeMessage(value: string): string {
   return unsafe ? "The operation could not be completed safely." : value;
 }
 function safeModelLocation(value: string, domain: Diagnostic["domain"]): boolean {
+  if (domain === "scene") return /^\$(?:\.[A-Za-z][A-Za-z0-9]*|\[[0-9]+\])*$/.test(value);
   if (value === "" || value.includes("\0") || /^[A-Za-z]:[\\/]/.test(value) || value.startsWith("~")) return false;
   if (!isAbsolute(value)) return true;
   return domain === "svg" && /^\/svg(?:\/|$)/.test(value);
@@ -148,14 +200,15 @@ function safeModelLocation(value: string, domain: Diagnostic["domain"]): boolean
 
 export function mapMachineDiagnostic(diagnostic: Diagnostic): MachineDiagnostic {
   const location = diagnostic.location;
+  const domain = diagnostic.domain;
   return {
     code: diagnostic.code,
     severity: "error",
     operation: diagnostic.operation,
     domain: diagnostic.domain,
-    ...(location === undefined ? {} : diagnostic.domain === "project-toml" || diagnostic.domain === "asset-toml" || diagnostic.domain === "svg" || diagnostic.domain === "manifest" || diagnostic.domain === "provenance"
+    ...(location === undefined ? {} : domain === "project-toml" || domain === "asset-toml" || domain === "svg" || domain === "manifest" || domain === "provenance" || domain === "scene"
       ? (safeModelLocation(location, diagnostic.domain) ? { modelLocation: location } : {})
-      : !safeRelative(location) ? {} : diagnostic.domain === "archive" ? { archiveEntry: location } : { path: location }),
+      : !safeRelative(location) ? {} : domain === "archive" ? { archiveEntry: location } : { path: location }),
     message: safeMessage(diagnostic.message),
   };
 }

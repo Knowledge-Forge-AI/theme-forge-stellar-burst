@@ -122,7 +122,7 @@ describe.runIf(nativeAvailable)("authenticated directory import", () => {
     expect(await readFile(join(root, ".tfsb", "companions", "README.md"), "utf8")).toBe("Synthetic brand terms\n");
     const provenance = unwrap(parseImportProvenanceV3(await readFile(join(root, ".tfsb", "provenance.json"), "utf8")));
     expect(provenance.records).toHaveLength(2);
-    expect(provenance.records[0]).toMatchObject({ type: "asset", assetId: "direct", source: { kind: "directory", collectionId: "icons", sourcePath: "icons/direct.svg", sourceState: "present", canonicalState: "present", resolution: "aligned", toolVersion: "0.4.0" }, migration: null, normalizationPolicy: null });
+    expect(provenance.records[0]).toMatchObject({ type: "asset", assetId: "direct", source: { kind: "directory", collectionId: "icons", sourcePath: "icons/direct.svg", sourceState: "present", canonicalState: "present", resolution: "aligned", toolVersion: "0.5.0" }, migration: null, normalizationPolicy: null });
     expect(provenance.records[1]).toMatchObject({ type: "companion", canonicalPath: ".tfsb/companions/README.md", source: { kind: "directory", sourcePath: "README.md", sourceCanonicalBasis: "tfsb-companion-bytes-v1" } });
     expect((provenance.records[0] as any).source.sourceMapDigest).toBe((provenance.records[1] as any).source.sourceMapDigest);
     expect((provenance.records[0] as any).source.snapshotDigest).toBe((provenance.records[1] as any).source.snapshotDigest);
@@ -135,7 +135,7 @@ describe.runIf(nativeAvailable)("authenticated directory import", () => {
     const plan = await importProject({ source: { kind: "directory", path: source }, root, collections: ["icons"], normalize: "exact-common", normalizationMap });
     expect(plan.normalizationLedger?.entries[0]).toMatchObject({ source: "icons/direct.svg", disposition: "normalized", operations: expect.arrayContaining(["title_only_to_labelled"]) });
     const provenance = unwrap(parseImportProvenanceV3(await readFile(join(root, ".tfsb", "provenance.json"), "utf8")));
-    expect(provenance.records[0]).toMatchObject({ normalizationPolicy: { policyBasis: "tfsb-normalization-policy-v1", implementationVersion: "0.4.0" }, source: { sourceCanonicalDigest: expect.stringMatching(/^sha256:/), canonicalDigest: expect.stringMatching(/^sha256:/) } });
+    expect(provenance.records[0]).toMatchObject({ normalizationPolicy: { policyBasis: "tfsb-normalization-policy-v1", implementationVersion: "0.5.0" }, source: { sourceCanonicalDigest: expect.stringMatching(/^sha256:/), canonicalDigest: expect.stringMatching(/^sha256:/) } });
   });
 
   it("keeps archive canonical and provenance bytes identical through compatibility and typed source routing", async () => {

@@ -12,7 +12,11 @@ import {
   REQUIRED_JOBS,
   STELLAR_BURST_PUBLIC_ARTIFACTS,
   STELLAR_BURST_PUBLIC_REQUIRED_JOBS,
+  STELLAR_LOOM_PUBLIC_ARTIFACTS,
+  STELLAR_LOOM_PUBLIC_REQUIRED_JOBS,
   STUDIO_ACL_TEN_COMMANDS,
+  TERMINAL_NOVA_PUBLIC_ARTIFACTS,
+  TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS,
 } from "./ci-contract.mjs";
 
 /** @param {Uint8Array | Buffer | string} bytes */
@@ -41,7 +45,7 @@ function matchesRequirement(path, requirement) {
   return path === requirement;
 }
 
-const PUBLIC_PRODUCTS = new Set(["stellar", "stellar-burst", "nebular", "nebular-fusion"]);
+const PUBLIC_PRODUCTS = new Set(["stellar", "stellar-burst", "nebular", "nebular-fusion", "loom", "stellar-loom", "nova", "terminal-nova"]);
 const PUBLIC_EVENT_FIELDS = Object.freeze(["name", "action", "number", "repository", "baseRef", "baseSha", "headRef", "headSha"]);
 const PUBLIC_REPOSITORY_FIELDS = Object.freeze(["repository", "baseRepository", "headRepository"]);
 const PUBLIC_PULL_REQUEST_ACTIONS = new Set(["opened", "synchronize", "reopened"]);
@@ -91,6 +95,10 @@ const PRODUCT_CONTRACTS = Object.freeze({
   "stellar-burst": Object.freeze({ requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS }),
   nebular: Object.freeze({ requiredJobs: NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS, artifacts: NEBULAR_FUSION_PUBLIC_ARTIFACTS }),
   "nebular-fusion": Object.freeze({ requiredJobs: NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS, artifacts: NEBULAR_FUSION_PUBLIC_ARTIFACTS }),
+  loom: Object.freeze({ requiredJobs: STELLAR_LOOM_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_LOOM_PUBLIC_ARTIFACTS }),
+  "stellar-loom": Object.freeze({ requiredJobs: STELLAR_LOOM_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_LOOM_PUBLIC_ARTIFACTS }),
+  nova: Object.freeze({ requiredJobs: TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS, artifacts: TERMINAL_NOVA_PUBLIC_ARTIFACTS }),
+  "terminal-nova": Object.freeze({ requiredJobs: TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS, artifacts: TERMINAL_NOVA_PUBLIC_ARTIFACTS }),
 });
 
 /** @param {unknown} value @returns {Record<string, string>} */

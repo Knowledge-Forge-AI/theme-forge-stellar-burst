@@ -1,3 +1,10 @@
+export type {
+  Diagnostic,
+  DiagnosticDomain,
+  DiagnosticOperation,
+  Result,
+} from "./types.js";
+
 import type {
   Diagnostic,
   DiagnosticDomain,
