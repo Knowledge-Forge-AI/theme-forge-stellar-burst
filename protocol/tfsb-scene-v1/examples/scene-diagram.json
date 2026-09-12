@@ -1,0 +1,362 @@
+{
+  "schema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profile": "diagram",
+  "artboard": {
+    "width": 1200,
+    "height": 675,
+    "viewBox": [
+      0,
+      0,
+      1200,
+      675
+    ],
+    "policy": "contain"
+  },
+  "accessibility": {
+    "mode": "labelled",
+    "title": "Compiler Pipeline Architecture",
+    "desc": "Architecture diagram showing vector scene compilation from input JSON through layout lowering to SVG emission",
+    "focusable": true
+  },
+  "tokenBindings": {
+    "bg-slate": "#0f172a",
+    "bg-card": "#1e293b",
+    "node-border": "#3b82f6",
+    "node-accent": "#10b981",
+    "wire-color": "#94a3b8",
+    "wire-active": "#f59e0b",
+    "text-primary": "#f8fafc"
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "id": "bg",
+      "x": 0,
+      "y": 0,
+      "width": 1200,
+      "height": 675,
+      "presentation": {
+        "fill": {
+          "type": "token",
+          "name": "bg-slate"
+        }
+      }
+    },
+    {
+      "type": "label",
+      "id": "diagTitle",
+      "text": "VECTOR SCENE COMPILATION PIPELINE",
+      "x": 600,
+      "y": 60,
+      "scale": 2.2,
+      "color": {
+        "type": "solid",
+        "color": "#ffffff"
+      },
+      "align": "center"
+    },
+    {
+      "type": "diagramNode",
+      "id": "nodeInput",
+      "x": 80,
+      "y": 220,
+      "width": 180,
+      "height": 90,
+      "rx": 8,
+      "ry": 8,
+      "label": "JSON INPUT",
+      "labelColor": {
+        "type": "token",
+        "name": "text-primary"
+      },
+      "labelScale": 1.1,
+      "presentation": {
+        "fill": {
+          "type": "token",
+          "name": "bg-card"
+        },
+        "stroke": {
+          "type": "token",
+          "name": "node-border"
+        },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "diagramNode",
+      "id": "nodeValidate",
+      "x": 340,
+      "y": 220,
+      "width": 180,
+      "height": 90,
+      "rx": 8,
+      "ry": 8,
+      "label": "VALIDATION",
+      "labelColor": {
+        "type": "token",
+        "name": "text-primary"
+      },
+      "labelScale": 1.1,
+      "presentation": {
+        "fill": {
+          "type": "token",
+          "name": "bg-card"
+        },
+        "stroke": {
+          "type": "token",
+          "name": "node-border"
+        },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "diagramNode",
+      "id": "nodeLayout",
+      "x": 600,
+      "y": 220,
+      "width": 180,
+      "height": 90,
+      "rx": 8,
+      "ry": 8,
+      "label": "LAYOUT ENGINE",
+      "labelColor": {
+        "type": "token",
+        "name": "text-primary"
+      },
+      "labelScale": 1.1,
+      "presentation": {
+        "fill": {
+          "type": "token",
+          "name": "bg-card"
+        },
+        "stroke": {
+          "type": "token",
+          "name": "node-accent"
+        },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "diagramNode",
+      "id": "nodeRender",
+      "x": 860,
+      "y": 220,
+      "width": 180,
+      "height": 90,
+      "rx": 8,
+      "ry": 8,
+      "label": "SVG EMISSION",
+      "labelColor": {
+        "type": "token",
+        "name": "text-primary"
+      },
+      "labelScale": 1.1,
+      "presentation": {
+        "fill": {
+          "type": "token",
+          "name": "bg-card"
+        },
+        "stroke": {
+          "type": "token",
+          "name": "node-accent"
+        },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "diagramNode",
+      "id": "nodeReceipt",
+      "x": 600,
+      "y": 440,
+      "width": 180,
+      "height": 80,
+      "rx": 8,
+      "ry": 8,
+      "label": "RECEIPT DIGEST",
+      "labelColor": {
+        "type": "token",
+        "name": "text-primary"
+      },
+      "labelScale": 1.0,
+      "presentation": {
+        "fill": {
+          "type": "token",
+          "name": "bg-card"
+        },
+        "stroke": {
+          "type": "token",
+          "name": "wire-active"
+        },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "connector",
+      "id": "conn1",
+      "routing": "straight",
+      "from": {
+        "elementId": "nodeInput",
+        "anchor": "right"
+      },
+      "to": {
+        "elementId": "nodeValidate",
+        "anchor": "left"
+      },
+      "endArrowhead": "triangle",
+      "arrowheadSize": 8,
+      "presentation": {
+        "stroke": {
+          "type": "token",
+          "name": "wire-color"
+        },
+        "strokeWidth": 2,
+        "fill": {
+          "type": "token",
+          "name": "wire-color"
+        }
+      }
+    },
+    {
+      "type": "connector",
+      "id": "conn2",
+      "routing": "straight",
+      "from": {
+        "elementId": "nodeValidate",
+        "anchor": "right"
+      },
+      "to": {
+        "elementId": "nodeLayout",
+        "anchor": "left"
+      },
+      "endArrowhead": "triangle",
+      "arrowheadSize": 8,
+      "presentation": {
+        "stroke": {
+          "type": "token",
+          "name": "wire-color"
+        },
+        "strokeWidth": 2,
+        "fill": {
+          "type": "token",
+          "name": "wire-color"
+        }
+      }
+    },
+    {
+      "type": "connector",
+      "id": "conn3",
+      "routing": "straight",
+      "from": {
+        "elementId": "nodeLayout",
+        "anchor": "right"
+      },
+      "to": {
+        "elementId": "nodeRender",
+        "anchor": "left"
+      },
+      "endArrowhead": "triangle",
+      "arrowheadSize": 8,
+      "presentation": {
+        "stroke": {
+          "type": "token",
+          "name": "wire-color"
+        },
+        "strokeWidth": 2,
+        "fill": {
+          "type": "token",
+          "name": "wire-color"
+        }
+      }
+    },
+    {
+      "type": "connector",
+      "id": "conn4",
+      "routing": "orthogonal",
+      "from": {
+        "elementId": "nodeRender",
+        "anchor": "bottom"
+      },
+      "to": {
+        "elementId": "nodeReceipt",
+        "anchor": "right"
+      },
+      "startArrowhead": "none",
+      "endArrowhead": "chevron",
+      "arrowheadSize": 8,
+      "presentation": {
+        "stroke": {
+          "type": "token",
+          "name": "wire-active"
+        },
+        "strokeWidth": 2,
+        "fill": {
+          "type": "none"
+        }
+      },
+      "waypoints": [
+        [
+          950,
+          480
+        ]
+      ]
+    },
+    {
+      "type": "connector",
+      "id": "conn5",
+      "routing": "orthogonal",
+      "from": {
+        "elementId": "nodeLayout",
+        "anchor": "bottom"
+      },
+      "to": {
+        "elementId": "nodeReceipt",
+        "anchor": "top"
+      },
+      "startArrowhead": "none",
+      "endArrowhead": "triangle",
+      "arrowheadSize": 8,
+      "presentation": {
+        "stroke": {
+          "type": "token",
+          "name": "wire-active"
+        },
+        "strokeWidth": 2,
+        "fill": {
+          "type": "token",
+          "name": "wire-active"
+        }
+      }
+    }
+  ],
+  "layout": [
+    {
+      "type": "align",
+      "alignment": "middle",
+      "targets": [
+        "nodeInput",
+        "nodeValidate",
+        "nodeLayout",
+        "nodeRender"
+      ]
+    },
+    {
+      "type": "distribute",
+      "axis": "horizontal",
+      "targets": [
+        "nodeInput",
+        "nodeValidate",
+        "nodeLayout",
+        "nodeRender"
+      ],
+      "spacing": 80
+    }
+  ],
+  "provenance": {
+    "author": "Theme Forge Stellar Burst Authors",
+    "license": "AGPL-3.0-or-later",
+    "created": "2026-09-08T20:00:00Z",
+    "note": "Original first-party compiler architecture diagram composition."
+  }
+}

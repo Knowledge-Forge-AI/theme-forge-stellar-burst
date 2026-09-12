@@ -27,54 +27,40 @@ TFSB brings software-engineering discipline to vector asset pipelines:
 Install globally via npm:
 
 ```sh
-npm install --global @knowledge-forge-ai/theme-forge-stellar-burst@0.4.0
+npm install --global @knowledge-forge-ai/theme-forge-stellar-burst@0.5.0
 ```
 
 Or add as a project development dependency:
 
 ```sh
-npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst@0.4.0
+npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst@0.5.0
 ```
 
 Node.js `22.0.0` or later is required.
 
-## Coordinated v0.4 release
+Version 0.5.0 adds the closed `./scene/v1` library export and `tfsb scene`
+commands for accessible vector scenes, deterministic SVG compilation, layout,
+labels and bounded SVG import. See the [Scene contract](protocol/tfsb-scene-v1/README.md)
+and [import contract](protocol/tfsb-scene-v1/import-svg.md). Existing 0.4 asset,
+installation and drift contracts remain supported.
 
-Theme Forge Stellar Burst `0.4.0` is paired with the independently versioned
-Theme Forge Nebular Fusion `0.1.0`. Stellar Burst is distributed from the
-public `Knowledge-Forge-AI/theme-forge-stellar-burst` history as the npm
-package `@knowledge-forge-ai/theme-forge-stellar-burst@0.4.0`. Nebular Fusion
-is distributed from `Knowledge-Forge-AI/theme-forge-nebular-fusion` as a
-macOS-arm64 application with its own tag, artifacts, notices, and rollback
-record. The products share a release family, not a package or publication
-transaction.
+This version distributes SVG only. Clips, masks, embedded/external resource
+ingestion and distributed PNG output remain deferred. Raster capability is
+reported unavailable without a separately qualified renderer; no renderer is
+silently downloaded. `nova-social` is an SVG source artifact, with no promise
+of social-platform image compatibility.
 
-The release notes and artifact identity record are kept in
-[`docs/releases/v0.4.0.md`](docs/releases/v0.4.0.md). The public release URL is
-<https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/releases/tag/v0.4.0>.
-That URL and the paired Nebular release URL become usable only after the
-corresponding public release operations complete.
+## Release family and history
 
-### Optional raster companion
-
-The core npm package does not install the optional PNG renderer. Nebular uses
-the private, pinned companion
-`@knowledge-forge-ai/tfsb-raster-resvg@0.0.0-tfsb47f` together with
-`@resvg/resvg-wasm@2.6.2` from an authenticated release input. It is not a
-separately published npm dependency and must not be installed from a registry
-reference that is unavailable to consumers.
-
-The retained qualified companion archive is:
-
-```text
-knowledge-forge-ai-tfsb-raster-resvg-0.0.0-tfsb47f.tgz
-```
-
-Verify the archive digest against Nebular's
-`authenticated-inputs/stellar-binding.json` and the published checksum file;
-any mismatch blocks distribution. The archive is accompanied by its locked
-`package-lock.json` and the AGPL, commercial-license, MPL-2.0, notice, and
-third-party-notice files.
+The 0.5.0 source candidate follows the published
+[0.4.0 release](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/releases/tag/v0.4.0).
+Historical [0.4.0 release notes](docs/releases/v0.4.0.md) retain their original scope.
+Related products are independently versioned:
+[Stellar Loom](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-loom),
+[Nebular Fusion](https://github.com/Knowledge-Forge-AI/theme-forge-nebular-fusion), and
+[Terminal Nova](https://github.com/Knowledge-Forge-AI/starlight-theme-terminal-nova).
+Each has its own artifacts, notices and qualification. This source candidate
+has not been published.
 
 ## New-project quick start
 

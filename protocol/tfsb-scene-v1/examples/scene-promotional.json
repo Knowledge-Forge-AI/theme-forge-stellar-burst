@@ -1,0 +1,232 @@
+{
+  "schema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profile": "promotional",
+  "artboard": {
+    "width": 1200,
+    "height": 630,
+    "viewBox": [0, 0, 1200, 630],
+    "policy": "contain"
+  },
+  "accessibility": {
+    "mode": "labelled",
+    "title": "Theme Forge Stellar Burst 0.5 Announcement",
+    "desc": "Promotional card for Stellar Burst release with vector badges, burst geometry, and social banner typography",
+    "focusable": true
+  },
+  "tokenBindings": {
+    "brand-dark": "#0b0f19",
+    "brand-violet": "#8b5cf6",
+    "brand-cyan": "#06b6d4",
+    "brand-amber": "#f59e0b",
+    "brand-white": "#ffffff"
+  },
+  "definitions": {
+    "gradients": [
+      {
+        "id": "bannerGrad",
+        "type": "linearGradient",
+        "x1": 0,
+        "y1": 0,
+        "x2": 1200,
+        "y2": 630,
+        "gradientUnits": "userSpaceOnUse",
+        "spreadMethod": "pad",
+        "stops": [
+          { "offset": 0.0, "color": { "type": "solid", "color": "#0b0f19" } },
+          { "offset": 0.6, "color": { "type": "solid", "color": "#1e1b4b" } },
+          { "offset": 1.0, "color": { "type": "solid", "color": "#311042" } }
+        ]
+      },
+      {
+        "id": "burstGlow",
+        "type": "radialGradient",
+        "cx": 950,
+        "cy": 315,
+        "r": 280,
+        "gradientUnits": "userSpaceOnUse",
+        "spreadMethod": "pad",
+        "stops": [
+          { "offset": 0.0, "color": { "type": "solid", "color": "#06b6d4" }, "opacity": 0.8 },
+          { "offset": 0.5, "color": { "type": "solid", "color": "#8b5cf6" }, "opacity": 0.4 },
+          { "offset": 1.0, "color": { "type": "solid", "color": "#0b0f19" }, "opacity": 0 }
+        ]
+      }
+    ],
+    "symbols": [
+      {
+        "id": "badgeStar",
+        "type": "symbol",
+        "viewBox": [0, 0, 60, 60],
+        "elements": [
+          {
+            "type": "circle",
+            "id": "badgeRing",
+            "cx": 30,
+            "cy": 30,
+            "r": 26,
+            "presentation": {
+              "fill": { "type": "none" },
+              "stroke": { "type": "token", "name": "brand-amber" },
+              "strokeWidth": 2
+            }
+          },
+          {
+            "type": "polygon",
+            "id": "badgePoints",
+            "points": [
+              [30, 10],
+              [35, 24],
+              [50, 30],
+              [35, 36],
+              [30, 50],
+              [25, 36],
+              [10, 30],
+              [25, 24]
+            ],
+            "presentation": {
+              "fill": { "type": "token", "name": "brand-amber" }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "id": "bg",
+      "x": 0,
+      "y": 0,
+      "width": 1200,
+      "height": 630,
+      "presentation": {
+        "fill": { "type": "gradient", "id": "bannerGrad" }
+      }
+    },
+    {
+      "type": "circle",
+      "id": "radialGlow",
+      "cx": 950,
+      "cy": 315,
+      "r": 280,
+      "presentation": {
+        "fill": { "type": "gradient", "id": "burstGlow" }
+      }
+    },
+    {
+      "type": "use",
+      "id": "promoStar1",
+      "href": "#badgeStar",
+      "x": 860,
+      "y": 225,
+      "width": 180,
+      "height": 180,
+      "transform": [
+        { "type": "rotate", "angle": 12, "cx": 950, "cy": 315 }
+      ]
+    },
+    {
+      "type": "use",
+      "id": "promoStar2",
+      "href": "#badgeStar",
+      "x": 760,
+      "y": 140,
+      "width": 60,
+      "height": 60,
+      "transform": [
+        { "type": "rotate", "angle": -18, "cx": 790, "cy": 170 }
+      ]
+    },
+    {
+      "type": "group",
+      "id": "pillBadge",
+      "bounds": [80, 70, 240, 44],
+      "children": [
+        {
+          "type": "rect",
+          "id": "pillBg",
+          "x": 80,
+          "y": 70,
+          "width": 240,
+          "height": 44,
+          "rx": 22,
+          "ry": 22,
+          "presentation": {
+            "fill": { "type": "solid", "color": "#1e1b4b" },
+            "stroke": { "type": "token", "name": "brand-cyan" },
+            "strokeWidth": 1.5
+          }
+        },
+        {
+          "type": "label",
+          "id": "pillText",
+          "text": "NEW RELEASE // v0.5.0",
+          "x": 105,
+          "y": 84,
+          "scale": 1.2,
+          "color": { "type": "token", "name": "brand-cyan" }
+        }
+      ]
+    },
+    {
+      "type": "label",
+      "id": "promoHead",
+      "text": "STELLAR BURST",
+      "x": 80,
+      "y": 150,
+      "scale": 4.5,
+      "color": { "type": "token", "name": "brand-white" }
+    },
+    {
+      "type": "label",
+      "id": "promoSub",
+      "text": "DETERMINISTIC VECTOR GRAPHICS ENGINE",
+      "x": 80,
+      "y": 230,
+      "scale": 1.8,
+      "color": { "type": "token", "name": "brand-cyan" }
+    },
+    {
+      "type": "label",
+      "id": "promoDesc",
+      "text": "ZERO DRIFT SCENE COMPILATION // FORGE GRID LABELS\nPATTERNS, DIAGRAMS & ILLUSTRATIONS FOR MODERN WEB ASSETS",
+      "x": 80,
+      "y": 290,
+      "scale": 1.3,
+      "lineSpacing": 18,
+      "color": { "type": "solid", "color": "#cbd5e1" }
+    },
+    {
+      "type": "rect",
+      "id": "ctaBtn",
+      "x": 80,
+      "y": 420,
+      "width": 280,
+      "height": 56,
+      "rx": 12,
+      "ry": 12,
+      "presentation": {
+        "fill": { "type": "token", "name": "brand-violet" },
+        "stroke": { "type": "token", "name": "brand-white" },
+        "strokeWidth": 1.5
+      }
+    },
+    {
+      "type": "label",
+      "id": "ctaText",
+      "text": "EXPLORE THE PROTOCOL ->",
+      "x": 105,
+      "y": 440,
+      "scale": 1.2,
+      "color": { "type": "token", "name": "brand-white" }
+    }
+  ],
+  "provenance": {
+    "author": "Theme Forge Stellar Burst Authors",
+    "license": "AGPL-3.0-or-later",
+    "created": "2026-09-08T20:00:00Z",
+    "note": "Original first-party promotional banner vector composition."
+  }
+}

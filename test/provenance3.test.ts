@@ -146,7 +146,7 @@ describe("provenance schema 3", () => {
       "companion:.tfsb/companions/NOTICE",
       "companion:.tfsb/companions/README.md",
     ]);
-    expect(parsed.records[0]).toMatchObject({ source: { kind: "directory", toolVersion: "0.3.0" }, normalizationPolicy: { implementationVersion: "0.4.0" } });
+    expect(parsed.records[0]).toMatchObject({ source: { kind: "directory", toolVersion: "0.3.0" }, normalizationPolicy: { implementationVersion: "0.5.0" } });
     expect(serializeImportProvenanceV3(parsed)).toBe(serialized);
   });
 

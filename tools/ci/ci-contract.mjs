@@ -37,6 +37,24 @@ export const NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS = Object.freeze([
   "evidence-aggregate",
 ]);
 
+export const STELLAR_LOOM_PUBLIC_REQUIRED_JOBS = Object.freeze([
+  "source-policy",
+  "root-package",
+  "consumer-fixture",
+  "codeql",
+  "supply-chain",
+  "evidence-aggregate",
+]);
+
+export const TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS = Object.freeze([
+  "source-policy",
+  "theme-package",
+  "demo",
+  "codeql",
+  "supply-chain",
+  "evidence-aggregate",
+]);
+
 export const NATIVE_SNAPSHOT_TUPLES = Object.freeze([
   "darwin-arm64",
   "darwin-x64",
@@ -86,6 +104,20 @@ export const NEBULAR_FUSION_PUBLIC_ARTIFACTS = Object.freeze([
   publicArtifact("supply-chain-artifacts", "supply-chain", {}, ["receipt.json", "nebular-fusion.syft.json", "nebular-fusion.spdx.json", "nebular-fusion.cdx.json", "nebular-fusion.grype.json", "nebular-fusion.grype.sarif", "nebular-fusion.receipt.json", "workflow-checks/actionlint.result.json", "workflow-checks/zizmor.result.json", "workflow-checks/betterleaks.result.json", "workflow-checks/workflow-checks.receipt.json", "workflow-checks/betterleaks.report.json", "cargo-audit.json"]),
 ]);
 
+export const STELLAR_LOOM_PUBLIC_ARTIFACTS = Object.freeze([
+  publicArtifact("source-policy-receipt", "source-policy", {}, ["receipt.json"], "staging-head"),
+  publicArtifact("root-package-artifacts", "root-package", {}, ["receipt.json", "pack-manifest.json", "test-report.json", "audit-result.json", "root-package.tgz"]),
+  publicArtifact("consumer-fixture-artifacts", "consumer-fixture", {}, ["receipt.json", "smoke-report.log"]),
+  publicArtifact("supply-chain-artifacts", "supply-chain", {}, ["receipt.json", "root-package.syft.json", "root-package.spdx.json", "root-package.cdx.json", "root-package.grype.json", "root-package.grype.sarif", "root-package.receipt.json", "workflow-checks/actionlint.result.json", "workflow-checks/zizmor.result.json", "workflow-checks/betterleaks.result.json", "workflow-checks/workflow-checks.receipt.json", "workflow-checks/betterleaks.report.json"]),
+]);
+
+export const TERMINAL_NOVA_PUBLIC_ARTIFACTS = Object.freeze([
+  publicArtifact("source-policy-receipt", "source-policy", {}, ["receipt.json"], "staging-head"),
+  publicArtifact("theme-package-artifacts", "theme-package", {}, ["receipt.json", "theme-manifest.json", "pack-manifest.json", "theme-package.tgz", "audit-result.json"]),
+  publicArtifact("demo-artifacts", "demo", {}, ["receipt.json", "demo-dist.tar.gz"]),
+  publicArtifact("supply-chain-artifacts", "supply-chain", {}, ["receipt.json", "terminal-nova.syft.json", "terminal-nova.spdx.json", "terminal-nova.cdx.json", "terminal-nova.grype.json", "terminal-nova.grype.sarif", "terminal-nova.receipt.json", "workflow-checks/actionlint.result.json", "workflow-checks/zizmor.result.json", "workflow-checks/betterleaks.result.json", "workflow-checks/workflow-checks.receipt.json", "workflow-checks/betterleaks.report.json"]),
+]);
+
 /**
  * Frozen generic-Studio ten-command ACL.
  */
@@ -100,6 +132,26 @@ export const STUDIO_ACL_TEN_COMMANDS = Object.freeze([
   "studio_host_shutdown",
   "studio_design_packet_import",
   "studio_design_packet_export",
+]);
+
+/**
+ * Extended Studio fifteen-command ACL with Theme Lab.
+ */
+export const STUDIO_ACL_FIFTEEN_COMMANDS = Object.freeze([
+  ...STUDIO_ACL_TEN_COMMANDS,
+  "studio_theme_lab_status",
+  "studio_theme_lab_compile",
+  "studio_theme_lab_example",
+  "studio_theme_lab_open",
+  "studio_theme_lab_save",
+]);
+
+/**
+ * Extended Studio sixteen-command ACL with Theme Lab dispose.
+ */
+export const STUDIO_ACL_SIXTEEN_COMMANDS = Object.freeze([
+  ...STUDIO_ACL_FIFTEEN_COMMANDS,
+  "studio_theme_lab_dispose",
 ]);
 
 export const CANONICAL_TERMINAL_NOVA = Object.freeze({
