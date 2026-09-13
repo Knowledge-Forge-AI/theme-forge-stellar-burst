@@ -8,10 +8,12 @@ import { fileURLToPath } from "node:url";
 /**
  * Immutable bound predecessor merge SHA for Theme Forge Stellar Burst.
  * Only null or this predecessor commit triggers polling retry.
- * Release-bound to the single R13 staging push. Reauthorize this constant before
+ * Release-bound to the single R14 staging push, following head
+ * 1043a8f8cd75fd7708f246b6b688d96e59f8e092, tree
+ * f94d24ca519e2b593d4425f4fb1c6f5d6050e697. Reauthorize this constant before
  * another staging push or PR; later predecessor merges deliberately fail closed.
  */
-export const BOUND_PREDECESSOR_MERGE_SHA = "cf334190f6cfc1f69a49d92704cdbf91cc0c04a0";
+export const BOUND_PREDECESSOR_MERGE_SHA = "5f33d85ad2f7b6f62c8c2237faab2817df4a35c8";
 
 /**
  * Validates PR observation for exact match against expected context on every observation.
