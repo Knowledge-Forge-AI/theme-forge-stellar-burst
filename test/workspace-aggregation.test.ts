@@ -10,6 +10,7 @@ import {
   parseWorkspaceListCursor,
   parseWorkspacePreviewMarker,
   previewWorkspace,
+  type WorkspaceListRecord,
   type WorkspacePreviewMetrics,
   type WorkspaceStreamMetrics,
 } from "../src/index.js";
@@ -100,8 +101,9 @@ describe("workspace list aggregation", () => {
     await expect(listWorkspace({ workspaceFile: join(root, "workspace.toml") })).rejects.toMatchObject({ diagnostic: { code: "WORKSPACE_INVALID_FILENAME" } });
   });
 
-  // Standard macOS x64 runners need extra time for this filesystem-scale fixture.
-  it("qualifies 1,024 streamed children and a multi-thousand record view", { timeout: 120_000 }, async () => {
+  // Independently bounded real-filesystem scenarios. Local ARM measurements were
+  // below 42s each; these conservative margins still need hosted Intel validation.
+  it("qualifies 1,024 streamed children across list and check aggregation", { timeout: 180_000 }, async () => {
     const childScaleRoot = temp();
     const childProjects = Array.from({ length: 1024 }, (_, index) => ({ id: `p-${index}`, path: `projects/${index}` }));
     for (const project of childProjects) child(childScaleRoot, project.path, []);
@@ -110,24 +112,104 @@ describe("workspace list aggregation", () => {
     const childScale = await listWorkspace({ workspaceFile: childScaleFile, metrics: childMetrics });
     expect(childScale.workspace).toMatchObject({ projectCount: 1024, recordCount: 0 });
     expect(childMetrics).toEqual({ loadedChildren: 0, maxLoadedChildren: 1 });
-    const childChecks = await checkWorkspace({ workspaceFile: childScaleFile, metrics: childMetrics });
-    expect(childChecks.projects).toEqual({ total: 1024, checked: 1024, clean: 0, drifted: 1024, failed: 0 });
-    expect(childChecks.children).toHaveLength(1024);
-    expect(childMetrics.maxLoadedChildren).toBe(1);
 
+    const checkMetrics: WorkspaceStreamMetrics = { loadedChildren: 0, maxLoadedChildren: 0 };
+    const childChecks = await checkWorkspace({ workspaceFile: childScaleFile, metrics: checkMetrics });
+    expect(childChecks.status).toBe("drift");
+    expect(childChecks.projects).toEqual({ total: 1024, checked: 1024, clean: 0, drifted: 1024, failed: 0 });
+    expect(childChecks.drift).toEqual({
+      sourceChangedProjects: 1024,
+      buildMissing: 0,
+      buildExtra: 0,
+      buildDifferent: 0,
+      installMissing: 0,
+      installDifferent: 0,
+    });
+    const expectedById = new Map(childProjects.map((project) => [project.id, project]));
+    expect(childChecks.children).toHaveLength(1024);
+    for (const summary of childChecks.children) {
+      const expected = expectedById.get(summary.projectId);
+      expect(expected).toBeDefined();
+      expect(summary).toEqual({
+        projectId: expected!.id,
+        projectPath: expected!.path,
+        status: "drift",
+        sourceChanged: true,
+        buildMissing: 0,
+        buildExtra: 0,
+        buildDifferent: 0,
+        installMissing: 0,
+        installDifferent: 0,
+      });
+      expectedById.delete(summary.projectId);
+    }
+    expect(expectedById.size).toBe(0);
+    expect(checkMetrics).toEqual({ loadedChildren: 0, maxLoadedChildren: 1 });
+  });
+
+  it("qualifies 2,048-record pagination with exhaustive cursor traversal and ordering", { timeout: 240_000 }, async () => {
     const recordScaleRoot = temp();
     const recordProjects = Array.from({ length: 16 }, (_, index) => ({ id: `p-${String(index).padStart(2, "0")}`, path: `projects/${index}` }));
-    for (const project of recordProjects) child(recordScaleRoot, project.path, Array.from({ length: 128 }, (_, index) => `asset-${String(index).padStart(3, "0")}-${project.id}`));
+    for (const project of recordProjects) {
+      child(recordScaleRoot, project.path, Array.from({ length: 128 }, (_, index) => `asset-${String(index).padStart(3, "0")}-${project.id}`));
+    }
     const recordScaleFile = manifest(recordScaleRoot, recordProjects);
     const recordMetrics: WorkspaceStreamMetrics = { loadedChildren: 0, maxLoadedChildren: 0 };
-    const first = await listWorkspace({ workspaceFile: recordScaleFile, pageSize: 128, metrics: recordMetrics });
-    const second = await listWorkspace({ workspaceFile: recordScaleFile, pageSize: 128, cursor: first.page.nextCursor!, metrics: recordMetrics });
-    expect(first.workspace.recordCount).toBe(2048);
-    expect(first.page.records).toHaveLength(128);
-    expect(second.page.records).toHaveLength(128);
-    expect(first.page.records.at(-1)?.projectId).toBe("p-00");
-    expect(second.page.records.at(0)?.projectId).toBe("p-01");
+
+    let cursor: string | undefined = undefined;
+    let pageCount = 0;
+    const allRecords: WorkspaceListRecord[] = [];
+    const seenIdentities = new Set<string>();
+
+    do {
+      const result = await listWorkspace({
+        workspaceFile: recordScaleFile,
+        pageSize: 128,
+        ...(cursor === undefined ? {} : { cursor }),
+        metrics: recordMetrics,
+      });
+
+      expect(result.workspace.recordCount).toBe(2048);
+      expect(result.workspace.projectCount).toBe(16);
+      expect(result.page.recordCount).toBe(128);
+      expect(result.page.records).toHaveLength(128);
+      expect(recordMetrics.maxLoadedChildren).toBe(1);
+      expect(recordMetrics.loadedChildren).toBe(0);
+
+      const expectedProjectId = `p-${String(pageCount).padStart(2, "0")}`;
+
+      for (let offset = 0; offset < 128; offset++) {
+        const record = result.page.records[offset]!;
+        const expectedAssetId = `asset-${String(offset).padStart(3, "0")}-${expectedProjectId}`;
+        const expectedIdentity = `${expectedProjectId}/${expectedAssetId}`;
+
+        expect(record.projectId).toBe(expectedProjectId);
+        expect(record.projectPath).toBe(`projects/${pageCount}`);
+        expect(record.id).toBe(expectedAssetId);
+        expect(record.qualifiedIdentity).toBe(expectedIdentity);
+        expect(record.kind).toBe("asset");
+        expect(record.path).toBe(`dist/${expectedAssetId}.svg`);
+
+        expect(seenIdentities.has(expectedIdentity)).toBe(false);
+        seenIdentities.add(expectedIdentity);
+        allRecords.push(record);
+      }
+
+      pageCount += 1;
+      if (pageCount < 16) {
+        expect(result.page.nextCursor).not.toBeNull();
+        expect(result.page.nextCursor).toMatch(/^[A-Za-z0-9_-]+$/);
+      } else {
+        expect(result.page.nextCursor).toBeNull();
+      }
+      cursor = result.page.nextCursor ?? undefined;
+    } while (cursor !== undefined);
+
+    expect(pageCount).toBe(16);
+    expect(allRecords).toHaveLength(2048);
+    expect(seenIdentities.size).toBe(2048);
     expect(recordMetrics.maxLoadedChildren).toBe(1);
+    expect(recordMetrics.loadedChildren).toBe(0);
   });
 });
 
