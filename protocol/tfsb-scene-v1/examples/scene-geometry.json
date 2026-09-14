@@ -1,0 +1,132 @@
+{
+  "schema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profile": "diagram",
+  "artboard": {
+    "width": 800,
+    "height": 600,
+    "viewBox": [0, 0, 800, 600],
+    "policy": "contain"
+  },
+  "accessibility": {
+    "mode": "labelled",
+    "title": "Focused Scene Geometry Fixture",
+    "desc": "Geometric primitive and matrix transform verification suite",
+    "focusable": false
+  },
+  "tokenBindings": {
+    "geo-stroke": "#2563eb",
+    "geo-fill": "#dbeafe"
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "id": "geoRect",
+      "x": 50,
+      "y": 50,
+      "width": 120,
+      "height": 80,
+      "rx": 10,
+      "ry": 10,
+      "transform": [
+        { "type": "translate", "x": 10, "y": 5 },
+        { "type": "rotate", "angle": 45, "cx": 110, "cy": 90 }
+      ],
+      "presentation": {
+        "fill": { "type": "token", "name": "geo-fill" },
+        "stroke": { "type": "token", "name": "geo-stroke" },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "circle",
+      "id": "geoCircle",
+      "cx": 280,
+      "cy": 100,
+      "r": 45,
+      "presentation": {
+        "fill": { "type": "solid", "color": "#fef08a" },
+        "stroke": { "type": "solid", "color": "#ca8a04" },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "ellipse",
+      "id": "geoEllipse",
+      "cx": 450,
+      "cy": 100,
+      "rx": 70,
+      "ry": 35,
+      "transform": [
+        { "type": "matrix", "a": 1, "b": 0.2, "c": 0, "d": 1, "e": 0, "f": 0 }
+      ],
+      "presentation": {
+        "fill": { "type": "solid", "color": "#fbcfe8" },
+        "stroke": { "type": "solid", "color": "#db2777" },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "line",
+      "id": "geoLine",
+      "x1": 600,
+      "y1": 50,
+      "x2": 720,
+      "y2": 150,
+      "presentation": {
+        "stroke": { "type": "solid", "color": "#059669" },
+        "strokeWidth": 3,
+        "strokeLinecap": "round"
+      }
+    },
+    {
+      "type": "polyline",
+      "id": "geoPolyline",
+      "points": [
+        [50, 250],
+        [100, 200],
+        [150, 260],
+        [200, 210]
+      ],
+      "presentation": {
+        "stroke": { "type": "solid", "color": "#7c3aed" },
+        "strokeWidth": 2.5,
+        "strokeLinejoin": "round",
+        "fill": { "type": "none" }
+      }
+    },
+    {
+      "type": "polygon",
+      "id": "geoPolygon",
+      "points": [
+        [300, 200],
+        [350, 220],
+        [370, 270],
+        [320, 290],
+        [280, 250]
+      ],
+      "presentation": {
+        "fill": { "type": "solid", "color": "#fed7aa" },
+        "stroke": { "type": "solid", "color": "#ea580c" },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "path",
+      "id": "geoPath",
+      "d": "M 450 250 Q 520 180 600 250 T 750 250",
+      "presentation": {
+        "stroke": { "type": "solid", "color": "#0891b2" },
+        "strokeWidth": 3,
+        "fill": { "type": "none" }
+      }
+    }
+  ],
+  "provenance": {
+    "author": "Theme Forge Stellar Burst Authors",
+    "license": "AGPL-3.0-or-later",
+    "created": "2026-09-08T20:00:00Z",
+    "note": "Focused geometry validation fixture."
+  }
+}

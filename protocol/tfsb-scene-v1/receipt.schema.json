@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://knowledge-forge-ai.github.io/theme-forge-stellar-burst/protocol/tfsb-scene-v1/receipt.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "sceneSchema",
+    "sceneCompatibility",
+    "sceneCompilerLevel",
+    "sourceDigest",
+    "svgDigest",
+    "profile",
+    "artboard",
+    "glyphCatalogDigest",
+    "tokenDigest",
+    "sourceSnapshotDigest",
+    "limits",
+    "diagnostics",
+    "metrics"
+  ],
+  "properties": {
+    "schema": {
+      "const": "tfsb.scene-compile-receipt-v1"
+    },
+    "sceneSchema": {
+      "const": "tfsb.vector-scene-v1"
+    },
+    "sceneCompatibility": {
+      "const": 1
+    },
+    "sceneCompilerLevel": {
+      "const": 1
+    },
+    "sourceDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "svgDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "profile": {
+      "enum": [
+        "illustration",
+        "diagram",
+        "editorial",
+        "promotional",
+        "pattern"
+      ]
+    },
+    "artboard": {
+      "$ref": "scene.schema.json#/$defs/artboard"
+    },
+    "glyphCatalogDigest": {
+      "const": "sha256:8ec3bc8e99cf1cda2cdc362f5a0b6e1f94a8e1c544853d9af46bd999f8a0941a"
+    },
+    "tokenDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "sourceSnapshotDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "limits": {
+      "const": {
+        "maxInputBytes": 8388608,
+        "maxExpandedElements": 10000,
+        "maxAuthoredElements": 2000,
+        "maxNestingDepth": 32,
+        "maxGradientStops": 128,
+        "maxGlyphsPerLabel": 1024,
+        "maxGlyphsPerScene": 8192,
+        "maxAggregatePathSegments": 1000000,
+        "maxPathBytes": 65536,
+        "maxDefinitions": 500,
+        "maxTokens": 1000,
+        "maxLayoutDirectives": 256,
+        "maxSymbolDepth": 8,
+        "maxSymbolAmplification": 500,
+        "maxStructuralDepth": 128,
+        "maxInputNodes": 100000,
+        "maxOutputBytes": 33554432,
+        "maxCanonicalPathBytes": 1048576,
+        "maxCanonicalPathsBytes": 16777216,
+        "maxTransforms": 32,
+        "maxPoints": 10000,
+        "maxLabelCharacters": 2048
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "string",
+        "maxLength": 8192
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expandedElementCount",
+        "authoredElementCount",
+        "pathSegmentCount",
+        "glyphCount",
+        "maxNestingDepth",
+        "gradientStopCount"
+      ],
+      "properties": {
+        "expandedElementCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "authoredElementCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pathSegmentCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "glyphCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxNestingDepth": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gradientStopCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

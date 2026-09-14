@@ -146,15 +146,13 @@ describe("TFSB34 combined v0.3 qualification", () => {
   it("validates package payload, dependencies, and file allowlist against repository policy", () => {
     const pkg = JSON.parse(readRepoFile("package.json")) as {
       name: string;
-      version: string;
       files: string[];
       dependencies: Record<string, string>;
       exports: Record<string, unknown>;
       bin: Record<string, string>;
     };
     expect(pkg.name).toBe("@knowledge-forge-ai/theme-forge-stellar-burst");
-    expect(pkg.version).toBe("0.4.0");
-    expect(pkg.files).toEqual(["dist", "protocol/tfsb-studio-v1", "protocol/tfsb-design-evidence-v1", "native/directory-snapshot/prebuilds", "NOTICE", "COMMERCIAL-LICENSE.md"]);
+    expect(pkg.files).toEqual(["dist", "protocol/tfsb-studio-v1", "protocol/tfsb-design-evidence-v1", "protocol/tfsb-scene-v1", "native/directory-snapshot/prebuilds", "NOTICE", "COMMERCIAL-LICENSE.md"]);
     expect(pkg.dependencies).toEqual({
       "@xmldom/xmldom": "0.9.12",
       fflate: "0.8.3",
@@ -168,6 +166,10 @@ describe("TFSB34 combined v0.3 qualification", () => {
       "./studio-protocol/v1": {
         types: "./dist/service-protocol/v1-types.d.ts",
         import: "./dist/service-protocol/v1-types.js",
+      },
+      "./scene/v1": {
+        types: "./dist/scene/index.d.ts",
+        import: "./dist/scene/index.js",
       },
       "./design-evidence/v1": {
         types: "./dist/design-evidence/index.d.ts",
@@ -203,9 +205,18 @@ describe("TFSB34 combined v0.3 qualification", () => {
     // TFSB47L adds five design-evidence modules (JS + declarations), three
     // schemas, inventory/README, four canonical examples, and one shared
     // negative corpus: 20 entries.
-    expect(packResult?.entryCount).toBe(296 + nativePaths.length);
-    expect(paths.length).toBe(296 + nativePaths.length);
+    // TFSB61A adds the scene domain, CLI/file wrappers and closed scene protocol.
+    // TFSB62A adds three importer modules (JS + declarations) and one contract document.
+    expect(packResult?.entryCount).toBe(348 + nativePaths.length);
+    expect(paths.length).toBe(348 + nativePaths.length);
     expect(paths).toEqual(expect.arrayContaining([
+      "dist/scene/import-svg.js",
+      "dist/scene/import-svg.d.ts",
+      "dist/scene/import-svg-types.js",
+      "dist/scene/import-svg-types.d.ts",
+      "dist/scene/import-svg-guard.js",
+      "dist/scene/import-svg-guard.d.ts",
+      "protocol/tfsb-scene-v1/import-svg.md",
       "dist/brand/brand-files.d.ts",
       "dist/brand/brand-files.js",
       "dist/brand/brand-schema.d.ts",
@@ -331,7 +342,7 @@ describe("TFSB34 combined v0.3 qualification", () => {
       expect(path).toMatch(/^native\/directory-snapshot\/prebuilds\/(?:darwin-arm64|darwin-x64|linux-x64-gnu)\/(?:manifest\.json|native-addon-posix-openat-v1\.node)$/);
     }
     for (const path of paths) {
-      const allowed = path.startsWith("dist/") || path.startsWith("protocol/tfsb-studio-v1/") || path.startsWith("protocol/tfsb-design-evidence-v1/") || nativePaths.includes(path) || path === "NOTICE" || path === "COMMERCIAL-LICENSE.md" || path === "LICENSE" || path === "package.json" || path === "README.md";
+      const allowed = path.startsWith("dist/") || path.startsWith("protocol/tfsb-studio-v1/") || path.startsWith("protocol/tfsb-design-evidence-v1/") || path.startsWith("protocol/tfsb-scene-v1/") || nativePaths.includes(path) || path === "NOTICE" || path === "COMMERCIAL-LICENSE.md" || path === "LICENSE" || path === "package.json" || path === "README.md";
       expect(allowed, `Unexpected file in package payload: ${path}`).toBe(true);
       expect(path).not.toMatch(/^(?:test|tools|docs|scratch)\b/);
       expect(path).not.toMatch(/dogfood|eval/i);

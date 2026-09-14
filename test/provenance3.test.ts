@@ -12,6 +12,7 @@ import {
   PROVENANCE_SCHEMA_VERSION_V3,
   SOURCE_MAP_DIGEST_BASIS,
   SVG_OUTPUT_DIGEST_BASIS,
+  TOOL_VERSION,
   createNormalizationPolicyIdentity,
   parseImportProvenanceV2,
   parseImportProvenanceV3,
@@ -146,7 +147,7 @@ describe("provenance schema 3", () => {
       "companion:.tfsb/companions/NOTICE",
       "companion:.tfsb/companions/README.md",
     ]);
-    expect(parsed.records[0]).toMatchObject({ source: { kind: "directory", toolVersion: "0.3.0" }, normalizationPolicy: { implementationVersion: "0.4.0" } });
+    expect(parsed.records[0]).toMatchObject({ source: { kind: "directory", toolVersion: "0.3.0" }, normalizationPolicy: { implementationVersion: TOOL_VERSION } });
     expect(serializeImportProvenanceV3(parsed)).toBe(serialized);
   });
 

@@ -1,0 +1,359 @@
+{
+  "schema": "tfsb.vector-scene-denials-v1",
+  "cases": [
+    {
+      "id": "unknown-root-property",
+      "reason": "Root object contains an unauthorized extra property",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }],
+        "unauthorizedKey": "malicious"
+      }
+    },
+    {
+      "id": "unknown-element-property",
+      "reason": "Element contains an unauthorized property",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10, "extra": true }]
+      }
+    },
+    {
+      "id": "unknown-presentation-property",
+      "reason": "Presentation object contains an unauthorized style property",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [
+          {
+            "type": "rect",
+            "id": "r1",
+            "x": 0,
+            "y": 0,
+            "width": 10,
+            "height": 10,
+            "presentation": { "filter": "blur(5px)" }
+          }
+        ]
+      }
+    },
+    {
+      "id": "unsupported-schema",
+      "reason": "Schema string is not the pinned tfsb.vector-scene-v1",
+      "scene": {
+        "schema": "tfsb.vector-scene-v2",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "unsupported-compatibility",
+      "reason": "Compatibility level is not 1",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 2,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "unsupported-compiler-level",
+      "reason": "Compiler level is not 1",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 2,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "unsupported-profile",
+      "reason": "Profile name is not recognized",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "arbitrary-profile",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "negative-artboard-width",
+      "reason": "Artboard width must be positive finite number",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": -100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "invalid-viewbox-dimensions",
+      "reason": "viewBox width and height must be strictly positive",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 0, -50], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "empty-elements",
+      "reason": "Scene requires at least one authored element",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": []
+      }
+    },
+    {
+      "id": "duplicate-element-id",
+      "reason": "Element IDs must be unique within scene and definitions",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [
+          { "type": "rect", "id": "box", "x": 0, "y": 0, "width": 10, "height": 10 },
+          { "type": "circle", "id": "box", "cx": 20, "cy": 20, "r": 5 }
+        ]
+      }
+    },
+    {
+      "id": "invalid-local-id-syntax",
+      "reason": "IDs must follow standard local ID grammar (cannot start with a digit)",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "123-invalid", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "unsupported-element-foreign-object",
+      "reason": "ForeignObject or HTML elements are strictly prohibited",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "foreignObject", "id": "html", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "rect-negative-width",
+      "reason": "Rectangle width cannot be negative",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": -10, "height": 10 }]
+      }
+    },
+    {
+      "id": "circle-negative-radius",
+      "reason": "Circle radius must be strictly positive",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "circle", "id": "c1", "cx": 10, "cy": 10, "r": -5 }]
+      }
+    },
+    {
+      "id": "use-external-reference",
+      "reason": "Use elements must reference local symbols via #id, not external URLs",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "use", "id": "u1", "href": "https://evil.com/icon.svg#test", "x": 0, "y": 0 }]
+      }
+    },
+    {
+      "id": "label-non-ascii-character",
+      "reason": "Forge Grid Label v1 strictly rejects characters outside printable ASCII 32..126",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "label", "id": "l1", "text": "Cafe\u0301 with accent", "x": 0, "y": 0 }]
+      }
+    },
+    {
+      "id": "linear-gradient-insufficient-stops",
+      "reason": "Linear gradients require at least 2 color stops",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "definitions": {
+          "gradients": [
+            {
+              "id": "g1",
+              "type": "linearGradient",
+              "x1": 0,
+              "y1": 0,
+              "x2": 1,
+              "y2": 1,
+              "stops": [{ "offset": 0, "color": { "type": "solid", "color": "#000000" } }]
+            }
+          ]
+        },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "linear-gradient-non-monotonic-stops",
+      "reason": "Gradient stop offsets must be monotonically non-decreasing",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "definitions": {
+          "gradients": [
+            {
+              "id": "g1",
+              "type": "linearGradient",
+              "x1": 0,
+              "y1": 0,
+              "x2": 1,
+              "y2": 1,
+              "stops": [
+                { "offset": 0.8, "color": { "type": "solid", "color": "#000000" } },
+                { "offset": 0.2, "color": { "type": "solid", "color": "#ffffff" } }
+              ]
+            }
+          ]
+        },
+        "elements": [{ "type": "rect", "id": "r1", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    },
+    {
+      "id": "symbol-cyclic-dependency",
+      "reason": "Symbols cannot contain mutual cyclic instantiation loops",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "definitions": {
+          "symbols": [
+            {
+              "id": "symA",
+              "type": "symbol",
+              "viewBox": [0, 0, 10, 10],
+              "elements": [{ "type": "use", "id": "uB", "href": "#symB" }]
+            },
+            {
+              "id": "symB",
+              "type": "symbol",
+              "viewBox": [0, 0, 10, 10],
+              "elements": [{ "type": "use", "id": "uA", "href": "#symA" }]
+            }
+          ]
+        },
+        "elements": [{ "type": "use", "id": "rootUse", "href": "#symA" }]
+      }
+    },
+    {
+      "id": "layout-self-anchor",
+      "reason": "Element cannot anchor to itself in layout directives",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "decorative" },
+        "elements": [{ "type": "rect", "id": "box", "x": 0, "y": 0, "width": 10, "height": 10 }],
+        "layout": [
+          {
+            "type": "anchor",
+            "target": "box",
+            "targetAnchor": "top",
+            "relativeTo": "box",
+            "relativeToAnchor": "bottom"
+          }
+        ]
+      }
+    },
+    {
+      "id": "labelled-scene-missing-title",
+      "reason": "Labelled accessibility mode requires a non-empty title string",
+      "scene": {
+        "schema": "tfsb.vector-scene-v1",
+        "compatibility": 1,
+        "compilerLevel": 1,
+        "profile": "diagram",
+        "artboard": { "width": 100, "height": 100, "viewBox": [0, 0, 100, 100], "policy": "contain" },
+        "accessibility": { "mode": "labelled", "title": "   " },
+        "elements": [{ "type": "rect", "id": "box", "x": 0, "y": 0, "width": 10, "height": 10 }]
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -149,6 +150,12 @@ try {
   const pack = JSON.parse(command("npm", ["pack", "--json", "--pack-destination", scratch], repositoryRoot));
   if (!Array.isArray(pack) || pack.length !== 1 || typeof pack[0]?.filename !== "string") throw new Error("npm pack returned an invalid result.");
   tarball = join(scratch, pack[0].filename);
+  const frozen = process.argv[2];
+  if (frozen) {
+    const digest = (/** @type {string} */ file) => createHash("sha256").update(readFileSync(file)).digest("hex");
+    if (digest(tarball) !== digest(frozen)) throw new Error("Frozen artifact differs from qualified package bytes.");
+    tarball = resolve(frozen);
+  }
   const first = installConsumer("consumer-one");
   const second = installConsumer("consumer-two");
   const firstResult = probe(first.root, true);

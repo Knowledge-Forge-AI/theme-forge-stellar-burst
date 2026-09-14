@@ -7,10 +7,18 @@ import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { zipSync } from "fflate";
+import {
+  readCandidatePackageIdentity,
+  parseQualificationArgs,
+  validatePackageUnderTest,
+  verifyInstalledPackageIdentity,
+  verifyCliVersion,
+  verifyFrozenTarball,
+  isMainScript,
+} from "./package-qualification-identity.mjs";
 
-const repositoryRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
-const scratch = realpathSync(mkdtempSync(join(tmpdir(), "tfsb-packed-service-")));
-const packageRoot = join("node_modules", "@knowledge-forge-ai", "theme-forge-stellar-burst");
+const defaultRepositoryRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
+let repositoryRoot = defaultRepositoryRoot;
 const artifact = process.platform === "linux" ? "linux-x64-gnu" : `darwin-${process.arch}`;
 
 /** @param {string} executable @param {string[]} args @param {string} cwd */
@@ -84,21 +92,23 @@ source_bytes = 5
   return { project, workspace, source, sourceMap, normalizationMap, shardManifest, shardPaths, archive };
 }
 
-/** @param {string} consumer @param {string} fixtureRoot */
-function probeCli(consumer, fixtureRoot) {
+/** @param {string} consumer @param {string} fixtureRoot @param {import("./package-qualification-identity.mjs").CandidatePackageIdentity} [candidatePkg] */
+function probeCli(consumer, fixtureRoot, candidatePkg) {
+  const candidate = candidatePkg ?? readCandidatePackageIdentity(repositoryRoot);
   const paths = fixture(fixtureRoot);
   const cliSvg = readFileSync(join(repositoryRoot, "test/fixtures/tftn-icon-candidate-v1/theme-forge-terminal-nova-mark.svg"));
   writeFileSync(paths.archive, zipSync({ "packed.svg": cliSvg }, { level: 0, mtime: new Date("1980-01-02T00:00:00Z") }));
   const project = join(fixtureRoot, "cli-project"); mkdirSync(project);
   const reimport = join(fixtureRoot, "cli-reimport"); mkdirSync(reimport);
-  const bin = join(consumer, "node_modules/.bin/tfsb");
+  const binName = "tfsb";
+  if (!candidate.bin[binName]) throw new Error("Candidate package has no tfsb CLI binding.");
+  const bin = join(consumer, "node_modules/.bin", binName);
   /** @type {string[]} */
   const output = [];
   /** @param {string[]} args */
   const run = (args) => output.push(command(bin, args, consumer));
 
-  const version = command(bin, ["--version"], consumer);
-  if (version.trim() !== "0.4.0") throw new Error("Packed CLI version mismatch.");
+  const version = verifyCliVersion(bin, candidate.version, consumer);
   output.push(version);
   run(["import", paths.archive, "--root", project, "--schema", "1", "--record-provenance"]);
   const projectToml = join(project, ".tfsb/project.toml");
@@ -293,15 +303,17 @@ async function probeService(consumer, fixtureRoot) {
   return { methodsApplied: 10, auxiliaryPurposes: 3, shardBackedImport: true, digestMismatchPreservedToken: true, staleConsumedToken: true, cleanExit: true };
 }
 
-/** @param {string} consumer @param {string} fixtureRoot @param {"missing" | "corrupt"} condition */
-async function probeDegradedNative(consumer, fixtureRoot, condition) {
+/** @param {string} consumer @param {string} fixtureRoot @param {"missing" | "corrupt"} condition @param {import("./package-qualification-identity.mjs").CandidatePackageIdentity} [candidatePkg] */
+async function probeDegradedNative(consumer, fixtureRoot, condition, candidatePkg) {
+  const candidate = candidatePkg ?? readCandidatePackageIdentity(repositoryRoot);
+  const packageRoot = join("node_modules", ...candidate.name.split("/"));
   const paths = fixture(fixtureRoot);
   const archiveTarget = join(fixtureRoot, "archive-target"); mkdirSync(archiveTarget);
   const directoryTarget = join(fixtureRoot, "directory-target"); mkdirSync(directoryTarget);
   const packageTreeBefore = treeInventory(join(consumer, packageRoot));
   command(process.execPath, ["--input-type=module", "-e", `
     const fs = await import("node:fs");
-    const pkg = await import("@knowledge-forge-ai/theme-forge-stellar-burst");
+    const pkg = await import(${JSON.stringify(candidate.name)});
     const parsed = pkg.parseSourceMap(fs.readFileSync(${JSON.stringify(paths.sourceMap)}, "utf8"));
     if (!parsed.ok) throw new Error("Packed degraded source map parse failed.");
     const planned = await pkg.planShard(${JSON.stringify(paths.source)}, parsed.value, "icons", ["icons/packed.svg"]);
@@ -361,25 +373,90 @@ async function probeDegradedNative(consumer, fixtureRoot, condition) {
   };
 }
 
-let tarball = "";
-try {
-  const pack = JSON.parse(command("npm", ["pack", "--json", "--pack-destination", scratch], repositoryRoot));
-  tarball = join(scratch, pack[0].filename);
-  /** @type {string[]} */
-  const consumers = [];
-  for (const name of ["consumer-one", "consumer-two"]) {
-    const root = join(scratch, name); mkdirSync(root); writeFileSync(join(root, "package.json"), '{"name":"studio-consumer","private":true}\n');
-    command("npm", ["install", "--no-audit", "--no-fund", "--loglevel=error", tarball], root); consumers.push(root);
+/**
+ * Qualifies the studio service package against installed consumer and degraded native environments.
+ * Supports explicit narrowly validated --package-under-test <tgz> for exact frozen tarball qualification;
+ * default pack behavior is preserved when not provided.
+ *
+ * @param {{ packageUnderTest?: string | null, repositoryRoot?: string, stdout?: boolean }} [options]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function qualifyStudioServicePackage(options = {}) {
+  const rootDir = options.repositoryRoot ? resolve(options.repositoryRoot) : defaultRepositoryRoot;
+  repositoryRoot = rootDir;
+  const candidatePkg = readCandidatePackageIdentity(repositoryRoot);
+  const packageRoot = join("node_modules", ...candidatePkg.name.split("/"));
+  const scratch = realpathSync(mkdtempSync(join(tmpdir(), "tfsb-packed-service-")));
+  let tarball = "";
+  try {
+    const pack = JSON.parse(command("npm", ["pack", "--json", "--pack-destination", scratch], repositoryRoot));
+    if (!Array.isArray(pack) || pack.length !== 1 || typeof pack[0]?.filename !== "string") {
+      throw new Error("npm pack returned an invalid result.");
+    }
+    const packedTarball = join(scratch, pack[0].filename);
+    if (options.packageUnderTest) {
+      const frozen = validatePackageUnderTest(options.packageUnderTest);
+      verifyFrozenTarball(packedTarball, frozen);
+      tarball = frozen;
+    } else {
+      tarball = packedTarball;
+    }
+    /** @type {string[]} */
+    const consumers = [];
+    for (const name of ["consumer-one", "consumer-two"]) {
+      const root = join(scratch, name); mkdirSync(root); writeFileSync(join(root, "package.json"), '{"name":"studio-consumer","private":true}\n');
+      command("npm", ["install", "--no-audit", "--no-fund", "--loglevel=error", tarball], root); consumers.push(root);
+    }
+    const firstConsumer = consumers[0]; const secondConsumer = consumers[1];
+    if (firstConsumer === undefined || secondConsumer === undefined) throw new Error("Packed consumers were not created.");
+
+    // Validate installed package identity, metadata, and exact resolved bin bindings
+    verifyInstalledPackageIdentity(firstConsumer, candidatePkg);
+    verifyInstalledPackageIdentity(secondConsumer, candidatePkg);
+
+    const cli = probeCli(firstConsumer, join(scratch, "fixture-cli"), candidatePkg);
+    const first = await probeService(firstConsumer, join(scratch, "fixture-one"));
+    const second = await probeService(secondConsumer, join(scratch, "fixture-two"));
+    const installedArtifact = join(secondConsumer, packageRoot, "native/directory-snapshot/prebuilds", artifact, "native-addon-posix-openat-v1.node");
+    rmSync(installedArtifact); const missing = await probeDegradedNative(secondConsumer, join(scratch, "fixture-missing"), "missing", candidatePkg);
+    writeFileSync(installedArtifact, "corrupt native artifact"); const corrupt = await probeDegradedNative(secondConsumer, join(scratch, "fixture-corrupt"), "corrupt", candidatePkg);
+    const report = {
+      schemaVersion: 1,
+      packageVersion: pack[0].version,
+      packageEntries: pack[0].entryCount,
+      packageBytes: pack[0].size,
+      packageUnpackedBytes: pack[0].unpackedSize,
+      cli,
+      installs: [first, second],
+      missingArtifact: missing,
+      corruptArtifact: corrupt,
+    };
+    if (options.stdout !== false) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    }
+    return report;
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
   }
-  const firstConsumer = consumers[0]; const secondConsumer = consumers[1];
-  if (firstConsumer === undefined || secondConsumer === undefined) throw new Error("Packed consumers were not created.");
-  const cli = probeCli(firstConsumer, join(scratch, "fixture-cli"));
-  const first = await probeService(firstConsumer, join(scratch, "fixture-one"));
-  const second = await probeService(secondConsumer, join(scratch, "fixture-two"));
-  const installedArtifact = join(secondConsumer, packageRoot, "native/directory-snapshot/prebuilds", artifact, "native-addon-posix-openat-v1.node");
-  rmSync(installedArtifact); const missing = await probeDegradedNative(secondConsumer, join(scratch, "fixture-missing"), "missing");
-  writeFileSync(installedArtifact, "corrupt native artifact"); const corrupt = await probeDegradedNative(secondConsumer, join(scratch, "fixture-corrupt"), "corrupt");
-  process.stdout.write(`${JSON.stringify({ schemaVersion: 1, packageVersion: pack[0].version, packageEntries: pack[0].entryCount, packageBytes: pack[0].size, packageUnpackedBytes: pack[0].unpackedSize, cli, installs: [first, second], missingArtifact: missing, corruptArtifact: corrupt }, null, 2)}\n`);
-} finally {
-  rmSync(scratch, { recursive: true, force: true });
+}
+
+export {
+  readCandidatePackageIdentity,
+  parseQualificationArgs,
+  validatePackageUnderTest,
+  verifyInstalledPackageIdentity,
+  verifyCliVersion,
+  verifyFrozenTarball,
+  isMainScript,
+  probeCli,
+  probeService,
+  probeDegradedNative,
+};
+
+if (process.argv[1] && isMainScript(import.meta.url)) {
+  const parsed = parseQualificationArgs(process.argv.slice(2));
+  qualifyStudioServicePackage(parsed).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

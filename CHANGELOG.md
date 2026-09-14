@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - Unreleased candidate
+
+- Add the versioned Vector Scene compiler, deterministic SVG output, safe SVG
+  import, accessibility metadata and bounded service protocol.
+- Preserve the 0.4 library, CLI and directory-snapshot contracts.
+- The npm and Formula distributions are SVG-only. Clip/mask expansion, embedded
+  or external resource ingestion, and distributed PNG/social raster output are
+  deferred. `nova-social` is SVG.
+
+The following 0.4.0 entry is retained release history. Version 0.4.0 was published
+as `v0.4.0`; its original pre-publication heading and optional-companion description
+are preserved below and do not advertise raster distribution in 0.5.0.
+
 ## [0.4.0] - Unreleased
 
 Theme Forge Stellar Burst v0.4 adds collection-aware directory workflows and

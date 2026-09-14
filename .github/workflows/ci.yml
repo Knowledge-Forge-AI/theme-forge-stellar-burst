@@ -17,6 +17,11 @@ jobs:
     name: Public staging source policy and receipt
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      merge-commit-sha: ${{ steps.resolve-merge-candidate.outputs.merge-commit-sha }}
     steps:
       - name: Validate PR source policy
         env:
@@ -47,8 +52,14 @@ jobs:
         run: |
           mkdir -p .test-reports/source-policy
           node tools/ci/exact-head.mjs --output .test-reports/source-policy/receipt.json --expected-branch staging --expected-base main --checkout-role staging-head
+      - name: Resolve PR merge candidate
+        id: resolve-merge-candidate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node tools/ci/burst-merge-candidate.mjs --receipt .test-reports/source-policy/receipt.json --github-output "$GITHUB_OUTPUT" --output .test-reports/source-policy/merge-candidate.json
       - name: Bind source policy receipt
-        run: node tools/ci/artifact-manifest.mjs --root .test-reports/source-policy --output .test-reports/source-policy/artifact-manifest.json --job source-policy --require receipt.json
+        run: node tools/ci/artifact-manifest.mjs --root .test-reports/source-policy --output .test-reports/source-policy/artifact-manifest.json --job source-policy --require receipt.json --require merge-candidate.json
       - name: Upload source policy receipt
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
@@ -66,7 +77,7 @@ jobs:
       - name: Checkout PR merge candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Node.js
@@ -138,7 +149,7 @@ jobs:
       - name: Checkout PR merge candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Node.js
@@ -197,7 +208,7 @@ jobs:
       - name: Checkout PR merge candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Node.js
@@ -259,7 +270,7 @@ jobs:
       - name: Checkout PR merge candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Node.js
@@ -326,7 +337,7 @@ jobs:
       - name: Checkout PR merge candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Node.js
@@ -367,7 +378,7 @@ jobs:
       - name: Checkout PR merge candidate
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Node.js
@@ -461,10 +472,16 @@ jobs:
       - codeql
       - supply-chain
     steps:
+      - name: Reject unauthenticated source policy
+        if: needs.source-policy.result != 'success'
+        run: |
+          echo 'Source policy did not authenticate a merge candidate' >&2
+          exit 1
       - name: Checkout PR merge candidate
+        if: needs.source-policy.result == 'success'
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
           fetch-depth: 2
           persist-credentials: false
       - name: Setup Node.js

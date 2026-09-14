@@ -1,0 +1,201 @@
+{
+  "schema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profile": "editorial",
+  "artboard": {
+    "width": 800,
+    "height": 600,
+    "viewBox": [
+      0,
+      0,
+      800,
+      600
+    ],
+    "policy": "contain"
+  },
+  "accessibility": {
+    "mode": "labelled",
+    "title": "Focused Scene Paint Fixture",
+    "desc": "Paint, gradient, opacity, dasharray, and presentation attribute verification suite",
+    "focusable": false
+  },
+  "tokenBindings": {
+    "brand-accent": "#e11d48",
+    "brand-surface": "#fff1f2",
+    "brand-outline": "#be123c"
+  },
+  "definitions": {
+    "gradients": [
+      {
+        "id": "paintLinear",
+        "type": "linearGradient",
+        "x1": 0,
+        "y1": 0,
+        "x2": 1,
+        "y2": 0,
+        "gradientUnits": "objectBoundingBox",
+        "spreadMethod": "pad",
+        "stops": [
+          {
+            "offset": 0,
+            "color": {
+              "type": "solid",
+              "color": "#fb7185"
+            },
+            "opacity": 0.8
+          },
+          {
+            "offset": 0.5,
+            "color": {
+              "type": "token",
+              "name": "brand-accent"
+            }
+          },
+          {
+            "offset": 1,
+            "color": {
+              "type": "solid",
+              "color": "#881337"
+            }
+          }
+        ]
+      },
+      {
+        "id": "paintRadial",
+        "type": "radialGradient",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.5,
+        "gradientUnits": "objectBoundingBox",
+        "spreadMethod": "pad",
+        "stops": [
+          {
+            "offset": 0,
+            "color": {
+              "type": "currentColor"
+            }
+          },
+          {
+            "offset": 1,
+            "color": {
+              "type": "solid",
+              "color": "#000000"
+            },
+            "opacity": 0
+          }
+        ]
+      }
+    ]
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "id": "solidBox",
+      "x": 40,
+      "y": 40,
+      "width": 140,
+      "height": 100,
+      "presentation": {
+        "fill": {
+          "type": "solid",
+          "color": "#0ea5e9"
+        },
+        "fillOpacity": 0.85,
+        "stroke": {
+          "type": "solid",
+          "color": "#0369a1"
+        },
+        "strokeWidth": 3,
+        "strokeLinecap": "square",
+        "strokeLinejoin": "miter",
+        "strokeMiterlimit": 4
+      }
+    },
+    {
+      "type": "rect",
+      "id": "tokenBox",
+      "x": 220,
+      "y": 40,
+      "width": 140,
+      "height": 100,
+      "presentation": {
+        "fill": {
+          "type": "token",
+          "name": "brand-surface"
+        },
+        "stroke": {
+          "type": "token",
+          "name": "brand-outline"
+        },
+        "strokeWidth": 2,
+        "strokeDasharray": [
+          6,
+          3,
+          2,
+          3
+        ],
+        "strokeDashoffset": 2
+      }
+    },
+    {
+      "type": "rect",
+      "id": "linearBox",
+      "x": 400,
+      "y": 40,
+      "width": 160,
+      "height": 100,
+      "presentation": {
+        "fill": {
+          "type": "gradient",
+          "id": "paintLinear",
+          "fallback": "#e11d48"
+        },
+        "stroke": {
+          "type": "none"
+        }
+      }
+    },
+    {
+      "type": "circle",
+      "id": "radialCircle",
+      "cx": 660,
+      "cy": 90,
+      "r": 50,
+      "presentation": {
+        "fill": {
+          "type": "gradient",
+          "id": "paintRadial"
+        },
+        "stroke": {
+          "type": "currentColor"
+        },
+        "strokeWidth": 1.5,
+        "opacity": 0.9
+      }
+    },
+    {
+      "type": "path",
+      "id": "evenoddStar",
+      "d": "M 100 220 L 160 380 L 20 280 L 180 280 L 40 380 Z",
+      "presentation": {
+        "fill": {
+          "type": "solid",
+          "color": "#fbbf24"
+        },
+        "fillRule": "evenodd",
+        "stroke": {
+          "type": "solid",
+          "color": "#b45309"
+        },
+        "strokeWidth": 2
+      }
+    }
+  ],
+  "provenance": {
+    "author": "Theme Forge Stellar Burst Authors",
+    "license": "AGPL-3.0-or-later",
+    "created": "2026-09-08T20:00:00Z",
+    "note": "Focused paint and presentation validation fixture."
+  }
+}
