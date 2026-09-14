@@ -80,10 +80,10 @@ describe("brand package bundling", () => {
     expect(result.companionCount).toBe(1);
     expect(result.packageId).toBe("core-fixture-brand");
     expect(result.brandVersion).toBe("0.4.0-fixture.1");
-    expect(result.genericManifestByteDigest).toBe("sha256:957df2666f822b30076d6cf0c49de67fad3567d01a572be330cf08066d815cab");
+    expect(result.genericManifestByteDigest).toBe("sha256:f937e53a25f2527db8db12a8bec302e9dc41a147949b0b7f56fb2783e73a8898");
     expect(result.brandPackageDigest).toBe("sha256:1c14df2cf73b282f366a5cef541cea1f3d9d08c1ab55c1ebbbf34e2f63ab9f23");
     expect(result.brandSystemDigest).toBe("sha256:4e10ef25161f37bdd137bcf85fcf1b842b4e0a6512f863d7f2fbba0d8a7e9c4d");
-    expect(result.brandManifestDigest).toBe("sha256:4a6f852dfa348947d67e633c12abbb606b1327f50d44bda73e03676e67117e3a");
+    expect(result.brandManifestDigest).toBe("sha256:e0c6ac8bc0d13f08e2f12d1306d73916e2786f79e64d31ba65aa96e57f4adb7e");
 
     // Read and unzip archive
     const zipBytes = await readFile(join(root, outputPath));
@@ -110,7 +110,7 @@ describe("brand package bundling", () => {
     const parsedBrand = parseBrandBundleManifest(brandManifestText);
     expect(parsedBrand.ok).toBe(true);
     if (parsedBrand.ok) {
-      expect(parsedBrand.value.brandManifestDigest).toBe("sha256:4a6f852dfa348947d67e633c12abbb606b1327f50d44bda73e03676e67117e3a");
+      expect(parsedBrand.value.brandManifestDigest).toBe("sha256:e0c6ac8bc0d13f08e2f12d1306d73916e2786f79e64d31ba65aa96e57f4adb7e");
     }
   });
 
@@ -187,6 +187,6 @@ describe("brand package bundling", () => {
     expect(parsed.status).toBe("ok");
     expect(parsed.exitCode).toBe(0);
     expect(parsed.data.packageId).toBe("core-fixture-brand");
-    expect(parsed.data.brandManifestDigest).toBe("sha256:4a6f852dfa348947d67e633c12abbb606b1327f50d44bda73e03676e67117e3a");
+    expect(parsed.data.brandManifestDigest).toBe("sha256:e0c6ac8bc0d13f08e2f12d1306d73916e2786f79e64d31ba65aa96e57f4adb7e");
   });
 });

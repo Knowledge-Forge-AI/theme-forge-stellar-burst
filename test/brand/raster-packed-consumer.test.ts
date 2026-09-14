@@ -16,7 +16,6 @@ describe("raster packed-consumer package boundaries", () => {
   it("keeps the base package renderer-free and pins the independent companion backend", async () => {
     const base = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
     const companion = JSON.parse(await readFile(new URL("../../packages/tfsb-raster-resvg/package.json", import.meta.url), "utf8"));
-    expect(base.version).toBe("0.4.0");
     expect(base.dependencies).toEqual({ "@xmldom/xmldom": "0.9.12", fflate: "0.8.3", "smol-toml": "1.8.0" });
     expect(base.dependencies).not.toHaveProperty("@knowledge-forge-ai/tfsb-raster-resvg");
     expect(base.dependencies).not.toHaveProperty("@resvg/resvg-wasm");

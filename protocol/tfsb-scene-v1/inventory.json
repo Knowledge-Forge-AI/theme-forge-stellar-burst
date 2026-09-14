@@ -1,0 +1,162 @@
+{
+  "schema": "tfsb.vector-scene-inventory",
+  "schemaVersion": 1,
+  "targetSchema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profiles": [
+    "illustration",
+    "diagram",
+    "editorial",
+    "promotional",
+    "pattern"
+  ],
+  "presets": {
+    "hero": {
+      "width": 1440,
+      "height": 720,
+      "viewBox": [
+        0,
+        0,
+        1440,
+        720
+      ],
+      "policy": "contain"
+    },
+    "section": {
+      "width": 960,
+      "height": 360,
+      "viewBox": [
+        0,
+        0,
+        960,
+        360
+      ],
+      "policy": "contain"
+    },
+    "diagram": {
+      "width": 1200,
+      "height": 675,
+      "viewBox": [
+        0,
+        0,
+        1200,
+        675
+      ],
+      "policy": "contain"
+    },
+    "figure": {
+      "width": 960,
+      "height": 540,
+      "viewBox": [
+        0,
+        0,
+        960,
+        540
+      ],
+      "policy": "contain"
+    },
+    "social": {
+      "width": 1200,
+      "height": 630,
+      "viewBox": [
+        0,
+        0,
+        1200,
+        630
+      ],
+      "policy": "contain"
+    }
+  },
+  "limits": {
+    "maxInputBytes": 8388608,
+    "maxExpandedElements": 10000,
+    "maxAuthoredElements": 2000,
+    "maxNestingDepth": 32,
+    "maxGradientStops": 128,
+    "maxGlyphsPerLabel": 1024,
+    "maxGlyphsPerScene": 8192,
+    "maxAggregatePathSegments": 1000000,
+    "maxPathBytes": 65536,
+    "maxDefinitions": 500,
+    "maxTokens": 1000,
+    "maxLayoutDirectives": 256,
+    "maxSymbolDepth": 8,
+    "maxSymbolAmplification": 500,
+    "maxStructuralDepth": 128,
+    "maxInputNodes": 100000,
+    "maxOutputBytes": 33554432,
+    "maxCanonicalPathBytes": 1048576,
+    "maxCanonicalPathsBytes": 16777216,
+    "maxTransforms": 32,
+    "maxPoints": 10000,
+    "maxLabelCharacters": 2048
+  },
+  "schemas": [
+    {
+      "name": "scene.schema.json",
+      "sha256": "78bfa759b4cb383359447776dff04dfdb86aa8e92973b1cfe0e1d281f04a58e7"
+    },
+    {
+      "name": "receipt.schema.json",
+      "sha256": "f709641d0142dc44a63ba31f305f9c20c0b9598430cdbf6f765c14d3ced24024"
+    }
+  ],
+  "examples": [
+    {
+      "name": "scene-illustration.json",
+      "profile": "illustration",
+      "preset": "hero",
+      "sha256": "aac3a9e9c2ea88c8a9a58540959b74617530884cacb76bbc3dcfb25eb7ca5a76"
+    },
+    {
+      "name": "scene-diagram.json",
+      "profile": "diagram",
+      "preset": "diagram",
+      "sha256": "338bb278f505270474c0aaa4fcb3f09d635a541ee04dc888c0e2138401c5e5b8"
+    },
+    {
+      "name": "scene-editorial.json",
+      "profile": "editorial",
+      "preset": "figure",
+      "sha256": "6b786e21ca06d8f02c5149a1196ded7c693507854905c1371f825d364290c72e"
+    },
+    {
+      "name": "scene-promotional.json",
+      "profile": "promotional",
+      "preset": "social",
+      "sha256": "bcd463dc1a68706e549af20ea1266b7cefc06c36f69c34966cfe21e262a0563b"
+    },
+    {
+      "name": "scene-pattern.json",
+      "profile": "pattern",
+      "preset": "section",
+      "sha256": "d92342f28d058bf7534c0e0756458e39424ac0a459842f107ba064555f83234b"
+    },
+    {
+      "name": "scene-geometry.json",
+      "profile": "diagram",
+      "sha256": "90d410e8c8fe196b8ed6b43718cc8d23df7b455cc84b9a16e7560e6461f2e286"
+    },
+    {
+      "name": "scene-paint.json",
+      "profile": "editorial",
+      "sha256": "6b9ee956bc156834931c8385a4d45a94ab354c8ed9362062f41f7d85e73952aa"
+    },
+    {
+      "name": "scene-labels.json",
+      "profile": "editorial",
+      "sha256": "74b6cf862fcfb5525d408bab9ea34e9803995ab2129fa4fce3785852922e4aa5"
+    }
+  ],
+  "denialsCorpus": {
+    "name": "scene-denials.json",
+    "cases": 22,
+    "sha256": "8172ee328b101f17ba4d5843859ef41db82f8c00be3ce518a7439fe74346c1d1"
+  },
+  "glyphCatalog": {
+    "name": "Forge Grid Label v1",
+    "digest": "sha256:8ec3bc8e99cf1cda2cdc362f5a0b6e1f94a8e1c544853d9af46bd999f8a0941a",
+    "coverage": "ASCII 32..126"
+  }
+}

@@ -1,0 +1,234 @@
+{
+  "schema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profile": "pattern",
+  "artboard": {
+    "width": 960,
+    "height": 360,
+    "viewBox": [0, 0, 960, 360],
+    "policy": "contain"
+  },
+  "accessibility": {
+    "mode": "decorative",
+    "focusable": false
+  },
+  "tokenBindings": {
+    "grid-bg": "#0a0e17",
+    "tile-primary": "#1e293b",
+    "tile-accent": "#0ea5e9",
+    "tile-highlight": "#38bdf8"
+  },
+  "definitions": {
+    "symbols": [
+      {
+        "id": "patternCell",
+        "type": "symbol",
+        "viewBox": [0, 0, 60, 60],
+        "elements": [
+          {
+            "type": "rect",
+            "id": "cellBg",
+            "x": 2,
+            "y": 2,
+            "width": 56,
+            "height": 56,
+            "rx": 6,
+            "ry": 6,
+            "presentation": {
+              "fill": { "type": "token", "name": "tile-primary" },
+              "stroke": { "type": "token", "name": "tile-accent" },
+              "strokeWidth": 1
+            }
+          },
+          {
+            "type": "circle",
+            "id": "cellDot",
+            "cx": 30,
+            "cy": 30,
+            "r": 6,
+            "presentation": {
+              "fill": { "type": "token", "name": "tile-highlight" }
+            }
+          },
+          {
+            "type": "line",
+            "id": "cellLineH",
+            "x1": 10,
+            "y1": 30,
+            "x2": 50,
+            "y2": 30,
+            "presentation": {
+              "stroke": { "type": "token", "name": "tile-accent" },
+              "strokeWidth": 0.8,
+              "strokeDasharray": [2, 2]
+            }
+          },
+          {
+            "type": "line",
+            "id": "cellLineV",
+            "x1": 30,
+            "y1": 10,
+            "x2": 30,
+            "y2": 50,
+            "presentation": {
+              "stroke": { "type": "token", "name": "tile-accent" },
+              "strokeWidth": 0.8,
+              "strokeDasharray": [2, 2]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "id": "bg",
+      "x": 0,
+      "y": 0,
+      "width": 960,
+      "height": 360,
+      "presentation": {
+        "fill": { "type": "token", "name": "grid-bg" }
+      }
+    },
+    {
+      "type": "use",
+      "id": "tile0",
+      "href": "#patternCell",
+      "x": 60,
+      "y": 50,
+      "width": 60,
+      "height": 60,
+      "bounds": [60, 50, 60, 60]
+    },
+    {
+      "type": "use",
+      "id": "tile1",
+      "href": "#patternCell",
+      "x": 180,
+      "y": 50,
+      "width": 60,
+      "height": 60,
+      "bounds": [180, 50, 60, 60]
+    },
+    {
+      "type": "use",
+      "id": "tile2",
+      "href": "#patternCell",
+      "x": 300,
+      "y": 50,
+      "width": 60,
+      "height": 60,
+      "bounds": [300, 50, 60, 60]
+    },
+    {
+      "type": "use",
+      "id": "tile3",
+      "href": "#patternCell",
+      "x": 420,
+      "y": 50,
+      "width": 60,
+      "height": 60,
+      "bounds": [420, 50, 60, 60]
+    },
+    {
+      "type": "use",
+      "id": "tile4",
+      "href": "#patternCell",
+      "x": 60,
+      "y": 170,
+      "width": 60,
+      "height": 60,
+      "bounds": [60, 170, 60, 60]
+    },
+    {
+      "type": "use",
+      "id": "tile5",
+      "href": "#patternCell",
+      "x": 180,
+      "y": 170,
+      "width": 60,
+      "height": 60,
+      "bounds": [180, 170, 60, 60]
+    },
+    {
+      "type": "use",
+      "id": "tile6",
+      "href": "#patternCell",
+      "x": 300,
+      "y": 170,
+      "width": 60,
+      "height": 60,
+      "bounds": [300, 170, 60, 60]
+    },
+    {
+      "type": "use",
+      "id": "tile7",
+      "href": "#patternCell",
+      "x": 420,
+      "y": 170,
+      "width": 60,
+      "height": 60,
+      "bounds": [420, 170, 60, 60]
+    },
+    {
+      "type": "circle",
+      "id": "focalCenter",
+      "cx": 720,
+      "cy": 180,
+      "r": 80,
+      "presentation": {
+        "fill": { "type": "none" },
+        "stroke": { "type": "token", "name": "tile-highlight" },
+        "strokeWidth": 3
+      }
+    },
+    {
+      "type": "polygon",
+      "id": "focalHex",
+      "points": [
+        [720, 120],
+        [772, 150],
+        [772, 210],
+        [720, 240],
+        [668, 210],
+        [668, 150]
+      ],
+      "presentation": {
+        "fill": { "type": "token", "name": "tile-accent" },
+        "opacity": 0.35,
+        "stroke": { "type": "token", "name": "tile-highlight" },
+        "strokeWidth": 2
+      }
+    },
+    {
+      "type": "label",
+      "id": "patternTag",
+      "text": "MODULAR REPEATING GEOMETRY // FORGE GRID",
+      "x": 720,
+      "y": 280,
+      "scale": 1.1,
+      "color": { "type": "token", "name": "tile-highlight" },
+      "align": "center"
+    }
+  ],
+  "layout": [
+    {
+      "type": "grid",
+      "targets": ["tile0", "tile1", "tile2", "tile3", "tile4", "tile5", "tile6", "tile7"],
+      "columns": 4,
+      "columnGap": 30,
+      "rowGap": 30,
+      "startX": 60,
+      "startY": 80
+    }
+  ],
+  "provenance": {
+    "author": "Theme Forge Stellar Burst Authors",
+    "license": "AGPL-3.0-or-later",
+    "created": "2026-09-08T20:00:00Z",
+    "note": "Original first-party decorative pattern vector composition."
+  }
+}

@@ -1,0 +1,310 @@
+{
+  "schema": "tfsb.vector-scene-v1",
+  "compatibility": 1,
+  "compilerLevel": 1,
+  "profile": "illustration",
+  "artboard": {
+    "width": 1440,
+    "height": 720,
+    "viewBox": [0, 0, 1440, 720],
+    "policy": "contain"
+  },
+  "accessibility": {
+    "mode": "labelled",
+    "title": "Stellar Burst Space Illustration",
+    "desc": "Hero vector composition featuring an orbital station, stylized planets, and a burst nebula",
+    "focusable": true
+  },
+  "tokenBindings": {
+    "space-deep": "#070b19",
+    "nebula-magenta": "#ff0077",
+    "star-gold": "#ffcc00",
+    "burst-cyan": "#00f0ff",
+    "hull-primary": "#203050"
+  },
+  "definitions": {
+    "gradients": [
+      {
+        "id": "nebulaGrad",
+        "type": "linearGradient",
+        "x1": 0,
+        "y1": 0,
+        "x2": 1440,
+        "y2": 720,
+        "gradientUnits": "userSpaceOnUse",
+        "spreadMethod": "pad",
+        "stops": [
+          { "offset": 0.0, "color": { "type": "solid", "color": "#070b19" } },
+          { "offset": 0.5, "color": { "type": "solid", "color": "#1a0933" } },
+          { "offset": 1.0, "color": { "type": "solid", "color": "#001122" } }
+        ]
+      },
+      {
+        "id": "starBurst",
+        "type": "radialGradient",
+        "cx": 720,
+        "cy": 360,
+        "r": 400,
+        "fx": 720,
+        "fy": 360,
+        "gradientUnits": "userSpaceOnUse",
+        "spreadMethod": "pad",
+        "stops": [
+          { "offset": 0.0, "color": { "type": "solid", "color": "#ffffff" }, "opacity": 0.9 },
+          { "offset": 0.3, "color": { "type": "solid", "color": "#ffcc00" }, "opacity": 0.6 },
+          { "offset": 0.7, "color": { "type": "solid", "color": "#ff0077" }, "opacity": 0.3 },
+          { "offset": 1.0, "color": { "type": "solid", "color": "#070b19" }, "opacity": 0 }
+        ]
+      },
+      {
+        "id": "planetShade",
+        "type": "linearGradient",
+        "x1": 0,
+        "y1": 0,
+        "x2": 1,
+        "y2": 1,
+        "gradientUnits": "objectBoundingBox",
+        "spreadMethod": "pad",
+        "stops": [
+          { "offset": 0.0, "color": { "type": "solid", "color": "#00f0ff" } },
+          { "offset": 1.0, "color": { "type": "solid", "color": "#002244" } }
+        ]
+      }
+    ],
+    "symbols": [
+      {
+        "id": "stationModule",
+        "type": "symbol",
+        "viewBox": [0, 0, 100, 60],
+        "elements": [
+          {
+            "type": "rect",
+            "id": "moduleBody",
+            "x": 10,
+            "y": 15,
+            "width": 80,
+            "height": 30,
+            "rx": 4,
+            "ry": 4,
+            "presentation": {
+              "fill": { "type": "token", "name": "hull-primary" },
+              "stroke": { "type": "token", "name": "burst-cyan" },
+              "strokeWidth": 2
+            }
+          },
+          {
+            "type": "line",
+            "x1": 50,
+            "y1": 5,
+            "x2": 50,
+            "y2": 15,
+            "presentation": {
+              "stroke": { "type": "currentColor" },
+              "strokeWidth": 2
+            }
+          },
+          {
+            "type": "circle",
+            "cx": 50,
+            "cy": 5,
+            "r": 3,
+            "presentation": {
+              "fill": { "type": "currentColor" }
+            }
+          },
+          {
+            "type": "line",
+            "x1": 50,
+            "y1": 45,
+            "x2": 50,
+            "y2": 55,
+            "presentation": {
+              "stroke": { "type": "currentColor" },
+              "strokeWidth": 2
+            }
+          },
+          {
+            "type": "circle",
+            "cx": 50,
+            "cy": 55,
+            "r": 3,
+            "presentation": {
+              "fill": { "type": "currentColor" }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "elements": [
+    {
+      "type": "rect",
+      "id": "bg",
+      "x": 0,
+      "y": 0,
+      "width": 1440,
+      "height": 720,
+      "presentation": {
+        "fill": { "type": "gradient", "id": "nebulaGrad" }
+      }
+    },
+    {
+      "type": "circle",
+      "id": "centralNebula",
+      "cx": 720,
+      "cy": 360,
+      "r": 350,
+      "presentation": {
+        "fill": { "type": "gradient", "id": "starBurst" }
+      }
+    },
+    {
+      "type": "circle",
+      "id": "distantPlanet",
+      "cx": 260,
+      "cy": 220,
+      "r": 90,
+      "presentation": {
+        "fill": { "type": "gradient", "id": "planetShade" }
+      }
+    },
+    {
+      "type": "ellipse",
+      "id": "orbitalRing",
+      "cx": 260,
+      "cy": 220,
+      "rx": 140,
+      "ry": 35,
+      "transform": [
+        { "type": "rotate", "angle": -25, "cx": 260, "cy": 220 }
+      ],
+      "presentation": {
+        "stroke": { "type": "solid", "color": "#00f0ff" },
+        "strokeWidth": 3,
+        "fill": { "type": "none" },
+        "opacity": 0.7
+      }
+    },
+    {
+      "type": "group",
+      "id": "starCluster",
+      "bounds": [120, 100, 1010, 480],
+      "presentation": {
+        "fill": { "type": "token", "name": "star-gold" }
+      },
+      "children": [
+        {
+          "type": "polygon",
+          "id": "starMajor",
+          "points": [
+            [1100, 120],
+            [1110, 140],
+            [1130, 150],
+            [1110, 160],
+            [1100, 180],
+            [1090, 160],
+            [1070, 150],
+            [1090, 140]
+          ]
+        },
+        {
+          "type": "polygon",
+          "id": "starMinor",
+          "points": [
+            [450, 100],
+            [455, 110],
+            [465, 115],
+            [455, 120],
+            [450, 130],
+            [445, 120],
+            [435, 115],
+            [445, 110]
+          ],
+          "presentation": {
+            "fill": { "type": "solid", "color": "#ffffff" }
+          }
+        },
+        {
+          "type": "polyline",
+          "id": "constellationTrace",
+          "points": [
+            [120, 500],
+            [180, 540],
+            [240, 510],
+            [300, 580]
+          ],
+          "presentation": {
+            "stroke": { "type": "token", "name": "burst-cyan" },
+            "strokeWidth": 1.5,
+            "fill": { "type": "none" },
+            "strokeDasharray": [4, 4]
+          }
+        }
+      ]
+    },
+    {
+      "type": "path",
+      "id": "flightVector",
+      "d": "M 100 620 C 400 680 800 500 1300 420",
+      "presentation": {
+        "stroke": { "type": "token", "name": "nebula-magenta" },
+        "strokeWidth": 2.5,
+        "fill": { "type": "none" }
+      }
+    },
+    {
+      "type": "use",
+      "id": "stationMain",
+      "href": "#stationModule",
+      "x": 800,
+      "y": 300,
+      "width": 150,
+      "height": 90,
+      "transform": [
+        { "type": "rotate", "angle": 15, "cx": 875, "cy": 345 }
+      ],
+      "presentation": {
+        "stroke": { "type": "currentColor" }
+      }
+    },
+    {
+      "type": "use",
+      "id": "stationOutpost",
+      "href": "#stationModule",
+      "x": 1020,
+      "y": 260,
+      "width": 80,
+      "height": 48,
+      "transform": [
+        { "type": "scale", "x": 0.8 }
+      ],
+      "bounds": [1020, 260, 80, 48]
+    },
+    {
+      "type": "label",
+      "id": "heroTitle",
+      "text": "STELLAR BURST EXPEDITION 2026",
+      "x": 100,
+      "y": 80,
+      "scale": 2.5,
+      "color": { "type": "solid", "color": "#ffffff" },
+      "align": "left"
+    },
+    {
+      "type": "label",
+      "id": "heroTagline",
+      "text": "DEEP SPACE VECTOR PLATFORM // SECTOR 07",
+      "x": 100,
+      "y": 120,
+      "scale": 1.2,
+      "color": { "type": "token", "name": "burst-cyan" },
+      "align": "left"
+    }
+  ],
+  "provenance": {
+    "author": "Theme Forge Stellar Burst Authors",
+    "license": "AGPL-3.0-or-later",
+    "created": "2026-09-08T20:00:00Z",
+    "note": "Original first-party hero illustration vector composition. No third-party assets or fonts."
+  }
+}
