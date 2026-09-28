@@ -24,7 +24,7 @@ async function loadOpenpgp() {
     try {
       bindingRaw = await readFile(bindingPath, "utf8");
     } catch (err) {
-      if (err && (err.code === "ENOENT" || err.code === "ENOTDIR")) return import("openpgp");
+      if (err && (/** @type {NodeJS.ErrnoException} */ (err).code === "ENOENT" || /** @type {NodeJS.ErrnoException} */ (err).code === "ENOTDIR")) return import("openpgp");
       throw err;
     }
     const binding = JSON.parse(bindingRaw);

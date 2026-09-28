@@ -159,6 +159,7 @@ class Client {
     createInterface({ input: this.child.stdout }).on("line", (line) => { const parsed = JSON.parse(line); this.messages.push(parsed); this.allMessages.push(parsed); this.waiters.splice(0).forEach((done) => done()); });
     this.child.stderr.on("data", (chunk) => { this.stderr += chunk.toString("utf8"); });
   }
+  /** @param {NodeJS.Signals} [signal] */
   kill(signal = "SIGKILL") {
     killProcessGroup(this.child, signal);
   }
