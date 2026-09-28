@@ -32,7 +32,7 @@ export default defineConfig({
         ["html", { outputFolder: ".test-reports/playwright/html", open: "never" }],
       ]
     : "line",
-
+  
   expect: {
     timeout: 5_000,
     toMatchSnapshot: {
@@ -65,6 +65,6 @@ export default defineConfig({
       testMatch: ["cross-browser-smoke.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts"],
       use: { browserName: "webkit" },
     },
-
+    
   ],
 });

@@ -139,10 +139,8 @@ result-*
 # Misc
 # ============================================================================
 
-INSTALL.md
-
-# Generated public composition qualification outputs
-.outbox/compositions/
+# Generated outbox outputs (compositions, qualification evidence)
+.outbox/
 
 # Authenticated generated scene runtime; rebuilt from explicit archive input.
 apps/studio/src-tauri/scene-payload/

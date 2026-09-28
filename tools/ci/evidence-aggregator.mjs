@@ -10,6 +10,8 @@ import {
   NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS,
   RASTER_COMPANION_TUPLES,
   REQUIRED_JOBS,
+  STELLAR_BURST_PUBLIC_ADVISORY_ARTIFACTS,
+  STELLAR_BURST_PUBLIC_ADVISORY_JOBS,
   STELLAR_BURST_PUBLIC_ARTIFACTS,
   STELLAR_BURST_PUBLIC_REQUIRED_JOBS,
   STELLAR_LOOM_PUBLIC_ARTIFACTS,
@@ -17,6 +19,8 @@ import {
   STUDIO_ACL_TEN_COMMANDS,
   TERMINAL_NOVA_PUBLIC_ARTIFACTS,
   TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS,
+  SOLAR_SAIL_PUBLIC_ARTIFACTS,
+  SOLAR_SAIL_PUBLIC_REQUIRED_JOBS,
 } from "./ci-contract.mjs";
 
 /** @param {Uint8Array | Buffer | string} bytes */
@@ -45,7 +49,7 @@ function matchesRequirement(path, requirement) {
   return path === requirement;
 }
 
-const PUBLIC_PRODUCTS = new Set(["stellar", "stellar-burst", "nebular", "nebular-fusion", "loom", "stellar-loom", "nova", "terminal-nova"]);
+const PUBLIC_PRODUCTS = new Set(["stellar", "stellar-burst", "nebular", "nebular-fusion", "loom", "stellar-loom", "nova", "terminal-nova", "solar", "solar-sail"]);
 const PUBLIC_EVENT_FIELDS = Object.freeze(["name", "action", "number", "repository", "baseRef", "baseSha", "headRef", "headSha"]);
 const PUBLIC_REPOSITORY_FIELDS = Object.freeze(["repository", "baseRepository", "headRepository"]);
 const PUBLIC_PULL_REQUEST_ACTIONS = new Set(["opened", "synchronize", "reopened"]);
@@ -91,14 +95,26 @@ export const EXPECTED_DOWNLOADED_ARTIFACTS = privateArtifacts;
 
 const PRODUCT_CONTRACTS = Object.freeze({
   private: Object.freeze({ requiredJobs: REQUIRED_JOBS, artifacts: privateArtifacts }),
-  stellar: Object.freeze({ requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS }),
-  "stellar-burst": Object.freeze({ requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS }),
+  stellar: Object.freeze({
+    requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS,
+    advisoryJobs: STELLAR_BURST_PUBLIC_ADVISORY_JOBS,
+    artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS,
+    advisoryArtifacts: STELLAR_BURST_PUBLIC_ADVISORY_ARTIFACTS,
+  }),
+  "stellar-burst": Object.freeze({
+    requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS,
+    advisoryJobs: STELLAR_BURST_PUBLIC_ADVISORY_JOBS,
+    artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS,
+    advisoryArtifacts: STELLAR_BURST_PUBLIC_ADVISORY_ARTIFACTS,
+  }),
   nebular: Object.freeze({ requiredJobs: NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS, artifacts: NEBULAR_FUSION_PUBLIC_ARTIFACTS }),
   "nebular-fusion": Object.freeze({ requiredJobs: NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS, artifacts: NEBULAR_FUSION_PUBLIC_ARTIFACTS }),
   loom: Object.freeze({ requiredJobs: STELLAR_LOOM_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_LOOM_PUBLIC_ARTIFACTS }),
   "stellar-loom": Object.freeze({ requiredJobs: STELLAR_LOOM_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_LOOM_PUBLIC_ARTIFACTS }),
   nova: Object.freeze({ requiredJobs: TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS, artifacts: TERMINAL_NOVA_PUBLIC_ARTIFACTS }),
   "terminal-nova": Object.freeze({ requiredJobs: TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS, artifacts: TERMINAL_NOVA_PUBLIC_ARTIFACTS }),
+  solar: Object.freeze({ requiredJobs: SOLAR_SAIL_PUBLIC_REQUIRED_JOBS, artifacts: SOLAR_SAIL_PUBLIC_ARTIFACTS }),
+  "solar-sail": Object.freeze({ requiredJobs: SOLAR_SAIL_PUBLIC_REQUIRED_JOBS, artifacts: SOLAR_SAIL_PUBLIC_ARTIFACTS }),
 });
 
 /** @param {unknown} value @returns {Record<string, string>} */
@@ -271,8 +287,12 @@ export async function aggregateEvidence(options) {
   if (!contract) throw new Error(`Unknown evidence aggregation product '${product}'.`);
   /** @type {readonly ArtifactSpecification[]} */
   const specifications = contract.artifacts;
+  /** @type {readonly ArtifactSpecification[]} */
+  const advisorySpecifications = contract.advisoryArtifacts ?? [];
   /** @type {readonly string[]} */
   const requiredJobs = contract.requiredJobs;
+  /** @type {readonly string[]} */
+  const advisoryJobs = contract.advisoryJobs ?? [];
   await mkdir(outDir, { recursive: true });
   /** @type {string[]} */ const errors = [];
   /** @type {Array<{path: string, size: number, sha256: string}>} */ const artifactsObserved = [];
@@ -317,18 +337,23 @@ export async function aggregateEvidence(options) {
   }
 
   const expectedDirectories = specifications.map((item) => item.directory).sort();
+  const advisoryDirectories = advisorySpecifications.map((item) => item.directory);
+  const allowedDirectories = new Set([...expectedDirectories, ...advisoryDirectories]);
   for (const directory of expectedDirectories) if (!entries.includes(directory)) errors.push(`Missing required artifact set: '${directory}'.`);
-  for (const directory of entries) if (!expectedDirectories.includes(directory)) errors.push(`Unexpected artifact set: '${directory}'.`);
+  for (const directory of entries) if (!allowedDirectories.has(directory)) errors.push(`Unexpected artifact set: '${directory}'.`);
 
   const expectedNeeds = requiredJobs.filter((job) => job !== "evidence-aggregate");
+  const allowedNeeds = new Set([...expectedNeeds, ...advisoryJobs]);
   const needsResults = normalizeNeeds(options.needsResults ?? {});
   for (const job of expectedNeeds) {
     const result = needsResults[job];
     if (result !== "success") errors.push(`Dependency '${job}' result is '${result ?? "missing"}', expected 'success'.`);
   }
-  for (const job of Object.keys(needsResults)) if (!expectedNeeds.includes(job) && job !== "evidence-aggregate") errors.push(`Unexpected dependency result '${job}'.`);
+  for (const job of Object.keys(needsResults)) if (!allowedNeeds.has(job) && job !== "evidence-aggregate") errors.push(`Unexpected dependency result '${job}'.`);
 
-  for (const specification of specifications) {
+  const activeAdvisories = advisorySpecifications.filter((item) => entries.includes(item.directory));
+  const specificationsToValidate = [...specifications, ...activeAdvisories];
+  for (const specification of specificationsToValidate) {
     if (!entries.includes(specification.directory)) continue;
     const directory = join(artifactsDir, specification.directory);
     let files = [];
@@ -407,7 +432,7 @@ export async function aggregateEvidence(options) {
     dependencyResults: needsResults,
     jobs: jobsObserved,
     requiredJobsTotal: requiredJobs.length,
-    artifactSetsTotal: specifications.length,
+    artifactSetsTotal: specificationsToValidate.length,
     nativeTuples: NATIVE_SNAPSHOT_TUPLES,
     rasterTuples: RASTER_COMPANION_TUPLES,
     aclCommandsCount: STUDIO_ACL_TEN_COMMANDS.length,

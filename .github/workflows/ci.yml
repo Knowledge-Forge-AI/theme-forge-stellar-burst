@@ -136,8 +136,8 @@ jobs:
         include:
           - tuple: darwin-arm64
             os: macos-15
-          - tuple: darwin-x64
-            os: macos-15-intel
+          - tuple: linux-arm64-gnu
+            os: ubuntu-24.04-arm
           - tuple: linux-x64-gnu
             os: ubuntu-24.04
     runs-on: ${{ matrix.os }}
@@ -168,17 +168,27 @@ jobs:
       - name: Qualify retained native artifact and supported reproducibility
         id: native-reproducibility
         env:
-          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.tuple == 'darwin-arm64' && '13.0' || matrix.tuple == 'darwin-x64' && '15.0' || '' }}"
+          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.tuple == 'darwin-arm64' && '13.0' || '' }}"
         run: node tools/ci/qualify-native-reproducibility.mjs --artifact "$TFSB_TUPLE" --output "$TFSB_NATIVE_REPORT_DIR/native-reproducibility.json"
       - name: Verify retained native bytes with the existing checker when current inputs and bytes agree
         if: steps.native-reproducibility.outputs.input-match == 'true'
         env:
-          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.tuple == 'darwin-arm64' && '13.0' || matrix.tuple == 'darwin-x64' && '15.0' || '' }}"
+          MACOSX_DEPLOYMENT_TARGET: "${{ matrix.tuple == 'darwin-arm64' && '13.0' || '' }}"
         run: npm run check:native -- --artifact "$TFSB_TUPLE" --check-tracked
+      - name: Verify ARM64 producer image bytes
+        if: matrix.tuple == 'linux-arm64-gnu'
+        run: >-
+          docker run --rm --platform linux/arm64 --network none
+          -v "$PWD:/work:ro" -w /work
+          node@sha256:dd5847a04b0deee391fa145f1f4c6d214196668b6bcc7988ebed67249f226844
+          node tools/build-directory-snapshot-native.mjs --check --require-reproducible --artifact linux-arm64-gnu
+          --compiler /usr/bin/cc --node-include /usr/local/include/node
       - name: Run existing native suites
         run: npx vitest run test/directory-snapshot-native.test.ts test/directory-snapshot-native-primitives.test.ts test/directory-snapshot-native-cleanup.test.ts test/directory-snapshot-loader.test.ts test/directory-snapshot-race.test.ts
       - run: npm test
       - run: npm audit --omit=dev
+      - name: Validate complete native npm payload
+        run: node tools/assemble-burst-native.mjs
       - name: Qualify native directory snapshot package
         run: npm run qualify:package
       - name: Run native qualification report
@@ -196,6 +206,71 @@ jobs:
         with:
           name: native-artifacts-${{ matrix.tuple }}
           path: .test-reports/native-${{ matrix.tuple }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  native-directory-snapshot-intel-advisory:
+    name: Native directory snapshot (darwin-x64 advisory)
+    needs: source-policy
+    timeout-minutes: 20
+    runs-on: macos-15-intel
+    env:
+      TFSB_TUPLE: darwin-x64
+      TFSB_MATRIX_JSON: '{"tuple":"darwin-x64"}'
+      TFSB_NATIVE_REPORT_DIR: .test-reports/native-darwin-x64
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Record exact-head receipt
+        run: |
+          mkdir -p "$TFSB_NATIVE_REPORT_DIR"
+          node tools/ci/exact-head.mjs --output "$TFSB_NATIVE_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - run: npm ci
+      - run: npm ci --prefix packages/tfsb-raster-resvg
+      - run: npm run build
+      - run: npm run typecheck
+      - name: Qualify retained native artifact and supported reproducibility
+        id: native-reproducibility
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "15.0"
+        run: node tools/ci/qualify-native-reproducibility.mjs --artifact "$TFSB_TUPLE" --output "$TFSB_NATIVE_REPORT_DIR/native-reproducibility.json"
+      - name: Verify retained native bytes with the existing checker when current inputs and bytes agree
+        if: steps.native-reproducibility.outputs.input-match == 'true'
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "15.0"
+        run: npm run check:native -- --artifact "$TFSB_TUPLE" --check-tracked
+      - name: Run existing native suites
+        run: npx vitest run test/directory-snapshot-native.test.ts test/directory-snapshot-native-primitives.test.ts test/directory-snapshot-native-cleanup.test.ts test/directory-snapshot-loader.test.ts test/directory-snapshot-race.test.ts
+      - run: npm test
+      - run: npm audit --omit=dev
+      - name: Validate complete native npm payload
+        run: node tools/assemble-burst-native.mjs
+      - name: Qualify native directory snapshot package
+        run: npm run qualify:package
+      - name: Run native qualification report
+        run: node tools/report-directory-snapshot-native.mjs > "$TFSB_NATIVE_REPORT_DIR/native-report.json"
+      - name: Retain native release artifact
+        run: |
+          cp "native/directory-snapshot/prebuilds/$TFSB_TUPLE/native-addon-posix-openat-v1.node" "$TFSB_NATIVE_REPORT_DIR/native-addon-posix-openat-v1.node"
+          cp "native/directory-snapshot/prebuilds/$TFSB_TUPLE/manifest.json" "$TFSB_NATIVE_REPORT_DIR/native-manifest.json"
+      - name: Bind native artifact bytes
+        if: always()
+        run: node tools/ci/artifact-manifest.mjs --root "$TFSB_NATIVE_REPORT_DIR" --output "$TFSB_NATIVE_REPORT_DIR/artifact-manifest.json" --job native-directory-snapshot-intel-advisory --matrix "tuple=$TFSB_TUPLE" --require receipt.json --require native-reproducibility.json
+      - name: Upload native artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: always()
+        with:
+          name: native-artifacts-darwin-x64
+          path: .test-reports/native-darwin-x64/
           if-no-files-found: error
           retention-days: 14
 
@@ -254,8 +329,6 @@ jobs:
         include:
           - tuple: darwin-arm64
             os: macos-15
-          - tuple: darwin-x64
-            os: macos-15-intel
           - tuple: linux-x64-gnu
             os: ubuntu-24.04
           - tuple: windows-x64
@@ -314,6 +387,65 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  raster-companion-intel-advisory:
+    name: Raster companion candidate (darwin-x64 advisory)
+    needs: source-policy
+    timeout-minutes: 20
+    runs-on: macos-15-intel
+    env:
+      TFSB_TUPLE: darwin-x64
+      TFSB_MATRIX_JSON: '{"tuple":"darwin-x64"}'
+      TFSB_RASTER_REPORT_DIR: .test-reports/raster-darwin-x64
+      TFSB_NETWORK_DENIAL_PRELOAD: ${{ github.workspace }}/tools/ci/network-denial-preload.mjs
+    steps:
+      - name: Checkout PR merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.source-policy.outputs.merge-commit-sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+      - name: Record exact-head receipt
+        shell: bash
+        run: |
+          mkdir -p "$TFSB_RASTER_REPORT_DIR"
+          node tools/ci/exact-head.mjs --output "$TFSB_RASTER_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - run: npm ci
+      - run: npm ci --prefix packages/tfsb-raster-resvg
+      - run: npm run build
+      - name: Pack release root and raster companion packages
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/root-pack" "$RUNNER_TEMP/raster-pack"
+          npm pack --pack-destination "$RUNNER_TEMP/root-pack" --json > "$TFSB_RASTER_REPORT_DIR/root-pack-manifest.json"
+          mv "$RUNNER_TEMP/root-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/root-package.tgz"
+          npm pack ./packages/tfsb-raster-resvg --pack-destination "$RUNNER_TEMP/raster-pack" --json > "$TFSB_RASTER_REPORT_DIR/raster-pack-manifest.json"
+          mv "$RUNNER_TEMP/raster-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz"
+      - name: Run raster companion test with network denial
+        shell: bash
+        run: |
+          PRELOAD_URL=$(node --input-type=module -e 'import { pathToFileURL } from "node:url"; console.log(pathToFileURL(process.env.TFSB_NETWORK_DENIAL_PRELOAD).href);')
+          NODE_OPTIONS="--import=$PRELOAD_URL" node tools/qualify-raster-resvg.mjs --expected-tuple "$TFSB_TUPLE" > "$TFSB_RASTER_REPORT_DIR/raster-report.json"
+      - name: Run packed-consumer qualification with network denial
+        shell: bash
+        run: |
+          node tools/qualify-raster-packed-consumers.mjs "$TFSB_RASTER_REPORT_DIR/root-package.tgz" "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz" > "$TFSB_RASTER_REPORT_DIR/packed-consumer-report.json"
+      - name: Bind raster companion artifact bytes
+        shell: bash
+        run: node tools/ci/artifact-manifest.mjs --root "$TFSB_RASTER_REPORT_DIR" --output "$TFSB_RASTER_REPORT_DIR/artifact-manifest.json" --job raster-companion-intel-advisory --matrix "tuple=$TFSB_TUPLE" --require receipt.json --require raster-report.json --require packed-consumer-report.json --require root-package.tgz --require root-pack-manifest.json --require raster-companion.tgz --require raster-pack-manifest.json
+      - name: Upload raster companion artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: raster-companion-darwin-x64
+          path: .test-reports/raster-darwin-x64/
+          if-no-files-found: error
+          retention-days: 14
+
+
   codeql:
     name: Advanced CodeQL analysis (${{ matrix.language }})
     runs-on: ubuntu-24.04
@@ -363,6 +495,15 @@ jobs:
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           category: "/language:${{ matrix.language }}"
+          output: "${{ env.TFSB_CODEQL_REPORT_DIR }}"
+          upload: false
+      - name: Evaluate finding ratchet on CodeQL findings
+        run: node tools/ci/finding-ratchet.mjs --baseline tools/ci/finding-ratchet-baseline.json --input "$TFSB_CODEQL_REPORT_DIR" --product stellar-burst --tool codeql --check
+      - name: Upload CodeQL SARIF report
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: "${{ env.TFSB_CODEQL_REPORT_DIR }}"
+          category: "/language:${{ matrix.language }}"
 
   supply-chain:
     name: Supply chain, Syft SBOMs, Grype scan, and audits
@@ -411,7 +552,7 @@ jobs:
           cp package.json package-lock.json "$RUNNER_TEMP/tfsb-stellar-inventory/core/"
           cp packages/tfsb-raster-resvg/package.json packages/tfsb-raster-resvg/package-lock.json "$RUNNER_TEMP/tfsb-stellar-inventory/raster/"
           rm "$TFSB_RELEASE_DIR/root-install/package-lock.json"
-          for tuple in darwin-arm64 darwin-x64 linux-x64-gnu; do
+          for tuple in darwin-arm64 linux-arm64-gnu linux-x64-gnu; do
             input="$TFSB_INPUT_DIR/native-artifacts-$tuple"
             output="$TFSB_RELEASE_DIR/native/$tuple"
             mkdir -p "$output"
@@ -420,7 +561,16 @@ jobs:
               cp "$input/$file" "$output/$file"
             done
           done
-          for tuple in darwin-arm64 darwin-x64 linux-x64-gnu windows-x64; do
+          if [ -d "$TFSB_INPUT_DIR/native-artifacts-darwin-x64" ]; then
+            output="$TFSB_RELEASE_DIR/native/darwin-x64"
+            mkdir -p "$output"
+            for file in receipt.json native-report.json native-manifest.json native-addon-posix-openat-v1.node artifact-manifest.json; do
+              if [ -s "$TFSB_INPUT_DIR/native-artifacts-darwin-x64/$file" ]; then
+                cp "$TFSB_INPUT_DIR/native-artifacts-darwin-x64/$file" "$output/$file"
+              fi
+            done
+          fi
+          for tuple in darwin-arm64 linux-x64-gnu windows-x64; do
             input="$TFSB_INPUT_DIR/raster-companion-$tuple"
             output="$TFSB_RELEASE_DIR/raster/$tuple"
             install="$TFSB_RELEASE_DIR/raster-install/$tuple"
@@ -434,10 +584,28 @@ jobs:
             npm ci --ignore-scripts --no-audit --no-fund --omit=dev --prefix "$install"
             rm "$install/package-lock.json"
           done
+          if [ -d "$TFSB_INPUT_DIR/raster-companion-darwin-x64" ]; then
+            output="$TFSB_RELEASE_DIR/raster/darwin-x64"
+            install="$TFSB_RELEASE_DIR/raster-install/darwin-x64"
+            mkdir -p "$output" "$install"
+            for file in receipt.json raster-report.json packed-consumer-report.json root-package.tgz root-pack-manifest.json raster-companion.tgz raster-pack-manifest.json artifact-manifest.json; do
+              if [ -s "$TFSB_INPUT_DIR/raster-companion-darwin-x64/$file" ]; then
+                cp "$TFSB_INPUT_DIR/raster-companion-darwin-x64/$file" "$output/$file"
+              fi
+            done
+            if [ -s "$output/raster-companion.tgz" ] && [ -s "$output/artifact-manifest.json" ]; then
+              node tools/ci/artifact-manifest.mjs --archive "$output/raster-companion.tgz" --manifest "$output/artifact-manifest.json" --extract-to "$install" --strip-components 1
+              cp packages/tfsb-raster-resvg/package.json packages/tfsb-raster-resvg/package-lock.json "$install/"
+              npm ci --ignore-scripts --no-audit --no-fund --omit=dev --prefix "$install"
+              rm "$install/package-lock.json"
+            fi
+          fi
       - name: Run Syft SBOM generation and Grype vulnerability scan
         run: |
           TFSB_RELEASE_DIR="$RUNNER_TEMP/tfsb-stellar-release"
           node tools/ci/run-syft-grype.mjs --target "$TFSB_RELEASE_DIR" --output-dir .test-reports/supply-chain --name root-package             --component-input "build-input:core-lock=$RUNNER_TEMP/tfsb-stellar-inventory/core"             --component-input "build-input:raster-lock=$RUNNER_TEMP/tfsb-stellar-inventory/raster"             --component-catalogers core-lock=javascript-lock-cataloger,javascript-package-cataloger             --component-catalogers raster-lock=javascript-lock-cataloger,javascript-package-cataloger
+      - name: Evaluate finding ratchet on Grype findings
+        run: node tools/ci/finding-ratchet.mjs --baseline tools/ci/finding-ratchet-baseline.json --input .test-reports/supply-chain/root-package.grype.sarif --product stellar-burst --tool grype --check
       - name: Run selected workflow and secret checks
         run: node tools/ci/run-workflow-checks.mjs --root . --output-dir .test-reports/workflow-checks
       - name: Retain workflow and secret check outputs

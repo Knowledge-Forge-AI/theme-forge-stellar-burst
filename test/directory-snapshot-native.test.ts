@@ -61,7 +61,7 @@ describe.runIf(nativeAvailable)("native mutation-grade directory snapshots", () 
     expect(capability).toMatchObject({
       supported: true,
       backend: "native-addon-posix-openat-v1",
-      platformArtifact: process.platform === "linux" ? "linux-x64-gnu" : `darwin-${process.arch}`,
+      platformArtifact: process.platform === "linux" ? `linux-${process.arch}-gnu` : `darwin-${process.arch}`,
       filesystemClass: "qualified-local",
     });
     expect(JSON.stringify(capability)).not.toContain(root);

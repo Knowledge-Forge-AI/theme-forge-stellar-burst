@@ -55,17 +55,61 @@ export const TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS = Object.freeze([
   "evidence-aggregate",
 ]);
 
-export const NATIVE_SNAPSHOT_TUPLES = Object.freeze([
+export const SOLAR_SAIL_PUBLIC_REQUIRED_JOBS = Object.freeze([
+  "source-policy",
+  "root-package",
+  "consumer-fixture",
+  "codeql",
+  "supply-chain",
+  "evidence-aggregate",
+]);
+
+export const NATIVE_SNAPSHOT_REQUIRED_TUPLES = Object.freeze([
   "darwin-arm64",
-  "darwin-x64",
+  "linux-arm64-gnu",
   "linux-x64-gnu",
 ]);
 
-export const RASTER_COMPANION_TUPLES = Object.freeze([
-  "darwin-arm64",
+export const NATIVE_SNAPSHOT_ADVISORY_TUPLES = Object.freeze([
   "darwin-x64",
+]);
+
+export const NATIVE_SNAPSHOT_TUPLES = Object.freeze([
+  ...NATIVE_SNAPSHOT_REQUIRED_TUPLES,
+  ...NATIVE_SNAPSHOT_ADVISORY_TUPLES,
+]);
+
+export const RASTER_COMPANION_REQUIRED_TUPLES = Object.freeze([
+  "darwin-arm64",
   "linux-x64-gnu",
   "windows-x64",
+]);
+
+export const RASTER_COMPANION_ADVISORY_TUPLES = Object.freeze([
+  "darwin-x64",
+]);
+
+export const RASTER_COMPANION_TUPLES = Object.freeze([
+  ...RASTER_COMPANION_REQUIRED_TUPLES,
+  ...RASTER_COMPANION_ADVISORY_TUPLES,
+]);
+
+export const STELLAR_BURST_PUBLIC_ADVISORY_JOBS = Object.freeze([
+  "native-directory-snapshot-intel-advisory",
+  "raster-companion-intel-advisory",
+]);
+
+export const STELLAR_BURST_PUBLIC_ALL_JOBS = Object.freeze([
+  "source-policy",
+  "root-package",
+  "native-directory-snapshot",
+  "native-directory-snapshot-intel-advisory",
+  "visual-accessibility",
+  "raster-companion",
+  "raster-companion-intel-advisory",
+  "codeql",
+  "supply-chain",
+  "evidence-aggregate",
 ]);
 
 /**
@@ -91,11 +135,17 @@ const publicArtifact = (directory, job, matrix, required, checkoutRole = "merge-
 export const STELLAR_BURST_PUBLIC_ARTIFACTS = Object.freeze([
   publicArtifact("source-policy-receipt", "source-policy", {}, ["receipt.json"], "staging-head"),
   publicArtifact("root-package-artifacts", "root-package", {}, ["receipt.json", "pack-manifest.json", "test-report.json", "audit-result.json", "root-package.tgz"]),
-  ...NATIVE_SNAPSHOT_TUPLES.map((tuple) => publicArtifact(`native-artifacts-${tuple}`, "native-directory-snapshot", { tuple }, ["receipt.json", "native-report.json", "native-manifest.json", "native-addon-posix-openat-v1.node"])),
+  ...NATIVE_SNAPSHOT_REQUIRED_TUPLES.map((tuple) => publicArtifact(`native-artifacts-${tuple}`, "native-directory-snapshot", { tuple }, ["receipt.json", "native-report.json", "native-manifest.json", "native-addon-posix-openat-v1.node"])),
   publicArtifact("visual-artifacts", "visual-accessibility", {}, ["receipt.json", "visual-summary.json", "playwright-evidence*"]),
-  ...RASTER_COMPANION_TUPLES.map((tuple) => publicArtifact(`raster-companion-${tuple}`, "raster-companion", { tuple }, ["receipt.json", "raster-report.json", "packed-consumer-report.json", "root-package.tgz", "root-pack-manifest.json", "raster-companion.tgz", "raster-pack-manifest.json"])),
+  ...RASTER_COMPANION_REQUIRED_TUPLES.map((tuple) => publicArtifact(`raster-companion-${tuple}`, "raster-companion", { tuple }, ["receipt.json", "raster-report.json", "packed-consumer-report.json", "root-package.tgz", "root-pack-manifest.json", "raster-companion.tgz", "raster-pack-manifest.json"])),
   publicArtifact("supply-chain-artifacts", "supply-chain", {}, ["receipt.json", "root-package.syft.json", "root-package.spdx.json", "root-package.cdx.json", "root-package.grype.json", "root-package.grype.sarif", "root-package.receipt.json", "workflow-checks/actionlint.result.json", "workflow-checks/zizmor.result.json", "workflow-checks/betterleaks.result.json", "workflow-checks/workflow-checks.receipt.json", "workflow-checks/betterleaks.report.json"]),
 ]);
+
+export const STELLAR_BURST_PUBLIC_ADVISORY_ARTIFACTS = Object.freeze([
+  publicArtifact("native-artifacts-darwin-x64", "native-directory-snapshot-intel-advisory", { tuple: "darwin-x64" }, ["receipt.json", "native-report.json", "native-manifest.json", "native-addon-posix-openat-v1.node"]),
+  publicArtifact("raster-companion-darwin-x64", "raster-companion-intel-advisory", { tuple: "darwin-x64" }, ["receipt.json", "raster-report.json", "packed-consumer-report.json", "root-package.tgz", "root-pack-manifest.json", "raster-companion.tgz", "raster-pack-manifest.json"]),
+]);
+
 
 export const NEBULAR_FUSION_PUBLIC_ARTIFACTS = Object.freeze([
   publicArtifact("source-policy-receipt", "source-policy", {}, ["receipt.json"], "staging-head"),
@@ -116,6 +166,13 @@ export const TERMINAL_NOVA_PUBLIC_ARTIFACTS = Object.freeze([
   publicArtifact("theme-package-artifacts", "theme-package", {}, ["receipt.json", "theme-manifest.json", "pack-manifest.json", "theme-package.tgz", "audit-result.json"]),
   publicArtifact("demo-artifacts", "demo", {}, ["receipt.json", "demo-dist.tar.gz"]),
   publicArtifact("supply-chain-artifacts", "supply-chain", {}, ["receipt.json", "terminal-nova.syft.json", "terminal-nova.spdx.json", "terminal-nova.cdx.json", "terminal-nova.grype.json", "terminal-nova.grype.sarif", "terminal-nova.receipt.json", "workflow-checks/actionlint.result.json", "workflow-checks/zizmor.result.json", "workflow-checks/betterleaks.result.json", "workflow-checks/workflow-checks.receipt.json", "workflow-checks/betterleaks.report.json"]),
+]);
+
+export const SOLAR_SAIL_PUBLIC_ARTIFACTS = Object.freeze([
+  publicArtifact("source-policy-receipt", "source-policy", {}, ["receipt.json"], "staging-head"),
+  publicArtifact("root-package-artifacts", "root-package", {}, ["receipt.json", "pack-manifest.json", "test-report.json", "audit-result.json", "root-package.tgz"]),
+  publicArtifact("consumer-fixture-artifacts", "consumer-fixture", {}, ["receipt.json", "smoke-report.log"]),
+  publicArtifact("supply-chain-artifacts", "supply-chain", {}, ["receipt.json", "root-package.syft.json", "root-package.spdx.json", "root-package.cdx.json", "root-package.grype.json", "root-package.grype.sarif", "root-package.receipt.json", "workflow-checks/actionlint.result.json", "workflow-checks/zizmor.result.json", "workflow-checks/betterleaks.result.json", "workflow-checks/workflow-checks.receipt.json", "workflow-checks/betterleaks.report.json"]),
 ]);
 
 /**
@@ -165,6 +222,10 @@ export const NODE_RELEASE_IDENTITY = Object.freeze({
   darwinArm64TarballSha256: "61130f394c1630d211dd50aecc4353d379480f36d3ac913cd85dbba1aed585c6",
   nodeExecutableSha256: "18e387c90ab8a8400183e8bdd396376e1e875b91b4c874b894dcade7b35bf572",
   nodeExecutableSize: 112_937_728,
+  v8: "12.4.254.21-node.56",
+  target: "aarch64-apple-darwin",
+  tarballName: "node-v22.23.2-darwin-arm64.tar.gz",
+  archiveUrl: "https://nodejs.org/download/release/v22.23.2/node-v22.23.2-darwin-arm64.tar.gz",
   signingKeyFingerprint: "CC68F5A3106FF448322E48ED27F5E38D5B0A215F", // betterleaks:allow -- public Node.js release signing-key fingerprint
   signingKeyReleaser: "Marco Ippolito <marcoippolito54@gmail.com>",
 });

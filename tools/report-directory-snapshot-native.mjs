@@ -33,7 +33,8 @@ const loaded = loadDirectorySnapshotNative();
 if (!loaded.ok) throw new Error(`Native directory snapshot qualification failed: ${loaded.reason}`);
 const physicalTemporaryRoot = realpathSync(tmpdir());
 const capability = getDirectorySnapshotCapability(physicalTemporaryRoot);
-if (!capability.supported) throw new Error("Native directory snapshot filesystem is not qualified.");
+const diagnosticOnly = process.argv.includes("--diagnostic");
+if (!capability.supported && !diagnosticOnly) throw new Error("Native directory snapshot filesystem is not qualified.");
 
 const handles = [loaded.addon.openFilesystemRoot()];
 try {
@@ -53,6 +54,7 @@ try {
   ), "utf8"));
   process.stdout.write(`${JSON.stringify({
     qualificationSchemaVersion: 1,
+    qualificationStatus: capability.supported ? "qualified-filesystem" : "diagnostic-only-unsupported-filesystem",
     backend: loaded.addon.backend,
     abiVersion: loaded.addon.abiVersion,
     artifact: loaded.artifact,
