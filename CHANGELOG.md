@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - Unreleased source candidate
+
+- Assign the TFSB71 source-build and distribution changes to a new release version.
+- Release artifacts and installation qualification remain pending.
+
+Version 0.5.0 is published on npm. The following entry retains its historical
+pre-publication wording.
+
 ## [0.5.0] - Unreleased candidate
 
 - Add the versioned Vector Scene compiler, deterministic SVG output, safe SVG

@@ -1,10 +1,10 @@
 // @ts-check
 
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, readFile, rename, writeFile, mkdir, mkdtemp, rm, stat } from "node:fs/promises";
+import { chmod, open, readFile, rename, writeFile, mkdir, mkdtemp, rm, stat } from "node:fs/promises";
+import { constants } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
@@ -20,8 +20,14 @@ async function loadOpenpgp() {
   if (openpgpPromise) return openpgpPromise;
   openpgpPromise = (async () => {
     const bindingPath = resolve(REPO_ROOT, "authenticated-inputs/tooling/binding.json");
-    if (!existsSync(bindingPath)) return import("openpgp");
-    const binding = JSON.parse(await readFile(bindingPath, "utf8"));
+    let bindingRaw;
+    try {
+      bindingRaw = await readFile(bindingPath, "utf8");
+    } catch (err) {
+      if (err && (err.code === "ENOENT" || err.code === "ENOTDIR")) return import("openpgp");
+      throw err;
+    }
+    const binding = JSON.parse(bindingRaw);
     const pkg = binding.packages?.find((/** @type {{name: string}} */ value) => value.name === "openpgp");
     if (binding.schema !== "tfsb.nebular-verification-tooling-v1" || pkg?.version !== "6.3.1" ||
         typeof pkg.filename !== "string" || basename(pkg.filename) !== pkg.filename || !/^[a-f0-9]{64}$/u.test(pkg.sha256)) {
@@ -43,11 +49,13 @@ async function loadOpenpgp() {
 }
 
 
-export const EXPECTED_NODE_VERSION = "22.23.2";
+import { NODE_RELEASE_IDENTITY } from "./ci-contract.mjs";
+
+export const EXPECTED_NODE_VERSION = NODE_RELEASE_IDENTITY.version;
 export const EXPECTED_TARBALL_NAME = `node-v${EXPECTED_NODE_VERSION}-darwin-arm64.tar.gz`;
-export const EXPECTED_TARBALL_SHA256 = "61130f394c1630d211dd50aecc4353d379480f36d3ac913cd85dbba1aed585c6";
-export const EXPECTED_EXECUTABLE_SHA256 = "18e387c90ab8a8400183e8bdd396376e1e875b91b4c874b894dcade7b35bf572";
-export const EXPECTED_EXECUTABLE_SIZE = 112_937_728;
+export const EXPECTED_TARBALL_SHA256 = NODE_RELEASE_IDENTITY.darwinArm64TarballSha256;
+export const EXPECTED_EXECUTABLE_SHA256 = NODE_RELEASE_IDENTITY.nodeExecutableSha256;
+export const EXPECTED_EXECUTABLE_SIZE = NODE_RELEASE_IDENTITY.nodeExecutableSize;
 
 /** @type {Record<string, string>} */
 export const OFFICIAL_RELEASERS = {
@@ -213,8 +221,15 @@ export async function verifyNodeAuthenticity(options = {}) {
   // 4. Verify node executable if available or passed
   let executableReceipt = null;
   if (executablePath) {
-    const statInfo = await stat(executablePath);
-    const execBytes = await readFile(executablePath);
+    const handle = await open(executablePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    let statInfo;
+    let execBytes;
+    try {
+      statInfo = await handle.stat();
+      execBytes = await handle.readFile();
+    } finally {
+      await handle.close();
+    }
     const execSha = sha256Hex(execBytes);
 
     if (version === EXPECTED_NODE_VERSION) {

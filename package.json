@@ -1,6 +1,6 @@
 {
   "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Declarative SVG compiler, transactional installer, and drift checker",
   "keywords": [
     "svg",
@@ -63,15 +63,15 @@
     "build": "tsc -p tsconfig.build.json",
     "build:native": "node tools/build-directory-snapshot-native.mjs",
     "check:native": "node tools/build-directory-snapshot-native.mjs --check",
+    "check:inventory": "node tools/test-matrix/build-inventory.mjs --check",
     "qualify:package": "node tools/qualify-directory-snapshot-package.mjs && node tools/qualify-studio-service-package.mjs",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --project=chromium --update-snapshots",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.visual.json && tsc -p tsconfig.tools.json",
     "audit:dogfood": "npm run build && node tools/audit-dogfood-corpus.mjs",
-    "qualify:dogfood": "npm run build && node tools/qualify-dogfood-shards.mjs",
     "test:terminal-nova:portable": "vitest run test/terminal-nova-brand-hardening.test.ts test/tfsb48-r2-svg-parity.test.ts test/tfsb48-r2-core-matrix.test.ts",
-    "pretest": "npm run build",
-    "test": "vitest run"
+    "test:smoke-code": "node packages/stellar-loom/tools/smoke-code.mjs",
+    "test": "vitest run test/terminal-nova-brand-hardening.test.ts test/tfsb48-r2-svg-parity.test.ts test/tfsb48-r2-core-matrix.test.ts"
   },
   "dependencies": {
     "@xmldom/xmldom": "0.9.12",

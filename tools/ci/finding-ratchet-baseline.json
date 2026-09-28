@@ -1,0 +1,7 @@
+{
+  "schema": "tfsb.finding-ratchet-baseline-v1",
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-16T00:00:00.000Z",
+  "description": "Monotonic finding ratchet baseline. New findings not present in baseline cause CI failure.",
+  "findings": []
+}

@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "backend": "native-addon-posix-openat-v1",
   "abiVersion": 1,
-  "artifact": "linux-x64-gnu",
+  "artifact": "linux-arm64-gnu",
   "platform": "linux",
-  "architecture": "x64",
+  "architecture": "arm64",
   "libc": "glibc",
   "nodeVersion": "v22.23.2",
   "nodeApiVersion": "10",
-  "nodeHeadersSha256": "269377dfcd9609417df3f0363b6ffa392b6f5061616731d467337636f1cdf67e",
-  "compiler": "x86_64-linux-gnu-gcc-12 (Debian 12.2.0-14+deb12u1) 12.2.0",
-  "compilerExecutableSha256": "75e997ec62297a6484f491bae28ab0ccb489daba23e398fd10fe68e9e6f0def8",
+  "nodeHeadersSha256": "481d3bb8912d8090634ea215a9199f73a3e5e58e0589a2721408fde3f6879301",
+  "compiler": "cc (Debian 12.2.0-14+deb12u1) 12.2.0",
+  "compilerExecutableSha256": "dc53dbc5a583d03ae8ed6272ca9afc0f58873f9f9b86dd7d448b17fb3f88a8d0",
   "command": [
-    "x86_64-linux-gnu-gcc-12",
+    "cc",
     "-O2",
     "-Wall",
     "-Wextra",
@@ -22,7 +22,7 @@
     "-fPIC",
     "-shared",
     "-o",
-    "<linux-x64-gnu>/native-addon-posix-openat-v1.node",
+    "<linux-arm64-gnu>/native-addon-posix-openat-v1.node",
     "native/directory-snapshot/src/directory_snapshot.c"
   ],
   "sourceIdentity": {
@@ -34,6 +34,6 @@
   "nativeSourceSha256": "9c3e526a22e6744206743fac3823522226c922d81787b09928a6b61ebcab4017",
   "buildTool": "tools/build-directory-snapshot-native.mjs",
   "buildToolSha256": "1dd3b18f2c8ad0e8e74e039ddb0cfa48457ae821796ebf432670b0522c767ee0",
-  "artifactSha256": "a2999fc9ac1b1f0a31600595f7069e10aadb032f01059b4d7e64ed80cd8a38a8",
-  "artifactBytes": 27240
+  "artifactSha256": "67fb6b85f339a7c2f43ababa20434b26a3ea9bb65b17e70257a03c07810beb79",
+  "artifactBytes": 73336
 }

@@ -16,10 +16,14 @@ import {
   verifyFrozenTarball,
   isMainScript,
 } from "./package-qualification-identity.mjs";
+import {
+  resolvePlatformArtifact,
+  killProcessGroup,
+} from "./qualify-installed-burst.mjs";
 
 const defaultRepositoryRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
 let repositoryRoot = defaultRepositoryRoot;
-const artifact = process.platform === "linux" ? "linux-x64-gnu" : `darwin-${process.arch}`;
+const artifact = resolvePlatformArtifact(process.platform, process.arch);
 
 /** @param {string} executable @param {string[]} args @param {string} cwd */
 function command(executable, args, cwd) {
@@ -151,9 +155,12 @@ class Client {
   /** @type {any[]} */ allMessages;
   /** @param {string} bin @param {string} cwd */
   constructor(bin, cwd) {
-    this.child = spawn(bin, [], { cwd, stdio: "pipe" }); this.messages = []; this.allMessages = []; this.waiters = []; this.stderr = "";
+    this.child = spawn(bin, [], { cwd, stdio: "pipe", detached: process.platform !== "win32" }); this.messages = []; this.allMessages = []; this.waiters = []; this.stderr = "";
     createInterface({ input: this.child.stdout }).on("line", (line) => { const parsed = JSON.parse(line); this.messages.push(parsed); this.allMessages.push(parsed); this.waiters.splice(0).forEach((done) => done()); });
     this.child.stderr.on("data", (chunk) => { this.stderr += chunk.toString("utf8"); });
+  }
+  kill(signal = "SIGKILL") {
+    killProcessGroup(this.child, signal);
   }
   /** @param {unknown} value */
   send(value) { this.child.stdin.write(`${JSON.stringify(value)}\n`); }
@@ -163,8 +170,9 @@ class Client {
     while (Date.now() < deadline) {
       const index = this.messages.findIndex((value) => value?.id === id);
       if (index >= 0) return this.messages.splice(index, 1)[0];
-      await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error(`Packed service response timeout: ${id}`)), deadline - Date.now()); this.waiters.push(() => { clearTimeout(timer); resolve(undefined); }); });
+      await new Promise((resolve, reject) => { const timer = setTimeout(() => { this.kill(); reject(new Error(`Packed service response timeout: ${id}`)); }, Math.max(1, deadline - Date.now())); this.waiters.push(() => { clearTimeout(timer); resolve(undefined); }); });
     }
+    this.kill();
     throw new Error(`Packed service response timeout: ${id}`);
   }
   /** @param {string} id @param {string} method @param {Record<string, unknown>} params @returns {Promise<any>} */
@@ -179,7 +187,7 @@ class Client {
   async shutdown(nonce) {
     requireResult(await this.call("shutdown", "shutdown", { sessionNonce: nonce }), "shutdown");
     this.send({ jsonrpc: "2.0", method: "exit", params: {} }); this.child.stdin.end();
-    const exit = await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error("Packed service exit timeout.")), 10_000); this.child.once("close", (code) => { clearTimeout(timer); resolve(code); }); });
+    const exit = await new Promise((resolve, reject) => { const timer = setTimeout(() => { this.kill(); reject(new Error("Packed service exit timeout.")); }, 10_000); this.child.once("close", (code) => { clearTimeout(timer); resolve(code); }); });
     if (exit !== 0 || this.stderr !== "") throw new Error("Packed service did not exit cleanly.");
   }
 }
@@ -212,12 +220,13 @@ async function applyPlan(client, nonce, id, plan) {
   return result;
 }
 
-/** @param {string} consumer @param {string} fixtureRoot */
-async function probeService(consumer, fixtureRoot) {
+/** @param {string} consumer @param {string} fixtureRoot @param {{ serviceBin?: string, cliBin?: string }} [options] */
+async function probeService(consumer, fixtureRoot, options = {}) {
   const paths = fixture(fixtureRoot);
   const archiveTarget = join(fixtureRoot, "archive-target"); mkdirSync(archiveTarget);
   const directoryTarget = join(fixtureRoot, "directory-target"); mkdirSync(directoryTarget);
-  const bin = join(consumer, "node_modules/.bin/tfsb-studio-service");
+  const bin = options.serviceBin ?? join(consumer, "node_modules/.bin/tfsb-studio-service");
+  const tfsbBin = options.cliBin ?? join(consumer, "node_modules/.bin/tfsb");
   const client = new Client(bin, consumer);
   const { nonce, initialized } = await client.initialize();
   const capabilities = initialized.capabilities;
@@ -237,7 +246,7 @@ async function probeService(consumer, fixtureRoot) {
   const sourceMapHandle = requireResult(await client.call("source-map-open", "source.open", { sessionNonce: nonce, path: paths.sourceMap, purpose: "source-map" }), "source-map-open").sourceHandle;
   requireResult(await client.call("normalization-map-open", "source.open", { sessionNonce: nonce, path: paths.normalizationMap, purpose: "normalization-map" }), "normalization-map-open");
   rmSync(paths.shardManifest);
-  command(join(consumer, "node_modules/.bin/tfsb"), ["shard", paths.source, "--source-map", paths.sourceMap, "--collection", "icons", "--paths-file", paths.shardPaths, "--manifest-output", paths.shardManifest], consumer);
+  command(tfsbBin, ["shard", paths.source, "--source-map", paths.sourceMap, "--collection", "icons", "--paths-file", paths.shardPaths, "--manifest-output", paths.shardManifest], consumer);
   const shardManifestHandle = requireResult(await client.call("shard-manifest-open", "source.open", { sessionNonce: nonce, path: paths.shardManifest, purpose: "shard-manifest" }), "shard-manifest-open").sourceHandle;
 
   const editedToml = originalToml.replace('title = "Packed"', 'title = "Edited packed"');

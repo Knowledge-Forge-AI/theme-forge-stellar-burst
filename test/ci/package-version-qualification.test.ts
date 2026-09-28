@@ -524,3 +524,29 @@ describe("Side-effect-free helper imports and qualifier entrypoint exports", () 
     }
   }, 60_000);
 });
+
+describe("Nebular Fusion 0.4.0 version alignment quadruple", () => {
+  it("proves theme-forge-nebular-fusion version is 0.4.0 consistently across package.json, Cargo.toml, Cargo.lock, and tauri.conf.json", () => {
+    const pkgPath = join(REPO_ROOT, "apps/studio/package.json");
+    const cargoTomlPath = join(REPO_ROOT, "apps/studio/src-tauri/Cargo.toml");
+    const cargoLockPath = join(REPO_ROOT, "apps/studio/src-tauri/Cargo.lock");
+    const tauriConfPath = join(REPO_ROOT, "apps/studio/src-tauri/tauri.conf.json");
+
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+    expect(pkg.version).toBe("0.4.0");
+
+    const cargoToml = readFileSync(cargoTomlPath, "utf8");
+    const tomlVersionMatch = cargoToml.match(/name\s*=\s*"theme-forge-nebular-fusion"[\s\S]*?version\s*=\s*"([^"]+)"/);
+    expect(tomlVersionMatch).not.toBeNull();
+    expect(tomlVersionMatch![1]).toBe("0.4.0");
+
+    const cargoLock = readFileSync(cargoLockPath, "utf8");
+    const lockVersionMatch = cargoLock.match(/\[\[package\]\]\s*name\s*=\s*"theme-forge-nebular-fusion"\s*version\s*=\s*"([^"]+)"/);
+    expect(lockVersionMatch).not.toBeNull();
+    expect(lockVersionMatch![1]).toBe("0.4.0");
+
+    const tauriConf = JSON.parse(readFileSync(tauriConfPath, "utf8"));
+    expect(tauriConf.version).toBe("0.4.0");
+  });
+});
+

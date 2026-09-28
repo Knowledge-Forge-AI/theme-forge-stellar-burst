@@ -113,6 +113,28 @@
           "url": "https://github.com/betterleaks/betterleaks/releases/download/v1.8.1/betterleaks_1.8.1_linux_x64.tar.gz"
         }
       }
+    },
+    "cargo-audit": {
+      "product": "cargo-audit",
+      "repository": "https://github.com/rustsec/rustsec",
+      "license": "Apache-2.0 OR MIT",
+      "version": "0.22.2",
+      "immutable_pin": "v0.22.2",
+      "integrity": "SHA-256 over official release archives",
+      "assets": {
+        "darwin-arm64": {
+          "archive": "cargo-audit-aarch64-apple-darwin-v0.22.2.tgz",
+          "binary_path": "cargo-audit-aarch64-apple-darwin-v0.22.2/cargo-audit",
+          "sha256": "ec7ca4263769593df4d909be85b94a6b79efa2897be5d2bb8ebd516e823175af",
+          "url": "https://github.com/rustsec/rustsec/releases/download/cargo-audit%2Fv0.22.2/cargo-audit-aarch64-apple-darwin-v0.22.2.tgz"
+        },
+        "linux-amd64": {
+          "archive": "cargo-audit-x86_64-unknown-linux-gnu-v0.22.2.tgz",
+          "binary_path": "cargo-audit-x86_64-unknown-linux-gnu-v0.22.2/cargo-audit",
+          "sha256": "ab28a1bdb54db4d5d8ad5981cf1f959410370b3d28250dbd35f6a44248620e39",
+          "url": "https://github.com/rustsec/rustsec/releases/download/cargo-audit%2Fv0.22.2/cargo-audit-x86_64-unknown-linux-gnu-v0.22.2.tgz"
+        }
+      }
     }
   }
 }

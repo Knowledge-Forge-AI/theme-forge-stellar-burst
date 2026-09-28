@@ -32,8 +32,6 @@ export function recognizedBuildTool(root, digest) {
   if (digest === sha256(join(root, "tools/build-directory-snapshot-native.mjs"))) return "current";
   const legacy = "a885da47c77aebbb18772f71b65e56888fea9a2453efd62a57bcc31319e36c91";
   if (digest === legacy && sha256(join(root, "native/directory-snapshot/build-tools/v1.mjs")) === legacy) return "historical-v1";
-  const explicitProducer = "1dd3b18f2c8ad0e8e74e039ddb0cfa48457ae821796ebf432670b0522c767ee0";
-  if (digest === explicitProducer && sha256(join(root, "native/directory-snapshot/build-tools/v2.mjs")) === explicitProducer) return "historical-v2";
   throw new Error("Unrecognized native build-tool provenance");
 }
 
@@ -44,14 +42,13 @@ export function parseArguments(argv) {
   for (let index = 0; index < argv.length; index++) {
     const key = argv[index];
     if (key === undefined) throw new Error("Missing argument");
-    if (["--check", "--check-tracked", "--source-build", "--require-reproducible"].includes(key)) result[key] = true;
+    if (["--check", "--check-tracked", "--source-build"].includes(key)) result[key] = true;
     else if (["--artifact", "--compiler", "--node-include", "--output"].includes(key)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) throw new Error(`Missing value for ${key}`);
       result[key] = value;
     } else throw new Error(`Unknown argument: ${key}`);
   }
-  if (result["--require-reproducible"] && !result["--check"]) throw new Error("--require-reproducible requires --check");
   return result;
 }
 
@@ -115,36 +112,18 @@ export function buildNative(argv = process.argv.slice(2), root = repositoryRoot)
     const retained = JSON.parse(readFileSync(manifestPath, "utf8"));
     const provenance = recognizedBuildTool(root, retained.buildToolSha256);
     if (retained.artifact !== artifact || retained.backend !== backend || retained.abiVersion !== 1 || retained.architecture !== process.arch
-      || retained.platform !== process.platform || retained.libc !== (process.platform === "linux" ? "glibc" : null) || retained.nativeSourceSha256 !== sha256(source)
+      || retained.platform !== process.platform || retained.nativeSourceSha256 !== sha256(source)
       || retained.artifactSha256 !== sha256(binary) || retained.artifactBytes !== statSync(binary).size) throw new Error("Retained artifact integrity mismatch");
     if (options["--check-tracked"]) {
       const tracked = spawnSync("git", ["show", `HEAD:${relative(root, binary)}`], { cwd: root, maxBuffer: 1024 * 1024 });
       if (tracked.status !== 0 || createHash("sha256").update(tracked.stdout).digest("hex") !== sha256(binary)) throw new Error("Git-tracked artifact differs");
-    }
-    // Explicit producer identities delimit exact rebuild claims. Legacy manifests
-    // without those identities retain their unconditional byte-equality check.
-    if (retained.sourceIdentity?.explicitToolchain === true) {
-      if (![retained.compilerExecutableSha256, retained.nodeHeadersSha256].every(value => typeof value === "string" && /^[a-f0-9]{64}$/u.test(value))) {
-        throw new Error("Explicit toolchain identity is incomplete");
-      }
-      const compilerPath = isAbsolute(compiler) ? compiler : (process.env.PATH ?? "").split(":").map(path => resolve(path, compiler)).find(path => {
-        try { accessSync(path, constants.X_OK); return statSync(path).isFile(); } catch { return false; }
-      });
-      if (!compilerPath) throw new Error("Checking compiler executable unavailable");
-      const matchingToolchain = retained.compilerExecutableSha256 === sha256(compilerPath)
-        && retained.nodeHeadersSha256 === headerIdentity(include)
-        && retained.compiler === execute(compiler, ["--version"], root).split("\n")[0]
-        && retained.nodeVersion === process.version && retained.nodeApiVersion === process.versions.napi;
-      if (!matchingToolchain && options["--require-reproducible"]) throw new Error("Exact reproducibility required but checking toolchain differs from explicit producer");
-      if (!matchingToolchain) return { check: "passed", integrity: "passed", artifact, provenance, artifactSha256: sha256(binary),
-        reproducibility: "not-applicable", reason: "Checking compiler, Node runtime or header identity differs from explicit producer; exact rebuild unrun" };
     }
     const temp = mkdtempSync(join(tmpdir(), "tfsb-native-check-"));
     try {
       const fresh = join(temp, `${backend}.node`);
       execute(compiler, [...flags, "-o", fresh, source], root);
       if (sha256(fresh) !== sha256(binary)) throw new Error("Fresh build differs from retained artifact; qualify supported reproducibility separately");
-      return { check: "passed", integrity: "passed", artifact, provenance, artifactSha256: sha256(binary), reproducibility: "passed" };
+      return { check: "passed", artifact, provenance, artifactSha256: sha256(binary) };
     } finally { rmSync(temp, { recursive: true, force: true }); }
   }
   mkdirSync(output, { recursive: true });

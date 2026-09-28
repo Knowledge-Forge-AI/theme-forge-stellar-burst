@@ -24,7 +24,7 @@ TFSB brings software-engineering discipline to vector asset pipelines:
 
 ## Install
 
-Install globally via npm:
+Install the published 0.5.0 release globally via npm (the 0.6.0 source candidate is not published):
 
 ```sh
 npm install --global @knowledge-forge-ai/theme-forge-stellar-burst@0.5.0
@@ -52,8 +52,8 @@ of social-platform image compatibility.
 
 ## Release family and history
 
-The 0.5.0 source candidate follows the published
-[0.4.0 release](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/releases/tag/v0.4.0).
+The 0.6.0 source candidate follows the published
+[0.5.0 release](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/releases/tag/v0.5.0).
 Historical [0.4.0 release notes](docs/releases/v0.4.0.md) retain their original scope.
 Related products are independently versioned:
 [Stellar Loom](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-loom),
@@ -342,3 +342,19 @@ and [v0.2 lifecycle examples](docs/examples/v0.2/README.md).
 This project is licensed under the **GNU Affero General Public License v3.0 or later** ([AGPL-3.0-or-later](LICENSE)). See [NOTICE](NOTICE) for copyright and attribution details.
 
 Commercial licenses are available for proprietary integration, closed-source distribution, OEM bundling, or organizations requiring custom licensing terms. Commercial licensing does not restrict permitted AGPL use. Inquiries: `lair001@gmail.com`. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
+
+
+## Next-release multi-platform native build
+
+The next Burst candidate adds GNU/glibc Linux ARM64 (`linux-arm64-gnu`) alongside
+Darwin ARM64, GNU Linux x64 and preserved Darwin x64. npm retains one package
+carrying authentic native prebuilds; normal installation selects the local target
+without downloading project binaries at first launch. This is candidate support,
+not a revision of published v0.5.0 platform claims.
+
+Build from public source with Nix using `nix build .#theme-forge-stellar-burst`.
+See `nix/README.md` in the public composition, or
+`nix/burst/README.md` in the private development tree. Native source build accepts
+explicit compiler, Node headers and output paths and requires no Git checkout.
+The CLI and `tfsb-studio-service` remain package entry points on each target.
+Native-runtime, filesystem and final release qualification remain separate gates.

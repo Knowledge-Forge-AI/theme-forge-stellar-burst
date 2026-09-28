@@ -7,10 +7,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolvePlatformArtifact } from "./qualify-installed-burst.mjs";
+
 const repositoryRoot = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const scratch = mkdtempSync(join(tmpdir(), "tfsb-packed-native-"));
 const packageName = "@knowledge-forge-ai/theme-forge-stellar-burst";
-const artifact = process.platform === "linux" ? "linux-x64-gnu" : `darwin-${process.arch}`;
+const artifact = resolvePlatformArtifact(process.platform, process.arch);
 
 /** @param {string} executable @param {string[]} args @param {string} cwd @returns {string} */
 function command(executable, args, cwd) {
