@@ -20,24 +20,25 @@ export function stripAnsi(text) {
 
 /**
  * @typedef {Object} Finding
+ * @property {any} [evidence]
  * @property {string} product
  * @property {string} tool
  * @property {string} ruleId
  * @property {string} path
  * @property {string} severity
  * @property {string} message
- * @property {number} [line]
- * @property {number} [column]
- * @property {string} [enclosingSymbol]
- * @property {string} [snippetHash]
- * @property {string} [partialFingerprint]
- * @property {number} [occurrenceIndex]
- * @property {string} [status]
- * @property {string} [rationale]
- * @property {string} [reviewedBy]
- * @property {string} [reviewedAt]
- * @property {string} [tracking]
- * @property {string} [fingerprint]
+ * @property {number | undefined} [line]
+ * @property {number | undefined} [column]
+ * @property {string | undefined} [enclosingSymbol]
+ * @property {string | undefined} [snippetHash]
+ * @property {string | undefined} [partialFingerprint]
+ * @property {number | undefined} [occurrenceIndex]
+ * @property {string | undefined} [status]
+ * @property {string | undefined} [rationale]
+ * @property {string | undefined} [reviewedBy]
+ * @property {string | undefined} [reviewedAt]
+ * @property {string | undefined} [tracking]
+ * @property {string | undefined} [fingerprint]
  */
 
 /**
@@ -90,9 +91,10 @@ export function computeFindingFingerprint(finding) {
 /**
  * Normalizes a finding object and computes its fingerprint, preserving review metadata.
  * @param {Partial<Finding>} raw
- * @returns {Finding}
+ * @returns {Finding & {fingerprint: string}}
  */
 export function normalizeFinding(raw) {
+  /** @type {Finding} */
   const finding = {
     product: String(raw.product || "general"),
     tool: String(raw.tool || "linter"),
@@ -111,9 +113,9 @@ export function normalizeFinding(raw) {
     reviewedBy: raw.reviewedBy ? String(raw.reviewedBy) : undefined,
     reviewedAt: raw.reviewedAt ? String(raw.reviewedAt) : undefined,
     tracking: raw.tracking ? String(raw.tracking) : undefined,
+    evidence: raw.evidence,
   };
-  finding.fingerprint = computeFindingFingerprint(finding);
-  return finding;
+  return { ...finding, fingerprint: computeFindingFingerprint(finding) };
 }
 
 /**
@@ -181,11 +183,11 @@ export function parseSarifFindings(sarif, product, toolOverride) {
 
   /** @type {Array<Partial<Finding>>} */
   const rawFindings = [];
-  for (const run of sarif.runs) {
+  for (const [runIndex, run] of sarif.runs.entries()) {
     const toolName = toolOverride || run.tool?.driver?.name || "sarif";
     if (!Array.isArray(run.results)) continue;
 
-    for (const res of run.results) {
+    for (const [resultIndex, res] of run.results.entries()) {
       const ruleId = res.ruleId || res.ruleIndex?.toString() || "unknown";
       const level = res.level || "warning";
       const severity = level === "error" ? "error" : level === "note" ? "info" : "warning";
@@ -211,6 +213,7 @@ export function parseSarifFindings(sarif, product, toolOverride) {
       }
 
       rawFindings.push({
+        evidence: { runIndex, resultIndex, fingerprints: res.fingerprints ?? {}, partialFingerprints: res.partialFingerprints ?? {}, tool: run.tool, rule: run.tool?.driver?.rules?.find((/** @type {any} */ rule) => rule.id === ruleId) ?? null, automationDetails: run.automationDetails ?? null },
         product,
         tool: toolName,
         ruleId,
@@ -368,7 +371,7 @@ export async function loadBaseline(baselinePath) {
   try {
     parsed = JSON.parse(content);
   } catch (e) {
-    throw new Error(`[RATCHET_FAIL] Malformed baseline JSON in ${baselinePath}: ${e.message}`);
+    throw new Error(`[RATCHET_FAIL] Malformed baseline JSON in ${baselinePath}: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (parsed.schema !== RATCHET_SCHEMA) {
     throw new Error(`[RATCHET_FAIL] Invalid baseline schema: ${parsed.schema}, expected ${RATCHET_SCHEMA}`);
@@ -422,7 +425,8 @@ export async function loadFindingsFromPath(findingsPath, product, tool, isSarif)
   const filesToProcess = [];
   if (st.isDirectory()) {
     const dirEntries = await readdir(targetPath);
-    const matched = dirEntries.filter((name) => name.endsWith(".sarif") || name.endsWith(".json")).sort();
+    const hasSarif = dirEntries.some((name) => name.endsWith(".sarif"));
+    const matched = dirEntries.filter((name) => name.endsWith(".sarif") || (!hasSarif && !isSarif && name.endsWith(".json"))).sort();
     if (matched.length === 0) {
       throw new Error(`[RATCHET_FAIL] No .sarif or .json files found in directory: ${targetPath}`);
     }
@@ -441,7 +445,7 @@ export async function loadFindingsFromPath(findingsPath, product, tool, isSarif)
     try {
       parsed = JSON.parse(content);
     } catch (e) {
-      throw new Error(`[RATCHET_FAIL] Malformed JSON in findings file ${filePath}: ${e.message}`);
+      throw new Error(`[RATCHET_FAIL] Malformed JSON in findings file ${filePath}: ${e instanceof Error ? e.message : String(e)}`);
     }
     const fileIsSarif = Boolean(isSarif || filePath.endsWith(".sarif") || (parsed && Array.isArray(parsed.runs)));
     if (fileIsSarif) {
@@ -473,13 +477,13 @@ export async function main(args) {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === "--baseline" && args[i + 1]) {
-      baselinePath = resolve(args[++i]);
+      baselinePath = resolve(/** @type {string} */ (args[++i]));
     } else if ((arg === "--findings" || arg === "--input") && args[i + 1]) {
-      findingsPath = resolve(args[++i]);
+      findingsPath = resolve(/** @type {string} */ (args[++i]));
     } else if (arg === "--product" && args[i + 1]) {
-      product = args[++i];
+      product = /** @type {string} */ (args[++i]);
     } else if (arg === "--tool" && args[i + 1]) {
-      tool = args[++i];
+      tool = /** @type {string} */ (args[++i]);
     } else if (arg === "--check") {
       mode = "check";
     } else if (arg === "--update") {
@@ -535,7 +539,7 @@ export async function main(args) {
   if (!result.passed) {
     console.error(`\n[RATCHET_VIOLATION] Found ${result.newCount} new or unreviewed finding(s) not in baseline:`);
     for (const f of result.newFindings) {
-      console.error(`  - [${f.product}] ${f.tool} (${f.ruleId}) in ${f.path}:${f.line ?? 0} - ${f.message} (fp: ${f.fingerprint.slice(0, 12)})`);
+      console.error(`  - [${f.product}] ${f.tool} (${f.ruleId}) in ${f.path}:${f.line ?? 0} - ${f.message} (fp: ${computeFindingFingerprint(f).slice(0, 12)})`);
     }
     process.exitCode = 1;
   } else {

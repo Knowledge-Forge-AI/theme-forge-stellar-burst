@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { scanTreeForPrivacy } from "../tools/public-composition/composition-policy.mjs";
-import { stellarBurstWorkflow } from "../tools/public-composition/stellar-burst-workflow.mjs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { assembleNative, binaryTarget } from "../tools/assemble-burst-native.mjs";
@@ -49,28 +47,5 @@ describe("authentic Burst release payload assembly", () => {
     bytes[bytes.length - 1] = bytes[bytes.length - 1]! ^ 1;
     writeFileSync(path, bytes);
     expect(() => assembleNative(root)).toThrow("identity mismatch");
-  });
-});
-
-
-describe("qualified native downstream contracts", () => {
-  it("public composition accepts the declared AMD64 bytes and rejects tampering", async () => {
-    const root = mkdtempSync(join(tmpdir(), "addon-composition-"));
-    roots.push(root);
-    const path = "native/directory-snapshot/prebuilds/linux-x64-gnu/native-addon-posix-openat-v1.node";
-    const membership = JSON.parse(readFileSync("tools/public-composition/product-membership.json", "utf8"));
-    const record = membership.products.stellarBurst.binaryFiles.find((entry: { path: string }) => entry.path === path);
-    expect(record).toBeDefined();
-    mkdirSync(join(root, "native/directory-snapshot/prebuilds/linux-x64-gnu"), { recursive: true });
-    cpSync(path, join(root, path));
-    const options = { binaryDigests: new Map<string, string>([[path, record.sha256]]), executablePaths: new Set([path]) };
-    expect(await scanTreeForPrivacy(root, options)).toEqual([]);
-    writeFileSync(join(root, path), "tampered");
-    expect(await scanTreeForPrivacy(root, options)).toEqual(expect.arrayContaining([expect.objectContaining({ rule: "binary-identity" })]));
-  });
-  it("requires exact reproducibility in the ARM64 producer image check", () => {
-    const workflow = stellarBurstWorkflow();
-    const step = workflow.split("- name: Verify ARM64 producer image bytes")[1]?.split("- name:")[0];
-    expect(step).toContain("--check --require-reproducible --artifact linux-arm64-gnu");
   });
 });

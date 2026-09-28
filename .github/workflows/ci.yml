@@ -119,6 +119,7 @@ jobs:
       - name: Bind root artifact bytes
         run: node tools/ci/artifact-manifest.mjs --root .test-reports/root-package --output .test-reports/root-package/artifact-manifest.json --job root-package --require receipt.json --require pack-manifest.json --require test-report.json --require audit-result.json --require root-package.tgz
       - name: Upload root package artifacts
+        if: always()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: root-package-artifacts
@@ -497,9 +498,34 @@ jobs:
           category: "/language:${{ matrix.language }}"
           output: "${{ env.TFSB_CODEQL_REPORT_DIR }}"
           upload: false
+      - name: Retain raw codeql report independently
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: security-codeql-${{ matrix.language }}-raw-${{ github.run_attempt }}
+          path: ${{ env.TFSB_CODEQL_REPORT_DIR }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Normalize complete codeql findings
+        if: ${{ !cancelled() }}
+        env:
+          TFSB_REPORT_CATEGORY: ${{ matrix.language }}
+        run: node tools/ci/security-report.mjs "$TFSB_CODEQL_REPORT_DIR" .test-reports/security-normalized/codeql.json stellar-burst codeql "$TFSB_REPORT_CATEGORY"
+      - name: Retain normalized codeql findings independently
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: security-codeql-${{ matrix.language }}-normalized-${{ github.run_attempt }}
+          path: .test-reports/security-normalized/codeql.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
       - name: Evaluate finding ratchet on CodeQL findings
+        if: ${{ !cancelled() }}
         run: node tools/ci/finding-ratchet.mjs --baseline tools/ci/finding-ratchet-baseline.json --input "$TFSB_CODEQL_REPORT_DIR" --product stellar-burst --tool codeql --check
       - name: Upload CodeQL SARIF report
+        if: always()
         uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: "${{ env.TFSB_CODEQL_REPORT_DIR }}"
@@ -604,7 +630,31 @@ jobs:
         run: |
           TFSB_RELEASE_DIR="$RUNNER_TEMP/tfsb-stellar-release"
           node tools/ci/run-syft-grype.mjs --target "$TFSB_RELEASE_DIR" --output-dir .test-reports/supply-chain --name root-package             --component-input "build-input:core-lock=$RUNNER_TEMP/tfsb-stellar-inventory/core"             --component-input "build-input:raster-lock=$RUNNER_TEMP/tfsb-stellar-inventory/raster"             --component-catalogers core-lock=javascript-lock-cataloger,javascript-package-cataloger             --component-catalogers raster-lock=javascript-lock-cataloger,javascript-package-cataloger
+      - name: Retain raw grype report independently
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: security-grype-supply-chain-raw-${{ github.run_attempt }}
+          path: .test-reports/supply-chain/root-package.grype.sarif
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Normalize complete grype findings
+        if: ${{ !cancelled() }}
+        env:
+          TFSB_REPORT_CATEGORY: supply-chain
+        run: node tools/ci/security-report.mjs .test-reports/supply-chain/root-package.grype.sarif .test-reports/security-normalized/grype.json stellar-burst grype "$TFSB_REPORT_CATEGORY"
+      - name: Retain normalized grype findings independently
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: security-grype-supply-chain-normalized-${{ github.run_attempt }}
+          path: .test-reports/security-normalized/grype.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
       - name: Evaluate finding ratchet on Grype findings
+        if: ${{ !cancelled() }}
         run: node tools/ci/finding-ratchet.mjs --baseline tools/ci/finding-ratchet-baseline.json --input .test-reports/supply-chain/root-package.grype.sarif --product stellar-burst --tool grype --check
       - name: Run selected workflow and secret checks
         run: node tools/ci/run-workflow-checks.mjs --root . --output-dir .test-reports/workflow-checks
@@ -617,6 +667,7 @@ jobs:
         run: |
           node tools/ci/artifact-manifest.mjs --root .test-reports/supply-chain --output .test-reports/supply-chain/artifact-manifest.json --job supply-chain --require receipt.json --require root-package.syft.json --require root-package.spdx.json --require root-package.cdx.json --require root-package.grype.json --require root-package.grype.sarif --require root-package.receipt.json --require workflow-checks/actionlint.result.json --require workflow-checks/zizmor.result.json --require workflow-checks/betterleaks.result.json --require workflow-checks/workflow-checks.receipt.json --require workflow-checks/betterleaks.report.json
       - name: Upload supply chain artifacts
+        if: always()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: supply-chain-artifacts
