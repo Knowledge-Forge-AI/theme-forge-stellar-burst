@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { TERMINAL_NOVA_ASSETS, sha256Hex } from "../tools/qualify-terminal-nova-brand.mjs";
 import {
+  QUALIFIED_RASTER_TUPLES,
   executeTerminalNovaCoreMatrix,
   derivePlanMethods,
 } from "../tools/tfsb48-r2/core-matrix.mjs";
+import { descriptor as rasterDescriptor } from "../packages/tfsb-raster-resvg/index.js";
 import {
   canonicalJson,
   validateCoreMatrixResult,
@@ -129,12 +131,25 @@ describe("TFSB48-R2 Terminal Nova core matrix", () => {
       expect(rows.get(id)?.status, id).toBe("pass");
     }
     expect(rows.has("offline-npm-packed-consumer")).toBe(false);
+    const rasterQualified = QUALIFIED_RASTER_TUPLES.includes(rasterDescriptor.platformClaim) && process.versions.node.split(".")[0] === "22";
+    expect(rows.get("raster-export-fixed-capability"), "raster-export-fixed-capability").toMatchObject(rasterQualified
+      ? { status: "pass", reasonCode: "FIXED_RASTER_CAPABILITY_EXECUTED" }
+      : { status: "unavailable", reasonCode: "RASTER_RUNTIME_TUPLE_UNQUALIFIED", observations: { platformClaim: rasterDescriptor.platformClaim } });
     for (const id of ["source-drift", "stale-plan", "destination-drift", "stale-lock", "successful-apply", "failed-apply-exact-rollback"]) {
       expect(rows.get(id)?.artifacts.length, `${id} state artifacts`).toBeGreaterThanOrEqual(3);
     }
     expect(JSON.stringify(result)).not.toMatch(/\/(?:Users|private|var|tmp|Volumes)\//u);
     expect(canonicalJson(result)).toBe(canonicalJson(validateCoreMatrixResult(result)));
   }, 120_000);
+
+  it("keeps the raster tuple classification equal to the companion and qualification tool", async () => {
+    const closedList = /\["darwin-arm64"(?:, "[a-z0-9-]+")*\]/gu;
+    for (const source of ["packages/tfsb-raster-resvg/index.js", "tools/qualify-raster-resvg.mjs"]) {
+      const lists = (await readFile(resolve(source), "utf8")).match(closedList) ?? [];
+      expect(lists.length, source).toBeGreaterThan(0);
+      for (const list of lists) expect(JSON.parse(list), source).toEqual([...QUALIFIED_RASTER_TUPLES]);
+    }
+  });
 
   it("derives owner facts and removes generic literal limits from completion", async () => {
     const corpus = await fixtureCorpus();
