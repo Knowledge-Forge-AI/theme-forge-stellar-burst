@@ -3,11 +3,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { descriptor as rasterDescriptor } from "../packages/tfsb-raster-resvg/index.js";
 import { loadProductModules } from "../tools/qualify-terminal-nova-brand.mjs";
+import { QUALIFIED_RASTER_TUPLES } from "../tools/tfsb48-r2/core-matrix.mjs";
 import { CANONICAL_ASSETS, sha256Hex } from "../tools/tfsb48-r1/canonical-corpus.mjs";
 import { evaluateSvgParity } from "../tools/tfsb48-r1/svg-parity.mjs";
 
 const scratchRoots: string[] = [];
+// Pixel parity renders through the private raster companion, which refuses
+// runtimes outside its closed qualification; those tuples assert the refusal.
+const rasterQualified = QUALIFIED_RASTER_TUPLES.includes(rasterDescriptor.platformClaim) && process.versions.node.split(".")[0] === "22";
 
 afterEach(async () => {
   for (const root of scratchRoots.splice(0)) await rm(root, { recursive: true, force: true });
@@ -53,7 +58,19 @@ function provenance(sourceDigest: string, destinationDigest: string) {
 }
 
 describe("TFSB48-R2 SVG parity and migration receipts", () => {
-  it("reports exact canonical bytes as explicit P parity and binds caller provenance", async () => {
+  it.skipIf(rasterQualified)("refuses pixel parity on a runtime tuple the raster companion does not qualify", async () => {
+    const root = await mkdtemp(join(tmpdir(), "tfsb48-r2-svg-unqualified-"));
+    scratchRoots.push(root);
+    const sourceDigest = sha256Hex(Buffer.from(SOURCE_SVG));
+    await writeFixture(root, TEST_DESTINATION, SOURCE_SVG);
+    await expect(evaluateSvgParity(root, join(root, "run"), {
+      assets: [TEST_ASSET],
+      artifactPrefix: "tfsb48-r2-unqualified",
+      corpusProvenance: provenance(sourceDigest, sourceDigest),
+    })).rejects.toThrow("Current runtime tuple is not qualified.");
+  });
+
+  it.runIf(rasterQualified)("reports exact canonical bytes as explicit P parity and binds caller provenance", async () => {
     const root = await mkdtemp(join(tmpdir(), "tfsb48-r2-svg-exact-"));
     scratchRoots.push(root);
     const product = await loadProductModules();
@@ -95,7 +112,7 @@ describe("TFSB48-R2 SVG parity and migration receipts", () => {
     expect(await readFile(result.summary.migrationPatchPath, "utf8")).toBe("");
   });
 
-  it("creates deterministic migration and rollback artifacts only for a byte-different destination", async () => {
+  it.runIf(rasterQualified)("creates deterministic migration and rollback artifacts only for a byte-different destination", async () => {
     const root = await mkdtemp(join(tmpdir(), "tfsb48-r2-svg-migration-"));
     scratchRoots.push(root);
     const sourceDigest = sha256Hex(Buffer.from(SOURCE_SVG));

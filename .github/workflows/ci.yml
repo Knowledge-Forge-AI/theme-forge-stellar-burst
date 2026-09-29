@@ -659,9 +659,10 @@ jobs:
       - name: Run selected workflow and secret checks
         run: node tools/ci/run-workflow-checks.mjs --root . --output-dir .test-reports/workflow-checks
       - name: Retain workflow and secret check outputs
+        if: ${{ !cancelled() }}
         run: |
           rm -rf .test-reports/supply-chain/workflow-checks
-          mv .test-reports/workflow-checks .test-reports/supply-chain/workflow-checks
+          if [ -d .test-reports/workflow-checks ]; then mv .test-reports/workflow-checks .test-reports/supply-chain/workflow-checks; fi
           find .test-reports/supply-chain -type f -size 0 -delete
       - name: Bind supply-chain artifacts
         run: |
