@@ -5,7 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - Unreleased candidate
+## [0.6.1]
+
+### Security
+- Consumer install/sync ownership checks, rollback and cleanup, raster export inspection and `preview.status` now read files through a descriptor opened on the checked inode (identity re-verified after the read) instead of re-reading the pathname (CodeQL `js/file-system-race`). A later pathname removal is still not atomic with that proof; the journal and recovery-residue contract continues to bound it.
+- Raster capability reports `EXPORT_CAPABILITY_UNAVAILABLE` on runtime tuples the raster companion does not qualify (for example `linux-arm64`) instead of advertising a renderer that refuses at render time.
+
+### Packaging
+- The package is built from the public source projection. It no longer contains the 14 `dist/design-director/*` files that 0.6.0 carried: they were compiled output of an unreleased, private Design Director module, were never reachable from the package `exports` or `bin`, and have no corresponding public source.
+
+### Documentation
+- The README no longer names 0.5.0 as the installation target or describes published versions as unpublished candidates.
+
+## [0.6.0] - 2026-09-28
+
+- Assign the TFSB71 source-build and distribution changes to a new release version.
+- Release artifacts and installation qualification remain pending.
+
+Version 0.5.0 is published on npm. The following entry retains its historical
+pre-publication wording.
+
+## [0.5.0] - 2026-09-14
 
 - Add the versioned Vector Scene compiler, deterministic SVG output, safe SVG
   import, accessibility metadata and bounded service protocol.
@@ -18,7 +38,7 @@ The following 0.4.0 entry is retained release history. Version 0.4.0 was publish
 as `v0.4.0`; its original pre-publication heading and optional-companion description
 are preserved below and do not advertise raster distribution in 0.5.0.
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-09-06
 
 Theme Forge Stellar Burst v0.4 adds collection-aware directory workflows and
 the brand-systems surface while preserving the existing bounded SVG lifecycle.

@@ -18,6 +18,14 @@ import {
 } from "./core-result-schema.mjs";
 
 const REPO_ROOT = resolve(fileURLToPath(new URL("../../", import.meta.url)));
+
+/**
+ * Runtime tuples the private raster companion qualifies. It must equal the
+ * closed lists in packages/tfsb-raster-resvg/index.js and
+ * tools/qualify-raster-resvg.mjs (drift-guarded by the core matrix test).
+ * Other native tuples classify raster export as unavailable, never pass.
+ */
+export const QUALIFIED_RASTER_TUPLES = Object.freeze(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"]);
 const CORPUS_COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 
 /**
@@ -156,7 +164,7 @@ export async function derivePlanFamiliesRegistry() {
  * the accepted R1 qualification. The package is private workspace content,
  * not an installed npm dependency, so the product's package-name probe alone
  * cannot authenticate this lane.
- * @returns {Promise<({available: true, adapter: {descriptor: {adapterId: string, rendererVersion: string}, renderSvg: Function}} | {available: false, code?: string, reason?: string})>}
+ * @returns {Promise<({available: true, adapter: {descriptor: {adapterId: string, rendererVersion: string, platformClaim: string, nodeMajor: number}, renderSvg: Function}} | {available: false, code?: string, reason?: string})>}
  */
 async function loadFixedRasterCapability() {
   const resvgModule = await import("../../packages/tfsb-raster-resvg/index.js");
@@ -566,7 +574,10 @@ export async function executeTerminalNovaCoreMatrix(options) {
   }));
 
   rows.push(await runPositiveCase("raster-export-fixed-capability", async () => {
-    const capability = await loadFixedRasterCapability();
+    const capability = await loadFixedRasterCapability(), nodeMajor = Number(process.versions.node.split(".")[0]);
+    // An unqualified tuple is now also reported unavailable by the capability itself; classify it by tuple first.
+    const platformClaim = capability.available ? capability.adapter.descriptor.platformClaim : (await import("../../packages/tfsb-raster-resvg/index.js")).descriptor.platformClaim;
+    if (!QUALIFIED_RASTER_TUPLES.includes(platformClaim) || nodeMajor !== 22) return unavailableCase("raster-export-fixed-capability", "RASTER_RUNTIME_TUPLE_UNQUALIFIED", { platformClaim, nodeMajor });
     if (!capability.available) return unavailableCase("raster-export-fixed-capability", "RASTER_CAPABILITY_UNAVAILABLE", { reason: capability.reason });
     const projectRoot = await copyGeneratedProject(realScratch, "raster-export", corpus.assetMap, corpus.readmeBytes);
     const plan = await product.planRasterExport(projectRoot, { profileId: "web-icons", capability });

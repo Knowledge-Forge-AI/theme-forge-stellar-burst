@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   realpathSync,
@@ -176,6 +177,21 @@ describe.runIf(nativeLoad.ok)("native addon primitive boundary", () => {
       native.closeHandle(current);
     }
     expect(() => native.statHandle(stale)).toThrow(expect.objectContaining({ code: "DIRECTORY_USE_AFTER_CLOSE" }));
+  });
+
+  it.skipIf(process.getuid?.() === 0)("rejects unreadable children for a non-root caller", () => {
+    const root = physicalTempRoot();
+    const path = join(root, "denied");
+    mkdirSync(path);
+    const native = addon();
+    const handles = openAbsolute(native, root);
+    chmodSync(path, 0);
+    try {
+      expect(() => native.openChildDirectory(handles.at(-1)!, "denied")).toThrow();
+    } finally {
+      chmodSync(path, 0o700);
+      closeAll(native, handles);
+    }
   });
 
   it("returns only bounded error families and sanitized messages", () => {

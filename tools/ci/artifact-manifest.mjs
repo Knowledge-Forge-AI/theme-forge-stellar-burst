@@ -129,7 +129,8 @@ with tarfile.open(fileobj=io.BytesIO(sys.stdin.buffer.read()),mode="r:gz") as tf
   key="/".join(parts).casefold()
   if key in seen: raise ValueError("duplicate archive member")
   seen.add(key)
-  if member.mode & 0o7000 or (member.isfile() and member.mode & 0o777 not in (0o600,0o644,0o700,0o755)): raise ValueError("unowned archive member mode")
+  kind="file" if member.isfile() else "directory" if member.isdir() else "special"
+  if member.mode & 0o7000 or (member.isfile() and member.mode & 0o777 not in (0o600,0o640,0o644,0o700,0o755)): raise ValueError(f"unaccepted archive member mode {oct(member.mode & 0o7777)} for {kind} {ascii(member.name)[:128]}")
   entries.append((member,dest.joinpath(*parts)))
  # Validate file/directory collisions before any writes.
  files={p for m,p in entries if m.isfile()}

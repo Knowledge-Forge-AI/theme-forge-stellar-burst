@@ -7,16 +7,28 @@ import { fileURLToPath } from "node:url";
 import {
   NATIVE_SNAPSHOT_TUPLES,
   NEBULAR_FUSION_PUBLIC_ARTIFACTS,
+  NEBULAR_FUSION_PUBLIC_FAILURE_DIAGNOSTICS,
   NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS,
+  NEBULAR_FUSION_PUBLIC_SECURITY_REPORTS,
   RASTER_COMPANION_TUPLES,
   REQUIRED_JOBS,
+  SECURITY_REPORT_ROLES,
+  STELLAR_BURST_PUBLIC_ADVISORY_ARTIFACTS,
+  STELLAR_BURST_PUBLIC_ADVISORY_JOBS,
   STELLAR_BURST_PUBLIC_ARTIFACTS,
   STELLAR_BURST_PUBLIC_REQUIRED_JOBS,
+  STELLAR_BURST_PUBLIC_SECURITY_REPORTS,
   STELLAR_LOOM_PUBLIC_ARTIFACTS,
   STELLAR_LOOM_PUBLIC_REQUIRED_JOBS,
+  STELLAR_LOOM_PUBLIC_SECURITY_REPORTS,
   STUDIO_ACL_TEN_COMMANDS,
   TERMINAL_NOVA_PUBLIC_ARTIFACTS,
   TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS,
+  TERMINAL_NOVA_PUBLIC_SECURITY_REPORTS,
+  SOLAR_SAIL_PUBLIC_ARTIFACTS,
+  SOLAR_SAIL_PUBLIC_REQUIRED_JOBS,
+  SOLAR_SAIL_PUBLIC_SECURITY_REPORTS,
+  securityReportArtifactName,
 } from "./ci-contract.mjs";
 
 /** @param {Uint8Array | Buffer | string} bytes */
@@ -45,7 +57,7 @@ function matchesRequirement(path, requirement) {
   return path === requirement;
 }
 
-const PUBLIC_PRODUCTS = new Set(["stellar", "stellar-burst", "nebular", "nebular-fusion", "loom", "stellar-loom", "nova", "terminal-nova"]);
+const PUBLIC_PRODUCTS = new Set(["stellar", "stellar-burst", "nebular", "nebular-fusion", "loom", "stellar-loom", "nova", "terminal-nova", "solar", "solar-sail"]);
 const PUBLIC_EVENT_FIELDS = Object.freeze(["name", "action", "number", "repository", "baseRef", "baseSha", "headRef", "headSha"]);
 const PUBLIC_REPOSITORY_FIELDS = Object.freeze(["repository", "baseRepository", "headRepository"]);
 const PUBLIC_PULL_REQUEST_ACTIONS = new Set(["opened", "synchronize", "reopened"]);
@@ -89,17 +101,167 @@ const privateArtifacts = Object.freeze([
  */
 export const EXPECTED_DOWNLOADED_ARTIFACTS = privateArtifacts;
 
+const stellarBurstContract = Object.freeze({
+  canonicalProduct: "stellar-burst",
+  requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS,
+  advisoryJobs: STELLAR_BURST_PUBLIC_ADVISORY_JOBS,
+  artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS,
+  advisoryArtifacts: STELLAR_BURST_PUBLIC_ADVISORY_ARTIFACTS,
+  securityReports: STELLAR_BURST_PUBLIC_SECURITY_REPORTS,
+});
+const nebularFusionContract = Object.freeze({ canonicalProduct: "nebular-fusion", requiredJobs: NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS, artifacts: NEBULAR_FUSION_PUBLIC_ARTIFACTS, securityReports: NEBULAR_FUSION_PUBLIC_SECURITY_REPORTS, failureDiagnostics: NEBULAR_FUSION_PUBLIC_FAILURE_DIAGNOSTICS });
+const stellarLoomContract = Object.freeze({ canonicalProduct: "stellar-loom", requiredJobs: STELLAR_LOOM_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_LOOM_PUBLIC_ARTIFACTS, securityReports: STELLAR_LOOM_PUBLIC_SECURITY_REPORTS });
+const terminalNovaContract = Object.freeze({ canonicalProduct: "terminal-nova", requiredJobs: TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS, artifacts: TERMINAL_NOVA_PUBLIC_ARTIFACTS, securityReports: TERMINAL_NOVA_PUBLIC_SECURITY_REPORTS });
+const solarSailContract = Object.freeze({ canonicalProduct: "solar-sail", requiredJobs: SOLAR_SAIL_PUBLIC_REQUIRED_JOBS, artifacts: SOLAR_SAIL_PUBLIC_ARTIFACTS, securityReports: SOLAR_SAIL_PUBLIC_SECURITY_REPORTS });
+
 const PRODUCT_CONTRACTS = Object.freeze({
   private: Object.freeze({ requiredJobs: REQUIRED_JOBS, artifacts: privateArtifacts }),
-  stellar: Object.freeze({ requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS }),
-  "stellar-burst": Object.freeze({ requiredJobs: STELLAR_BURST_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_BURST_PUBLIC_ARTIFACTS }),
-  nebular: Object.freeze({ requiredJobs: NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS, artifacts: NEBULAR_FUSION_PUBLIC_ARTIFACTS }),
-  "nebular-fusion": Object.freeze({ requiredJobs: NEBULAR_FUSION_PUBLIC_REQUIRED_JOBS, artifacts: NEBULAR_FUSION_PUBLIC_ARTIFACTS }),
-  loom: Object.freeze({ requiredJobs: STELLAR_LOOM_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_LOOM_PUBLIC_ARTIFACTS }),
-  "stellar-loom": Object.freeze({ requiredJobs: STELLAR_LOOM_PUBLIC_REQUIRED_JOBS, artifacts: STELLAR_LOOM_PUBLIC_ARTIFACTS }),
-  nova: Object.freeze({ requiredJobs: TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS, artifacts: TERMINAL_NOVA_PUBLIC_ARTIFACTS }),
-  "terminal-nova": Object.freeze({ requiredJobs: TERMINAL_NOVA_PUBLIC_REQUIRED_JOBS, artifacts: TERMINAL_NOVA_PUBLIC_ARTIFACTS }),
+  stellar: stellarBurstContract,
+  "stellar-burst": stellarBurstContract,
+  nebular: nebularFusionContract,
+  "nebular-fusion": nebularFusionContract,
+  loom: stellarLoomContract,
+  "stellar-loom": stellarLoomContract,
+  nova: terminalNovaContract,
+  "terminal-nova": terminalNovaContract,
+  solar: solarSailContract,
+  "solar-sail": solarSailContract,
 });
+
+const SECURITY_ARTIFACT_PATTERN = /^security-((?:codeql|grype)-.+)-(raw|normalized)-(\d+)$/u;
+const ATTEMPT_PATTERN = /^[1-9][0-9]*$/u;
+const SHA256_HEX = /^[0-9a-f]{64}$/u;
+
+/**
+ * Classify a downloaded directory that is neither a release artifact set nor
+ * a current-attempt supplemental report.  Prior attempts of a recognized
+ * population are returned as superseded (retained, never validated or used);
+ * every other case keeps its own specific error.
+ *
+ * @param {string} directory @param {string} product @param {readonly any[]} securityReports
+ * @param {readonly any[]} failureDiagnostics @param {string | null} attempt
+ * @returns {{superseded: {category: string, role: string | null, attempt: string}} | {error: string}}
+ */
+function classifyUnrecognizedDirectory(directory, product, securityReports, failureDiagnostics, attempt) {
+  const security = SECURITY_ARTIFACT_PATTERN.exec(directory);
+  if (security) {
+    const category = security[1] ?? "", role = security[2] ?? "", suffix = security[3] ?? "";
+    if (!securityReports.some((report) => report.category === category)) return { error: `Supplemental security report category '${category}' is not permitted for product '${product}': '${directory}'.` };
+    if (attempt && ATTEMPT_PATTERN.test(suffix) && Number(suffix) < Number(attempt)) return { superseded: { category, role, attempt: suffix } };
+    return { error: `Supplemental security report attempt mismatch: '${directory}' is attempt '${suffix}', expected '${attempt ?? "unknown"}'.` };
+  }
+  const diagnostic = /^(.+)-(\d+)$/u.exec(directory);
+  const diagnosticName = diagnostic?.[1] ?? "", diagnosticAttempt = diagnostic?.[2] ?? "";
+  if (diagnostic && failureDiagnostics.some((item) => item.name === diagnosticName)) {
+    if (attempt && ATTEMPT_PATTERN.test(diagnosticAttempt) && Number(diagnosticAttempt) < Number(attempt)) return { superseded: { category: diagnosticName, role: null, attempt: diagnosticAttempt } };
+    return { error: `Failure diagnostic attempt mismatch: '${directory}' is attempt '${diagnosticAttempt}', expected '${attempt ?? "unknown"}'.` };
+  }
+  return { error: `Unexpected artifact set: '${directory}'.` };
+}
+
+/** @param {string} directory @returns {Promise<Array<{path: string, size: number, sha256: string, bytes: Buffer}>>} */
+async function inventory(directory) {
+  const files = [];
+  for (const file of (await regularFiles(directory)).sort()) {
+    const bytes = await readFile(file);
+    files.push({ path: portable(relative(directory, file)), size: bytes.byteLength, sha256: sha256Hex(bytes), bytes });
+  }
+  return files;
+}
+
+/** @param {Array<{path: string, size: number, sha256: string}>} files */
+function listing(files) { return files.map(({ path, size, sha256 }) => ({ path, size, sha256 })); }
+
+/**
+ * Validate one recognized raw/normalized security report pair produced by
+ * security-report.mjs in this exact run.  The normalized binding must name
+ * this repository, product, run, attempt, PR head and this run's merge
+ * candidate (the commit every job of the run checked out); its declared raw
+ * report bytes must equal the downloaded raw artifact exactly.
+ *
+ * @param {{artifactsDir: string, report: any, attempt: string, product: string, expectedReceipt: any, expectedRunId: string | null, referenceHeadSha: string | null, jobResult: string}} input
+ * @param {string[]} errors
+ */
+async function validateSecurityReportPair(input, errors) {
+  const { report, attempt } = input;
+  const rawSet = securityReportArtifactName(report.category, "raw", attempt), normalizedSet = securityReportArtifactName(report.category, "normalized", attempt);
+  const before = errors.length;
+  const record = /** @type {any} */ ({ category: report.category, tool: report.tool, job: report.job, matrix: report.matrix, attempt, jobResult: input.jobResult, state: "validated", raw: { artifactSet: rawSet, files: [] }, normalized: { artifactSet: normalizedSet } });
+  /** @param {string} message */
+  const fail = (message) => errors.push(`Supplemental security report '${report.category}' attempt ${attempt}: ${message}`);
+  /** @type {Awaited<ReturnType<typeof inventory>> | null} */ let rawFiles = null, normalizedFiles = null;
+  try { rawFiles = await inventory(join(input.artifactsDir, rawSet)); } catch (error) { fail(`raw artifact '${rawSet}' is unreadable: ${error instanceof Error ? error.message : String(error)}`); }
+  try { normalizedFiles = await inventory(join(input.artifactsDir, normalizedSet)); } catch (error) { fail(`normalized artifact '${normalizedSet}' is unreadable: ${error instanceof Error ? error.message : String(error)}`); }
+  record.raw.files = listing(rawFiles ?? []);
+  /** @type {any} */ let normalized = null;
+  if (!normalizedFiles) { /* already reported as unreadable */ }
+  else if (normalizedFiles.length !== 1 || normalizedFiles[0]?.path !== report.normalizedFile) fail(`normalized artifact '${normalizedSet}' must contain exactly '${report.normalizedFile}'.`);
+  else {
+    const file = /** @type {NonNullable<(typeof normalizedFiles)[number]>} */ (normalizedFiles[0]);
+    record.normalized = { artifactSet: normalizedSet, path: file.path, size: file.size, sha256: file.sha256 };
+    try { normalized = JSON.parse(file.bytes.toString("utf8")); } catch { fail(`normalized report '${normalizedSet}/${file.path}' is malformed JSON.`); }
+  }
+  if (normalized !== null && !isRecord(normalized)) { fail(`normalized report '${normalizedSet}' is not a JSON object.`); normalized = null; }
+  if (normalized) {
+    record.normalized.status = normalized.status;
+    if (normalized.schema !== "tfsb.security-report-v1") fail(`normalized report schema '${normalized.schema ?? "missing"}' is not tfsb.security-report-v1.`);
+    if (normalized.status !== "complete") fail(`normalized report status is '${normalized.status ?? "missing"}', expected 'complete'.`);
+    const binding = isRecord(normalized.binding) ? normalized.binding : {};
+    const merge = input.expectedReceipt?.identities?.mergeCandidate;
+    record.binding = { repository: binding.repository ?? null, product: binding.product ?? null, tool: binding.tool ?? null, category: binding.category ?? null, runId: binding.runId ?? null, attempt: binding.attempt ?? null, pr: binding.pr ?? null, prHead: binding.prHead ?? null, analyzedCommit: binding.analyzedCommit ?? null, workflowSha256: binding.workflowSha256 ?? null, linkage: "same-run-merge-candidate" };
+    record.sourceReceipt = { artifactSet: EXPECTED_PUBLIC_RECEIPT_SPECIFICATION.directory, job: EXPECTED_PUBLIC_RECEIPT_SPECIFICATION.job, runId: input.expectedReceipt?.workflow?.runId ?? null, runAttempt: input.expectedReceipt?.workflow?.runAttempt ?? null, mergeCandidate: { commit: merge?.commit ?? null, tree: merge?.tree ?? null } };
+    /** @type {Array<[string, unknown, unknown]>} */
+    const expectations = [
+      ["tool", binding.tool, report.tool],
+      ["category", binding.category, report.reportCategory],
+      ["product", binding.product, input.product],
+      ["repository", binding.repository, input.expectedReceipt?.event?.repository],
+      ["runId", binding.runId, input.expectedRunId ?? input.expectedReceipt?.workflow?.runId],
+      ["attempt", binding.attempt, attempt],
+      ["pr", binding.pr, input.expectedReceipt?.event?.number],
+      ["prHead", binding.prHead, input.referenceHeadSha],
+    ];
+    for (const [field, actual, expected] of expectations) {
+      if (expected === undefined || expected === null || actual !== expected) fail(`binding ${field} '${String(actual ?? "missing")}' does not match '${String(expected ?? "missing")}'.`);
+    }
+    if (!isSha(binding.analyzedCommit) || !isSha(merge?.commit) || binding.analyzedCommit !== merge.commit) {
+      fail(`analyzed commit '${String(binding.analyzedCommit ?? "missing")}' is not this run's merge candidate '${String(merge?.commit ?? "missing")}'.`);
+    }
+    if (typeof binding.workflowSha256 !== "string" || !SHA256_HEX.test(binding.workflowSha256)) fail("binding workflowSha256 is missing or invalid.");
+    const declared = Array.isArray(normalized.reports) ? normalized.reports : null;
+    if (!declared || declared.length === 0) fail("normalized report declares no raw reports.");
+    else {
+      /** @type {Map<string, any>} */ const byName = new Map();
+      for (const item of declared) {
+        const name = isRecord(item) && typeof item.path === "string" ? item.path.split("/").pop() : undefined;
+        if (!name || !Number.isSafeInteger(item.bytes) || typeof item.sha256 !== "string" || !SHA256_HEX.test(item.sha256)) { fail("normalized report has a malformed raw report entry."); continue; }
+        if (byName.has(name)) fail(`normalized report declares raw report '${name}' twice.`);
+        byName.set(name, item);
+      }
+      const rawNames = (rawFiles ?? []).map((file) => file.path).sort(), declaredNames = [...byName.keys()].sort();
+      if (rawFiles && JSON.stringify(rawNames) !== JSON.stringify(declaredNames)) fail(`raw artifact '${rawSet}' inventory [${rawNames.join(", ")}] differs from the normalized declaration [${declaredNames.join(", ")}].`);
+      for (const file of rawFiles ?? []) {
+        const item = byName.get(file.path);
+        if (item && (item.bytes !== file.size || item.sha256 !== file.sha256)) fail(`raw digest mismatch for '${rawSet}/${file.path}': declared ${item.bytes} bytes ${item.sha256}, downloaded ${file.size} bytes ${file.sha256}.`);
+        if (!file.path.endsWith(".sarif")) { fail(`raw report '${rawSet}/${file.path}' is not SARIF.`); continue; }
+        /** @type {any} */ let sarif;
+        try { sarif = JSON.parse(file.bytes.toString("utf8")); } catch { fail(`raw report '${rawSet}/${file.path}' is malformed JSON.`); continue; }
+        if (!isRecord(sarif) || !Array.isArray(sarif.runs) || sarif.runs.length === 0 || sarif.runs.some((/** @type {any} */ run) => !Array.isArray(run?.results))) fail(`raw report '${rawSet}/${file.path}' is malformed or incomplete SARIF.`);
+      }
+    }
+    const findings = Array.isArray(normalized.findings) ? normalized.findings : null;
+    if (!findings) fail("normalized report findings are missing.");
+    else {
+      // Findings bind to the declared raw digests; a raw-byte change is reported once, as a raw digest mismatch.
+      const declaredDigests = new Set((Array.isArray(normalized.reports) ? normalized.reports : []).map((/** @type {any} */ item) => item?.sha256));
+      if (findings.some((/** @type {any} */ finding) => !isRecord(finding) || typeof finding.fingerprint !== "string" || !SHA256_HEX.test(finding.fingerprint))) fail("normalized report has a finding without a complete fingerprint.");
+      if (findings.some((/** @type {any} */ finding) => finding?.evidence?.rawSha256 !== undefined && !declaredDigests.has(finding.evidence.rawSha256))) fail("normalized report has a finding bound to a raw report outside this pair.");
+      record.normalized.findingCount = findings.length;
+    }
+  }
+  if (errors.length !== before) record.state = "invalid";
+  return record;
+}
 
 /** @param {unknown} value @returns {Record<string, string>} */
 function normalizeNeeds(value) {
@@ -271,8 +433,12 @@ export async function aggregateEvidence(options) {
   if (!contract) throw new Error(`Unknown evidence aggregation product '${product}'.`);
   /** @type {readonly ArtifactSpecification[]} */
   const specifications = contract.artifacts;
+  /** @type {readonly ArtifactSpecification[]} */
+  const advisorySpecifications = contract.advisoryArtifacts ?? [];
   /** @type {readonly string[]} */
   const requiredJobs = contract.requiredJobs;
+  /** @type {readonly string[]} */
+  const advisoryJobs = contract.advisoryJobs ?? [];
   await mkdir(outDir, { recursive: true });
   /** @type {string[]} */ const errors = [];
   /** @type {Array<{path: string, size: number, sha256: string}>} */ const artifactsObserved = [];
@@ -317,18 +483,72 @@ export async function aggregateEvidence(options) {
   }
 
   const expectedDirectories = specifications.map((item) => item.directory).sort();
+  const advisoryDirectories = advisorySpecifications.map((item) => item.directory);
+  const allowedDirectories = new Set([...expectedDirectories, ...advisoryDirectories]);
+  /** @type {readonly any[]} */ const securityReports = contract.securityReports ?? [];
+  /** @type {readonly any[]} */ const failureDiagnostics = contract.failureDiagnostics ?? [];
+  // Supplemental populations are named per run attempt; the attempt comes from this run, never from the directories.
+  const receiptAttempt = typeof expectedReceipt?.workflow?.runAttempt === "string" ? expectedReceipt.workflow.runAttempt : null;
+  const reportAttempt = [expectedRunAttempt, receiptAttempt].find((value) => typeof value === "string" && ATTEMPT_PATTERN.test(value)) ?? null;
+  if ((securityReports.length || failureDiagnostics.length) && !reportAttempt) errors.push("Supplemental report populations require a valid workflow run attempt.");
+  /** @type {Map<string, any>} */ const securityDirectories = new Map();
+  /** @type {Map<string, any>} */ const diagnosticDirectories = new Map();
+  if (reportAttempt) {
+    for (const report of securityReports) for (const role of SECURITY_REPORT_ROLES) securityDirectories.set(securityReportArtifactName(report.category, /** @type {"raw" | "normalized"} */ (role), reportAttempt), report);
+    for (const diagnostic of failureDiagnostics) diagnosticDirectories.set(`${diagnostic.name}-${reportAttempt}`, diagnostic);
+  }
+  /** @type {any[]} */ const supersededReports = [];
   for (const directory of expectedDirectories) if (!entries.includes(directory)) errors.push(`Missing required artifact set: '${directory}'.`);
-  for (const directory of entries) if (!expectedDirectories.includes(directory)) errors.push(`Unexpected artifact set: '${directory}'.`);
+  for (const directory of entries) {
+    if (allowedDirectories.has(directory) || securityDirectories.has(directory) || diagnosticDirectories.has(directory)) continue;
+    const classified = classifyUnrecognizedDirectory(directory, contract.canonicalProduct ?? product, securityReports, failureDiagnostics, reportAttempt);
+    if ("error" in classified) { errors.push(classified.error); continue; }
+    try { supersededReports.push({ artifactSet: directory, ...classified.superseded, state: "superseded-attempt", files: listing(await inventory(join(artifactsDir, directory))) }); }
+    catch (error) { errors.push(`Superseded report set '${directory}' is unreadable: ${error instanceof Error ? error.message : String(error)}`); }
+  }
 
   const expectedNeeds = requiredJobs.filter((job) => job !== "evidence-aggregate");
+  const allowedNeeds = new Set([...expectedNeeds, ...advisoryJobs]);
   const needsResults = normalizeNeeds(options.needsResults ?? {});
   for (const job of expectedNeeds) {
     const result = needsResults[job];
     if (result !== "success") errors.push(`Dependency '${job}' result is '${result ?? "missing"}', expected 'success'.`);
   }
-  for (const job of Object.keys(needsResults)) if (!expectedNeeds.includes(job) && job !== "evidence-aggregate") errors.push(`Unexpected dependency result '${job}'.`);
+  for (const job of Object.keys(needsResults)) if (!allowedNeeds.has(job) && job !== "evidence-aggregate") errors.push(`Unexpected dependency result '${job}'.`);
 
-  for (const specification of specifications) {
+  // Recognized reports are retained and bound; they never stand in for a job result.
+  /** @type {any[]} */ const supplementalSecurityReports = [];
+  if (reportAttempt) {
+    for (const report of securityReports) {
+      const jobResult = needsResults[report.job] ?? "missing";
+      const present = SECURITY_REPORT_ROLES.filter((role) => entries.includes(securityReportArtifactName(report.category, /** @type {"raw" | "normalized"} */ (role), reportAttempt)));
+      if (present.length === 0) {
+        // A job that did not succeed already fails the gate above; a successful job must have retained its reports.
+        if (jobResult === "success") errors.push(`Supplemental security report '${report.category}' attempt ${reportAttempt} is missing although job '${report.job}' succeeded.`);
+        supplementalSecurityReports.push({ category: report.category, tool: report.tool, job: report.job, matrix: report.matrix, attempt: reportAttempt, jobResult, state: "absent" });
+        continue;
+      }
+      supplementalSecurityReports.push(await validateSecurityReportPair({ artifactsDir, report, attempt: reportAttempt, product: contract.canonicalProduct, expectedReceipt, expectedRunId, referenceHeadSha, jobResult }, errors));
+    }
+  }
+  /** @type {any[]} */ const failureDiagnosticsObserved = [];
+  for (const [directory, diagnostic] of diagnosticDirectories) {
+    if (!entries.includes(directory)) continue;
+    const jobResult = needsResults[diagnostic.job] ?? "missing";
+    if (jobResult === "success") errors.push(`Failure diagnostic '${directory}' is present although job '${diagnostic.job}' succeeded.`);
+    /** @type {Awaited<ReturnType<typeof inventory>>} */ let files = [];
+    try { files = await inventory(join(artifactsDir, directory)); }
+    catch (error) { errors.push(`Failure diagnostic '${directory}' is unreadable: ${error instanceof Error ? error.message : String(error)}`); }
+    for (const file of files) {
+      if (!diagnostic.files.includes(file.path)) { errors.push(`Failure diagnostic '${directory}' contains undeclared file '${file.path}'.`); continue; }
+      try { JSON.parse(file.bytes.toString("utf8")); } catch { errors.push(`Failure diagnostic '${directory}/${file.path}' is malformed JSON.`); }
+    }
+    failureDiagnosticsObserved.push({ artifactSet: directory, job: diagnostic.job, jobResult, files: listing(files) });
+  }
+
+  const activeAdvisories = advisorySpecifications.filter((item) => entries.includes(item.directory));
+  const specificationsToValidate = [...specifications, ...activeAdvisories];
+  for (const specification of specificationsToValidate) {
     if (!entries.includes(specification.directory)) continue;
     const directory = join(artifactsDir, specification.directory);
     let files = [];
@@ -407,12 +627,15 @@ export async function aggregateEvidence(options) {
     dependencyResults: needsResults,
     jobs: jobsObserved,
     requiredJobsTotal: requiredJobs.length,
-    artifactSetsTotal: specifications.length,
+    artifactSetsTotal: specificationsToValidate.length,
     nativeTuples: NATIVE_SNAPSHOT_TUPLES,
     rasterTuples: RASTER_COMPANION_TUPLES,
     aclCommandsCount: STUDIO_ACL_TEN_COMMANDS.length,
     artifactsTotal: artifactsObserved.length,
     artifacts: artifactsObserved.sort((left, right) => left.path.localeCompare(right.path)),
+    supplementalSecurityReports,
+    supersededReports,
+    failureDiagnostics: failureDiagnosticsObserved,
     errors,
   };
   const manifestPath = join(outDir, "ci-evidence-manifest.json");

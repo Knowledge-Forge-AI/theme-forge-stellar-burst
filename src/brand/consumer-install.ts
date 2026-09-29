@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { lstat, link, mkdir, open, readFile, rename, rm, rmdir, type FileHandle } from "node:fs/promises";
+import { lstat, link, mkdir, open, rename, rm, rmdir, type FileHandle } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
 
 import { DiagnosticError, fail } from "../diagnostics.js";
 import { computeRawSha256 } from "../digests.js";
-import { durableWrite, identity, readExactBuffer, sameFileIdentity, syncPath } from "../filesystem.js";
+import { durableWrite, identity, readExactBuffer, readRegularFileSnapshot, sameFileIdentity, syncPath, type PresentFileSnapshot } from "../filesystem.js";
 import { executeCanonicalTransaction, findRecoveryResidue, withCanonicalMutationLock } from "../transaction.js";
 import { verifyLoadedProjectSnapshot } from "../project.js";
 import { encodeCanonicalJson } from "./brand-digests.js";
@@ -107,22 +107,34 @@ async function verifyOne(internals: ConsumerPlanInternals, index: number): Promi
   const bytes = await readExactBuffer(output.handle, opened.size, 0, { operation: "install", domain: "transaction" }, 8 * 1_048_576);
   if (sha(bytes) !== output.snapshot.digest) fail({ operation: "install", domain: "transaction" }, "CONSUMER_DESTINATION_CHANGED", `Destination '${output.destination}' bytes changed.`, output.destination);
 }
-async function verifyStage(item: Staged): Promise<void> {
+/** The stage is still our staged inode with our bytes, read through the retained stage descriptor rather than by pathname. */
+async function stageStillOwned(item: Staged): Promise<boolean> {
   const stat = await lstat(item.stage).catch(() => undefined), opened = await item.stageHandle.stat().catch(() => undefined);
-  if (stat === undefined || opened === undefined || stat.isSymbolicLink() || !stat.isFile() || !opened.isFile() || !sameFileIdentity(identity(stat), item.stageIdentity) || !sameFileIdentity(identity(opened), item.stageIdentity) || stat.size !== item.bytes.byteLength || sha(await readExactBuffer(item.stageHandle, opened.size, 0, { operation: "install", domain: "transaction" }, 8 * 1_048_576)) !== sha(item.bytes)) fail({ operation: "install", domain: "transaction" }, "CONSUMER_STAGE_CHANGED", "Consumer staged output changed before promotion.", item.relativeDestination);
+  if (stat === undefined || opened === undefined || stat.isSymbolicLink() || !stat.isFile() || !opened.isFile() || !sameFileIdentity(identity(stat), item.stageIdentity) || !sameFileIdentity(identity(opened), item.stageIdentity) || stat.size !== item.bytes.byteLength) return false;
+  const bytes = await readExactBuffer(item.stageHandle, opened.size, 0, { operation: "install", domain: "transaction" }, 8 * 1_048_576).catch(() => undefined);
+  return bytes !== undefined && sha(bytes) === sha(item.bytes);
+}
+async function verifyStage(item: Staged): Promise<void> {
+  if (!(await stageStillOwned(item))) fail({ operation: "install", domain: "transaction" }, "CONSUMER_STAGE_CHANGED", "Consumer staged output changed before promotion.", item.relativeDestination);
 }
 async function removeOwnedStage(item: Staged): Promise<boolean> {
   const stat = await lstat(item.stage).catch(() => undefined);
   if (stat === undefined) return true;
-  if (stat.isSymbolicLink() || !stat.isFile() || !sameFileIdentity(identity(stat), item.stageIdentity) || sha(await readFile(item.stage)) !== sha(item.bytes)) return false;
+  if (!(await stageStillOwned(item))) return false;
+  // The descriptor read proves which bytes were ours; this pathname removal itself is not atomic with that proof.
   await rm(item.stage); return true;
+}
+/** Descriptor-verified read of one regular non-symlink file; undefined when it is absent, unsafe, or changes while read. */
+async function readOwnedFile(path: string): Promise<{ readonly bytes: Uint8Array; readonly snapshot: PresentFileSnapshot } | undefined> {
+  try { return await readRegularFileSnapshot(path, { operation: "install", domain: "transaction" }, "CONSUMER_OWNED_FILE_UNSAFE", "Consumer-owned file is not one stable regular file."); }
+  catch (error) { if (error instanceof DiagnosticError) return undefined; throw error; }
 }
 async function verifyTransactionState(internals: ConsumerPlanInternals, staged: readonly Staged[]): Promise<void> {
   for (let index = 0; index < internals.outputs.length; index++) {
     const output = internals.outputs[index]!, item = staged.find((entry) => entry.relativeDestination === output.destination);
     if (item?.promoted === true) {
-      const stat = await lstat(item.destination).catch(() => undefined);
-      if (stat === undefined || stat.isSymbolicLink() || !stat.isFile() || sha(await readFile(item.destination)) !== sha(item.bytes)) fail({ operation: "install", domain: "transaction" }, "CONSUMER_DESTINATION_CHANGED", `Promoted destination '${item.relativeDestination}' changed.`, item.relativeDestination);
+      const promoted = await readOwnedFile(item.destination);
+      if (promoted === undefined || sha(promoted.bytes) !== sha(item.bytes)) fail({ operation: "install", domain: "transaction" }, "CONSUMER_DESTINATION_CHANGED", `Promoted destination '${item.relativeDestination}' changed.`, item.relativeDestination);
     } else await verifyOne(internals, index);
   }
   for (const item of staged) {
@@ -133,14 +145,15 @@ async function verifyTransactionState(internals: ConsumerPlanInternals, staged: 
 async function removeOwned(path: string, expectedDigest: string): Promise<boolean> {
   const stat = await lstat(path).catch(() => undefined); if (stat === undefined) return true;
   if (stat.isSymbolicLink() || !stat.isFile()) return false;
-  const bytes = await readFile(path); if (sha(bytes) !== expectedDigest) return false;
+  const owned = await readOwnedFile(path); if (owned === undefined || sha(owned.bytes) !== expectedDigest) return false;
+  // Pathname removal after a descriptor-verified read: ownership is bounded by the journal/recovery contract, not atomicity.
   await rm(path); return true;
 }
 async function verifyBackup(item: Staged): Promise<void> {
   if (!item.backedUp || item.expectedIdentity === undefined || item.expectedDigest === undefined) return;
-  const stat = await lstat(item.backup).catch(() => undefined);
-  const current = stat === undefined ? undefined : identity(stat);
-  if (stat === undefined || current === undefined || stat.isSymbolicLink() || !stat.isFile() || current.dev !== item.expectedIdentity.dev || current.ino !== item.expectedIdentity.ino || current.mode !== item.expectedIdentity.mode || current.size !== item.expectedIdentity.size || sha(await readFile(item.backup)) !== item.expectedDigest) fail({ operation: "install", domain: "transaction" }, "CONSUMER_BACKUP_CHANGED", "Consumer transaction backup changed.", item.relativeDestination);
+  const backup = await readOwnedFile(item.backup);
+  const current = backup?.snapshot;
+  if (backup === undefined || current === undefined || current.dev !== item.expectedIdentity.dev || current.ino !== item.expectedIdentity.ino || current.mode !== item.expectedIdentity.mode || current.size !== item.expectedIdentity.size || sha(backup.bytes) !== item.expectedDigest) fail({ operation: "install", domain: "transaction" }, "CONSUMER_BACKUP_CHANGED", "Consumer transaction backup changed.", item.relativeDestination);
 }
 function result(plan: ConsumerPlanSummary, writtenOutputs: number): ConsumerInstallResult { return Object.freeze({ operation: plan.operation, packages: plan.packages, profiles: plan.profiles, destinations: Object.freeze(plan.outputs.map((entry) => entry.destination)), omittedOptional: plan.omittedOptional, lockDigest: plan.lockDigest, writtenOutputs }); }
 

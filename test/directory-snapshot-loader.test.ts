@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const roots: string[] = [];
-const artifact = process.platform === "linux" ? "linux-x64-gnu" : `darwin-${process.arch}`;
+const artifact = process.platform === "linux" ? `linux-${process.arch}-gnu` : `darwin-${process.arch}`;
 const builtAddon = join(repositoryRoot, "native/directory-snapshot/prebuilds", artifact, "native-addon-posix-openat-v1.node");
 
 function fixture(mode: "present" | "missing" | "corrupt"): string {

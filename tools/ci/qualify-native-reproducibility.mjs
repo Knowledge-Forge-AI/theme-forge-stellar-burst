@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { recognizedBuildTool } from "../build-directory-snapshot-native.mjs";
 // @ts-check
 
 import { appendFileSync, accessSync, constants, cpSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync, openSync, fstatSync, closeSync } from "node:fs";
@@ -14,7 +15,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 const sourcePath = join(repositoryRoot, "native/directory-snapshot/src/directory_snapshot.c");
 const buildToolPath = join(repositoryRoot, "tools/build-directory-snapshot-native.mjs");
 const loaderPath = join(repositoryRoot, "dist/directory-snapshot-native.js");
-const knownArtifacts = new Set(["darwin-arm64", "darwin-x64", "linux-x64-gnu"]);
+const knownArtifacts = new Set(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "linux-arm64-gnu"]);
 const nativeBackend = "native-addon-posix-openat-v1";
 const nativeAbi = 1;
 const nativeTests = [
@@ -279,10 +280,10 @@ function gitBlobSha256(path) {
 /** @returns {string} */
 function hostArtifact() {
   if (process.platform === "darwin" && (process.arch === "arm64" || process.arch === "x64")) return `darwin-${process.arch}`;
-  if (process.platform === "linux" && process.arch === "x64") {
+  if (process.platform === "linux" && ["x64", "arm64"].includes(process.arch)) {
     /** @type {{header?: {glibcVersionRuntime?: unknown}} | undefined} */
     const report = process.report?.getReport();
-    if (typeof report?.header?.glibcVersionRuntime === "string" && report.header.glibcVersionRuntime.length > 0) return "linux-x64-gnu";
+    if (typeof report?.header?.glibcVersionRuntime === "string" && report.header.glibcVersionRuntime.length > 0) return `linux-${process.arch}-gnu`;
   }
   return "none";
 }
@@ -429,41 +430,10 @@ async function extractSelectedSource(context, destination) {
  * @param {{sourcePath: string, buildToolPath: string, sourceRelative: string, buildToolRelative: string, archiveSha256: string, archiveBytes: number, stripComponents: number}} context
  */
 function buildSelectedNative(packageRoot, outputDirectory, artifact, buildEnvironment, includePath, flags, context) {
-  const compiler = buildEnvironment.CC || "cc";
-  const sourceInPackage = join(packageRoot, context.sourceRelative);
-  const outputPath = join(outputDirectory, "native-addon-posix-openat-v1.node");
-  const args = [...flags.common, `-I${includePath}`, ...flags.platform, "-o", outputPath, sourceInPackage];
-  run(compiler, args, { cwd: packageRoot, env: buildEnvironment });
-  const compilerVersion = firstLine(run(compiler, ["--version"], { cwd: packageRoot, env: buildEnvironment }).stdout);
-  const outputInfo = statSync(outputPath);
-  const manifest = {
-    schemaVersion: 1,
-    backend: nativeBackend,
-    abiVersion: nativeAbi,
-    artifact,
-    platform: process.platform,
-    architecture: process.arch,
-    libc: process.platform === "linux" ? "glibc" : null,
-    nodeVersion: process.version,
-    nodeApiVersion: process.versions.napi,
-    compiler: compilerVersion,
-    command: flags.normalized,
-    qualificationSourceCommit: null,
-    qualificationSourceTree: null,
-    qualificationSourceArchive: { sha256: context.archiveSha256, bytes: context.archiveBytes, stripComponents: context.stripComponents },
-    nativeSource: context.sourceRelative,
-    nativeSourceSha256: sha256(context.sourcePath),
-    buildTool: context.buildToolRelative,
-    buildToolSha256: sha256(context.buildToolPath),
-    artifactSha256: sha256(outputPath),
-    artifactBytes: outputInfo.size,
-  };
-  writeFileSync(join(outputDirectory, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o644 });
-  // Re-run the selected build tool's committed check against the generated
-  // bytes. Check mode performs no Git lookup, so the selected archive remains
-  // the sole source authority while the existing compiler contract is retained.
-  run(process.execPath, [context.buildToolPath, "--check", "--artifact", artifact, "--output", outputDirectory], { cwd: packageRoot, env: buildEnvironment });
-  return manifest;
+  const compiler = run("which", [buildEnvironment.CC || "cc"], { cwd: packageRoot, env: buildEnvironment }).stdout.trim();
+  run(process.execPath, [context.buildToolPath, "--source-build", "--artifact", artifact,
+    "--compiler", compiler, "--node-include", includePath, "--output", outputDirectory], { cwd: packageRoot, env: buildEnvironment });
+  return JSON.parse(readFileSync(join(outputDirectory, "manifest.json"), "utf8"));
 }
 
 /** @param {string} packageRoot @param {NodeJS.ProcessEnv} buildEnvironment */
@@ -610,7 +580,10 @@ async function main() {
     if (retainedManifest.nativeSource !== nativeSourceRelative) fatal("manifest native source path");
     if (retainedManifest.buildTool !== buildToolRelative) fatal("manifest build tool path");
     if (retainedManifest.nativeSourceSha256 !== sourceSha256) fatal("native source digest");
-    if (retainedManifest.buildToolSha256 !== buildToolSha256) fatal("native build-script digest");
+    try {
+      const producer = recognizedBuildTool(selectedContext?.root ?? sourceRoot, retainedManifest.buildToolSha256);
+      if (producer !== "current") historical(`retained artifact produced by ${producer} builder; current-source rebuild qualified separately`);
+    } catch { fatal("native build-script digest"); }
     if (retainedManifest.artifactSha256 !== retainedArtifactSha256) fatal("manifest artifact digest");
     if (retainedManifest.artifactBytes !== retainedArtifactStat.size) fatal("manifest artifact size");
     if (trackedArtifactSha256 !== null && trackedArtifactSha256 !== retainedArtifactSha256) fatal("tracked artifact digest");

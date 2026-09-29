@@ -369,15 +369,28 @@ describe("brand bundling race conditions and TOCTOU defense", () => {
   it("fails closed and does NOT fall back to absent when source has permission error", async () => {
     const root = await setupProject();
     const outputPath = "bundle.zip";
-    const { chmod } = await import("node:fs/promises");
+    const { chmod, rm, writeFile } = await import("node:fs/promises");
 
-    // Make GUIDANCE.md unreadable (mode 000)
-    await chmod(join(root, "GUIDANCE.md"), 0o000);
+    const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
+    if (isRoot) {
+      // Container root execution bypasses mode 000; simulate non-ENOENT filesystem error via non-directory traversal
+      await rm(join(root, "GUIDANCE.md"));
+      await writeFile(join(root, "inaccessible"), "file");
+      const pkgToml = (await readFile(join(root, ".tfsb", "brand-package.toml"), "utf8")).replace(
+        'source = "GUIDANCE.md"',
+        'source = "inaccessible/GUIDANCE.md"',
+      );
+      await writeFile(join(root, ".tfsb", "brand-package.toml"), pkgToml);
+    } else {
+      await chmod(join(root, "GUIDANCE.md"), 0o000);
+    }
 
     try {
       await expect(planBrandBundle({ root, output: outputPath })).rejects.toThrow();
     } finally {
-      await chmod(join(root, "GUIDANCE.md"), 0o644).catch(() => undefined);
+      if (!isRoot) {
+        await chmod(join(root, "GUIDANCE.md"), 0o644).catch(() => undefined);
+      }
     }
   });
 

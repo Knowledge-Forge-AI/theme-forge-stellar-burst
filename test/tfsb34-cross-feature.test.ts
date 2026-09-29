@@ -339,7 +339,7 @@ describe("TFSB34 combined v0.3 qualification", () => {
     ]));
     expect(nativePaths.length).toBeGreaterThanOrEqual(2);
     for (const path of nativePaths) {
-      expect(path).toMatch(/^native\/directory-snapshot\/prebuilds\/(?:darwin-arm64|darwin-x64|linux-x64-gnu)\/(?:manifest\.json|native-addon-posix-openat-v1\.node)$/);
+      expect(path).toMatch(/^native\/directory-snapshot\/prebuilds\/(?:darwin-arm64|darwin-x64|linux-x64-gnu|linux-arm64-gnu)\/(?:manifest\.json|native-addon-posix-openat-v1\.node)$/);
     }
     for (const path of paths) {
       const allowed = path.startsWith("dist/") || path.startsWith("protocol/tfsb-studio-v1/") || path.startsWith("protocol/tfsb-design-evidence-v1/") || path.startsWith("protocol/tfsb-scene-v1/") || nativePaths.includes(path) || path === "NOTICE" || path === "COMMERCIAL-LICENSE.md" || path === "LICENSE" || path === "package.json" || path === "README.md";
