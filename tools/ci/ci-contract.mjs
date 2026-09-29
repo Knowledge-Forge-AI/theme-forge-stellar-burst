@@ -176,6 +176,52 @@ export const SOLAR_SAIL_PUBLIC_ARTIFACTS = Object.freeze([
 ]);
 
 /**
+ * Supplemental security reports that the public CodeQL and supply-chain jobs
+ * retain independently of their pass/fail outcome.  Every category uploads
+ * `security-<category>-raw-<attempt>` (the scanner SARIF) and
+ * `security-<category>-normalized-<attempt>` (the tfsb.security-report-v1 JSON
+ * written by security-report.mjs, bound to that SARIF).  These are recognized
+ * report populations, not release inputs: they never satisfy a required job.
+ *
+ * @param {"codeql" | "grype"} tool
+ * @param {string} reportCategory binding.category written by security-report.mjs
+ * @param {string} job
+ * @param {Record<string, string>} matrix
+ */
+const securityReport = (tool, reportCategory, job, matrix) => Object.freeze({
+  category: `${tool}-${reportCategory}`,
+  tool,
+  reportCategory,
+  job,
+  matrix: Object.freeze({ ...matrix }),
+  normalizedFile: `${tool}.json`,
+});
+/** @param {string} language */
+const codeqlReport = (language) => securityReport("codeql", language, "codeql", { language });
+const grypeSupplyChainReport = securityReport("grype", "supply-chain", "supply-chain", {});
+
+export const SECURITY_REPORT_ROLES = Object.freeze(["raw", "normalized"]);
+
+/** @param {string} category @param {"raw" | "normalized"} role @param {string | number} attempt */
+export const securityReportArtifactName = (category, role, attempt) => `security-${category}-${role}-${attempt}`;
+
+export const STELLAR_BURST_PUBLIC_SECURITY_REPORTS = Object.freeze([codeqlReport("javascript-typescript"), codeqlReport("actions"), codeqlReport("c-cpp"), grypeSupplyChainReport]);
+export const NEBULAR_FUSION_PUBLIC_SECURITY_REPORTS = Object.freeze([codeqlReport("javascript-typescript"), codeqlReport("actions"), codeqlReport("rust"), grypeSupplyChainReport]);
+export const STELLAR_LOOM_PUBLIC_SECURITY_REPORTS = Object.freeze([codeqlReport("javascript-typescript"), codeqlReport("actions"), grypeSupplyChainReport]);
+export const SOLAR_SAIL_PUBLIC_SECURITY_REPORTS = Object.freeze([codeqlReport("javascript-typescript"), codeqlReport("actions"), grypeSupplyChainReport]);
+/** @type {readonly ReturnType<typeof securityReport>[]} */
+export const TERMINAL_NOVA_PUBLIC_SECURITY_REPORTS = Object.freeze([]);
+
+/**
+ * Diagnostics a job uploads only when it fails (`if: failure()`), named
+ * `<name>-<attempt>`.  They are recognized only while the owning job did not
+ * succeed; they never satisfy a required job.
+ */
+export const NEBULAR_FUSION_PUBLIC_FAILURE_DIAGNOSTICS = Object.freeze([
+  Object.freeze({ name: "frontend-audit", job: "frontend", files: Object.freeze(["npm-audit.json", "npm-audit-loom-preview.json"]) }),
+]);
+
+/**
  * Frozen generic-Studio ten-command ACL.
  */
 export const STUDIO_ACL_TEN_COMMANDS = Object.freeze([
