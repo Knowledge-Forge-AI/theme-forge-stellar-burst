@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - Unreleased patch candidate
+
+### Security
+- Consumer install/sync ownership checks, rollback and cleanup, raster export inspection and `preview.status` now read files through a descriptor opened on the checked inode (identity re-verified after the read) instead of re-reading the pathname (CodeQL `js/file-system-race`). A later pathname removal is still not atomic with that proof; the journal and recovery-residue contract continues to bound it.
+- Raster capability reports `EXPORT_CAPABILITY_UNAVAILABLE` on runtime tuples the raster companion does not qualify (for example `linux-arm64`) instead of advertising a renderer that refuses at render time.
+
 ## [0.6.0] - Unreleased source candidate
 
 - Assign the TFSB71 source-build and distribution changes to a new release version.

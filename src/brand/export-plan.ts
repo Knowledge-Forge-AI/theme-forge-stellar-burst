@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { link, lstat, mkdir, open, readFile, rename, rm, rmdir, writeFile, type FileHandle } from "node:fs/promises";
+import { link, lstat, mkdir, open, rename, rm, rmdir, writeFile, type FileHandle } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
 
 import { DiagnosticError, fail } from "../diagnostics.js";
 import { computeAssetSemanticDigest, computeSha256, type Sha256Digest } from "../digests.js";
 import { loadCanonicalProject, verifyLoadedProjectSnapshot, type LoadedProject } from "../project.js";
 import { compareUtf8 } from "../provenance.js";
+import { readRegularFileSnapshot } from "../filesystem.js";
 import { resolveConfinedPath } from "../root.js";
 import { inspectPlanRetention, type PlanRetentionInspection } from "../plan-retention.js";
 import { findRecoveryResidue, withCanonicalMutationLock } from "../transaction.js";
@@ -110,8 +111,10 @@ async function fileState(path: string, maxBytes: number): Promise<FileState> {
   const stat = await lstat(path).catch((error: NodeJS.ErrnoException) => error.code === "ENOENT" ? undefined : Promise.reject(error));
   if (stat === undefined) return Object.freeze({ kind: "absent" });
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maxBytes) return Object.freeze({ kind: "other", dev: stat.dev, ino: stat.ino });
-  const bytes = new Uint8Array(await readFile(path)); const after = await lstat(path);
-  if (!after.isFile() || after.isSymbolicLink() || after.dev !== stat.dev || after.ino !== stat.ino || after.size !== stat.size) fail(ctx(), "RASTER_OUTPUT_CHANGED", "Raster output changed during inspection.", path);
+  // Descriptor-verified read: the bytes come from the inode that was checked, and the path must still name it afterwards.
+  const { bytes: read, snapshot } = await readRegularFileSnapshot(path, ctx(), "RASTER_OUTPUT_CHANGED", "Raster output changed during inspection.", maxBytes);
+  if (snapshot.dev !== stat.dev || snapshot.ino !== stat.ino || snapshot.size !== stat.size) fail(ctx(), "RASTER_OUTPUT_CHANGED", "Raster output changed during inspection.", path);
+  const bytes = new Uint8Array(read);
   return Object.freeze({ kind: "file", bytes, digest: sha(bytes), dev: stat.dev, ino: stat.ino });
 }
 
