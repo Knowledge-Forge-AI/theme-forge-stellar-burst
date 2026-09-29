@@ -574,10 +574,11 @@ export async function executeTerminalNovaCoreMatrix(options) {
   }));
 
   rows.push(await runPositiveCase("raster-export-fixed-capability", async () => {
-    const capability = await loadFixedRasterCapability();
-    if (!capability.available) return unavailableCase("raster-export-fixed-capability", "RASTER_CAPABILITY_UNAVAILABLE", { reason: capability.reason });
-    const { platformClaim } = capability.adapter.descriptor, nodeMajor = Number(process.versions.node.split(".")[0]);
+    const capability = await loadFixedRasterCapability(), nodeMajor = Number(process.versions.node.split(".")[0]);
+    // An unqualified tuple is now also reported unavailable by the capability itself; classify it by tuple first.
+    const platformClaim = capability.available ? capability.adapter.descriptor.platformClaim : (await import("../../packages/tfsb-raster-resvg/index.js")).descriptor.platformClaim;
     if (!QUALIFIED_RASTER_TUPLES.includes(platformClaim) || nodeMajor !== 22) return unavailableCase("raster-export-fixed-capability", "RASTER_RUNTIME_TUPLE_UNQUALIFIED", { platformClaim, nodeMajor });
+    if (!capability.available) return unavailableCase("raster-export-fixed-capability", "RASTER_CAPABILITY_UNAVAILABLE", { reason: capability.reason });
     const projectRoot = await copyGeneratedProject(realScratch, "raster-export", corpus.assetMap, corpus.readmeBytes);
     const plan = await product.planRasterExport(projectRoot, { profileId: "web-icons", capability });
     const result = await product.executeRasterExportPlan(plan);

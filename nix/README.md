@@ -24,7 +24,7 @@ The same production native builder compiles original C with Nix Node 22 headers
 and the stdenv compiler. It emits the loader manifest; there is no parallel Nix
 manifest producer or project-binary download. Fixup does not strip the addon after
 its digest is recorded. Nix's dependency cache is separately content-addressed:
-`npmDepsHash = sha256-kGc4n0OunFm8NBVPNCVUjxWZNstbiwGLWfBTEGdD874=` was measured
+`npmDepsHash = sha256-8633Xz/V+2Amu2wRydbQJVlkJgNwkgd3d5aR4/mWlac=` was measured
 from the unchanged npm lock using the selected Nixpkgs input.
 
 Both `bin/tfsb` and `bin/tfsb-studio-service` invoke Nix Node and immutable
