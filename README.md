@@ -24,16 +24,18 @@ TFSB brings software-engineering discipline to vector asset pipelines:
 
 ## Install
 
-Install the published 0.5.0 release globally via npm (the 0.6.0 source candidate is not published):
+Install the current registry release globally via npm. The registry's `latest` tag is the installation
+target; `npm view @knowledge-forge-ai/theme-forge-stellar-burst dist-tags.latest` shows which version that is.
+When this 0.6.1 source was prepared, 0.6.0 was the latest published release and 0.6.1 had not yet been published.
 
 ```sh
-npm install --global @knowledge-forge-ai/theme-forge-stellar-burst@0.5.0
+npm install --global @knowledge-forge-ai/theme-forge-stellar-burst
 ```
 
 Or add as a project development dependency:
 
 ```sh
-npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst@0.5.0
+npm install --save-dev @knowledge-forge-ai/theme-forge-stellar-burst
 ```
 
 Node.js `22.0.0` or later is required.
@@ -52,15 +54,14 @@ of social-platform image compatibility.
 
 ## Release family and history
 
-The 0.6.0 source candidate follows the published
+Version 0.6.1 is a patch successor of 0.6.0, which follows the
 [0.5.0 release](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/releases/tag/v0.5.0).
 Historical [0.4.0 release notes](docs/releases/v0.4.0.md) retain their original scope.
 Related products are independently versioned:
 [Stellar Loom](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-loom),
 [Nebular Fusion](https://github.com/Knowledge-Forge-AI/theme-forge-nebular-fusion), and
 [Terminal Nova](https://github.com/Knowledge-Forge-AI/starlight-theme-terminal-nova).
-Each has its own artifacts, notices and qualification. This source candidate
-has not been published.
+Each has its own artifacts, notices and qualification.
 
 ## New-project quick start
 
@@ -344,13 +345,13 @@ This project is licensed under the **GNU Affero General Public License v3.0 or l
 Commercial licenses are available for proprietary integration, closed-source distribution, OEM bundling, or organizations requiring custom licensing terms. Commercial licensing does not restrict permitted AGPL use. Inquiries: `lair001@gmail.com`. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
 
 
-## Next-release multi-platform native build
+## Multi-platform native build
 
-The next Burst candidate adds GNU/glibc Linux ARM64 (`linux-arm64-gnu`) alongside
+Since 0.6.0, Burst carries GNU/glibc Linux ARM64 (`linux-arm64-gnu`) alongside
 Darwin ARM64, GNU Linux x64 and preserved Darwin x64. npm retains one package
 carrying authentic native prebuilds; normal installation selects the local target
-without downloading project binaries at first launch. This is candidate support,
-not a revision of published v0.5.0 platform claims.
+without downloading project binaries at first launch. This does not revise the
+v0.5.0 platform claims.
 
 Build from public source with Nix using `nix build .#theme-forge-stellar-burst`.
 See `nix/README.md` in the public composition, or
