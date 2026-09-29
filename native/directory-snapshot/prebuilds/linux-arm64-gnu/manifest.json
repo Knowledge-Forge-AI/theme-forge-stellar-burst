@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "backend": "native-addon-posix-openat-v1",
+  "abiVersion": 1,
+  "artifact": "linux-arm64-gnu",
+  "platform": "linux",
+  "architecture": "arm64",
+  "libc": "glibc",
+  "nodeVersion": "v22.23.2",
+  "nodeApiVersion": "10",
+  "nodeHeadersSha256": "481d3bb8912d8090634ea215a9199f73a3e5e58e0589a2721408fde3f6879301",
+  "compiler": "cc (Debian 12.2.0-14+deb12u1) 12.2.0",
+  "compilerExecutableSha256": "dc53dbc5a583d03ae8ed6272ca9afc0f58873f9f9b86dd7d448b17fb3f88a8d0",
+  "command": [
+    "cc",
+    "-O2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-std=c11",
+    "-I<NODE_INCLUDE>",
+    "-fPIC",
+    "-shared",
+    "-o",
+    "<linux-arm64-gnu>/native-addon-posix-openat-v1.node",
+    "native/directory-snapshot/src/directory_snapshot.c"
+  ],
+  "sourceIdentity": {
+    "kind": "source-files",
+    "gitRequired": false,
+    "explicitToolchain": true
+  },
+  "nativeSource": "native/directory-snapshot/src/directory_snapshot.c",
+  "nativeSourceSha256": "9c3e526a22e6744206743fac3823522226c922d81787b09928a6b61ebcab4017",
+  "buildTool": "tools/build-directory-snapshot-native.mjs",
+  "buildToolSha256": "1dd3b18f2c8ad0e8e74e039ddb0cfa48457ae821796ebf432670b0522c767ee0",
+  "artifactSha256": "67fb6b85f339a7c2f43ababa20434b26a3ea9bb65b17e70257a03c07810beb79",
+  "artifactBytes": 73336
+}

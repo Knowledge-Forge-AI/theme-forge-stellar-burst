@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { lstat, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { executeCompleteAnalysis } from "../analyze.js";
 import { computeAssetSemanticDigest, computeRawSha256, computeSha256, computeSvgOutputDigest } from "../digests.js";
 import { DiagnosticError } from "../diagnostics.js";
 import { diffAssetModels } from "../diff.js";
+import { readRegularFileSnapshot } from "../filesystem.js";
 import { validateAssetProposal } from "../edit.js";
 import { listProject } from "../list.js";
 import { parsePreviewMarker, PREVIEW_MARKER_FILENAME } from "../preview.js";
@@ -132,7 +133,13 @@ async function listWorkspaceAssets(
   };
 }
 
-async function previewStatus(record: ProjectRecord, project: LoadedProject): Promise<unknown> {
+/** Descriptor-verified preview read; a file that disappears, is swapped, or changes while read is reported as a state, not thrown. */
+async function readPreviewFile(path: string): Promise<Uint8Array | undefined> {
+  try { return (await readRegularFileSnapshot(path, { operation: "check", domain: "filesystem" }, "PREVIEW_FILE_CHANGED", "Preview file is not one stable regular file.")).bytes; }
+  catch (error) { if (error instanceof DiagnosticError || (error as NodeJS.ErrnoException).code === "ENOENT") return undefined; throw error; }
+}
+
+export async function previewStatus(record: ProjectRecord, project: LoadedProject): Promise<unknown> {
   const outputIdentity = ".tfsb-preview";
   const root = join(record.root, outputIdentity);
   const rootStat = await lstat(root).catch(() => undefined);
@@ -141,7 +148,9 @@ async function previewStatus(record: ProjectRecord, project: LoadedProject): Pro
   const markerPath = join(root, PREVIEW_MARKER_FILENAME);
   const markerStat = await lstat(markerPath).catch(() => undefined);
   if (markerStat === undefined || !markerStat.isFile() || markerStat.isSymbolicLink()) return { status: "unowned/invalid", outputIdentity, markerDigest: null };
-  const markerBytes = await readFile(markerPath);
+  const marker = await readPreviewFile(markerPath);
+  if (marker === undefined) return { status: "unowned/invalid", outputIdentity, markerDigest: null };
+  const markerBytes = marker;
   const parsed = parsePreviewMarker(new TextDecoder("utf8", { fatal: true }).decode(markerBytes));
   if (parsed.status !== "valid" || parsed.marker.outputDirectory !== outputIdentity) return { status: "unowned/invalid", outputIdentity, markerDigest: null };
   const top = await readdir(root, { withFileTypes: true });
@@ -157,7 +166,8 @@ async function previewStatus(record: ProjectRecord, project: LoadedProject): Pro
     const file = join(root, ...item.path.split("/"));
     const stat = await lstat(file).catch(() => undefined);
     if (stat === undefined || !stat.isFile() || stat.isSymbolicLink()) { drift = true; continue; }
-    if (computeRawSha256(await readFile(file)) !== item.sha256) drift = true;
+    const bytes = await readPreviewFile(file);
+    if (bytes === undefined || computeRawSha256(bytes) !== item.sha256) drift = true;
   }
   return { status: drift ? "owned-drift" : "owned-clean", outputIdentity, markerDigest: computeSha256(markerBytes), assetCount: parsed.marker.assets.length };
 }

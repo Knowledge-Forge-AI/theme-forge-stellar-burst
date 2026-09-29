@@ -250,7 +250,7 @@ export async function runWorkflowChecks(options) {
     }))
   };
   await writeFile(join(outputDir, "workflow-checks.receipt.json"), JSON.stringify(receipt, null, 2) + "\n", "utf8");
-  if (status !== "pass") throw new Error("[WORKFLOW_CHECK_FAIL] One or more selected workflow checks failed.");
+  if (status !== "pass") throw new Error(`[WORKFLOW_CHECK_FAIL] Failed tools: ${results.filter((result) => result.status !== "pass").map((result) => `${result.tool} (exit=${result.exitCode ?? "acquisition"})`).join(", ")}. See retained per-tool reports.`);
   return receipt;
 }
 

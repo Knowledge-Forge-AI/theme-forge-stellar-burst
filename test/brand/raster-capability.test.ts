@@ -1,7 +1,8 @@
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 
-import { assertRasterSvgIsSelfContained, createRasterCapabilityFromModule, decodeStrictPng } from "../../src/brand/raster-capability.js";
+import { fakeDescriptor } from "./raster-test-helper.js";
+import { assertRasterSvgIsSelfContained, createRasterCapabilityFromModule, decodeStrictPng, RASTER_QUALIFIED_PLATFORM_CLAIMS } from "../../src/brand/raster-capability.js";
 
 const table = (() => { const values = new Uint32Array(256); for (let n = 0; n < 256; n++) { let value = n; for (let k = 0; k < 8; k++) value = (value & 1) === 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1; values[n] = value >>> 0; } return values; })();
 function crc(bytes: Uint8Array): number { let value = 0xffffffff; for (const byte of bytes) value = table[(value ^ byte) & 0xff]! ^ (value >>> 8); return (value ^ 0xffffffff) >>> 0; }
@@ -30,6 +31,17 @@ describe("strict raster capability boundary", () => {
 
   it.each(["<image href=\"x.png\"/>", "<text>x</text>", "<style>rect{fill:red}</style>", "<use href=\"other.svg#x\"/>"])("rejects forbidden SVG authority %s", (body) => {
     expect(() => assertRasterSvgIsSelfContained(Buffer.from(`<svg xmlns=\"http://www.w3.org/2000/svg\">${body}</svg>`))).toThrow();
+  });
+
+  it("reports an unqualified runtime tuple as unavailable instead of advertising a renderer that refuses it", () => {
+    expect(RASTER_QUALIFIED_PLATFORM_CLAIMS).toEqual(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"]);
+    const platform = Object.getOwnPropertyDescriptor(process, "platform")!, arch = Object.getOwnPropertyDescriptor(process, "arch")!;
+    try {
+      Object.defineProperty(process, "platform", { ...platform, value: "linux" }); Object.defineProperty(process, "arch", { ...arch, value: "arm64" });
+      expect(createRasterCapabilityFromModule({ descriptor: { ...fakeDescriptor, platformClaim: "linux-arm64" }, renderSvg: async () => { throw new Error("Current runtime tuple is not qualified."); } }))
+        .toEqual({ available: false, code: "EXPORT_CAPABILITY_UNAVAILABLE", reason: "Raster companion is not qualified for runtime tuple 'linux-arm64'." });
+    } finally { Object.defineProperty(process, "platform", platform); Object.defineProperty(process, "arch", arch); }
+    expect(createRasterCapabilityFromModule({ descriptor: fakeDescriptor, renderSvg: async () => { throw new Error("unused"); } }).available).toBe(RASTER_QUALIFIED_PLATFORM_CLAIMS.includes(fakeDescriptor.platformClaim));
   });
 
   it("keeps capability unavailable for incompatible module shapes", () => {

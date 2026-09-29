@@ -27,7 +27,7 @@ import {
 import { readRepoFile, repoPath, unwrap } from "./helpers.js";
 
 const roots: string[] = [];
-const artifact = process.platform === "linux" ? "linux-x64-gnu" : `darwin-${process.arch}`;
+const artifact = process.platform === "linux" ? `linux-${process.arch}-gnu` : `darwin-${process.arch}`;
 const addonPath = repoPath(`native/directory-snapshot/prebuilds/${artifact}/native-addon-posix-openat-v1.node`);
 const nativeAvailable = getDirectorySnapshotCapability(realpathSync(tmpdir())).supported;
 

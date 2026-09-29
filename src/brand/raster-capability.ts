@@ -7,6 +7,8 @@ export const RASTER_COMPANION_PACKAGE = "@knowledge-forge-ai/tfsb-raster-resvg" 
 export const RASTER_ADAPTER_ID = "resvg-png-v1" as const;
 export const RASTER_MAX_SVG_BYTES = 8 * 1_048_576;
 export const RASTER_MAX_PNG_BYTES = 32 * 1_048_576;
+/** Runtime tuples the maintained companion qualifies; its renderer refuses every other tuple. */
+export const RASTER_QUALIFIED_PLATFORM_CLAIMS: readonly string[] = Object.freeze(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"]);
 const PNG_SIGNATURE = Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10);
 
 function runtimePlatformClaim(): string {
@@ -148,6 +150,8 @@ export function createRasterCapabilityFromModule(moduleValue: unknown): RasterCa
   const module = moduleValue as Partial<CompanionModule>; const keys = Object.keys(moduleValue).sort();
   if (keys.length !== 2 || keys[0] !== "descriptor" || keys[1] !== "renderSvg" || typeof module.renderSvg !== "function" || module.descriptor === undefined) return Object.freeze({ available: false, code: "EXPORT_CAPABILITY_UNAVAILABLE", reason: "Companion module export shape is incompatible." });
   let descriptor: RasterAdapterDescriptor; try { descriptor = validateRasterDescriptor(module.descriptor); } catch (error) { return Object.freeze({ available: false, code: "EXPORT_CAPABILITY_UNAVAILABLE", reason: error instanceof Error ? error.message : "Invalid descriptor." }); }
+  // Report an unqualified runtime tuple as unavailable instead of advertising a capability whose renderer will refuse.
+  if (!RASTER_QUALIFIED_PLATFORM_CLAIMS.includes(descriptor.platformClaim)) return Object.freeze({ available: false, code: "EXPORT_CAPABILITY_UNAVAILABLE", reason: `Raster companion is not qualified for runtime tuple '${descriptor.platformClaim}'.` });
   const adapter: RasterAdapterCapability = Object.freeze({ descriptor, renderSvg: async (request: RasterRenderRequest) => {
     assertRasterDimensions(request.width, request.height); assertRasterSvgIsSelfContained(request.canonicalSvgBytes);
     const raw = await module.renderSvg!(Object.freeze({ ...request, canonicalSvgBytes: new Uint8Array(request.canonicalSvgBytes), backgroundRgba: request.backgroundRgba === null ? null : Object.freeze([...request.backgroundRgba] as [number, number, number, number]) }));

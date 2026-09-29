@@ -10,10 +10,20 @@ import { fileURLToPath } from "node:url";
  * Only null or this predecessor commit triggers polling retry.
  * Release-bound to the single R14 staging push, following head
  * 1043a8f8cd75fd7708f246b6b688d96e59f8e092, tree
- * f94d24ca519e2b593d4425f4fb1c6f5d6050e697. Reauthorize this constant before
- * another staging push or PR; later predecessor merges deliberately fail closed.
+ * f94d24ca519e2b593d4425f4fb1c6f5d6050e697. Reauthorize the bound predecessor
+ * staging below before another staging push; other merges fail closed.
  */
 export const BOUND_PREDECESSOR_MERGE_SHA = "5f33d85ad2f7b6f62c8c2237faab2817df4a35c8";
+
+/**
+ * Staging head and tree replaced by the CI3 source-only staging successor.
+ * GitHub can regenerate a PR merge object (new SHA, same tree and parents), so
+ * the predecessor is recognized by its parents and tree rather than its SHA.
+ */
+export const BOUND_PREDECESSOR_STAGING = Object.freeze({
+  head: "31d89d5d429ca76be67d95137eada3e7081063e8",
+  tree: "fa2448e6b1a1e0e4e5edbfbf076e20efdd211bb8",
+});
 
 /**
  * Validates PR observation for exact match against expected context on every observation.
@@ -127,6 +137,26 @@ export function validateCandidateCommit(commit, candidateSha, expected) {
   if (!expected.tree || treeSha !== expected.tree) {
     throw new Error(`[BURST_MERGE_FAIL] Candidate merge tree '${treeSha}' does not equal authenticated staging tree '${expected.tree}'.`);
   }
+}
+
+/**
+ * A merge of the unchanged base with the bound predecessor staging head and
+ * tree is a stale (possibly regenerated) predecessor that GitHub can still
+ * report just after a push. It is never accepted; the caller only keeps
+ * polling within its budget. Every other shape, including a third-party head,
+ * falls through to validateCandidateCommit and fails closed.
+ *
+ * @param {any} commit
+ * @param {string} candidateSha
+ * @param {{ baseSha: string, headSha: string }} expected
+ * @param {{ head: string, tree: string }} [predecessor]
+ * @returns {boolean}
+ */
+export function isStalePredecessorMerge(commit, candidateSha, expected, predecessor = BOUND_PREDECESSOR_STAGING) {
+  if (!commit || typeof commit !== "object" || commit.sha !== candidateSha || predecessor.head === expected.headSha) return false;
+  const parents = (Array.isArray(commit.parents) ? commit.parents : []).map((/** @type {any} */ p) => (typeof p === "string" ? p : p?.sha));
+  const treeSha = typeof commit.tree === "string" ? commit.tree : commit.tree?.sha ?? commit.commit?.tree?.sha;
+  return parents.length === 2 && parents[0] === expected.baseSha && parents[1] === predecessor.head && treeSha === predecessor.tree;
 }
 
 /**
@@ -283,6 +313,14 @@ export async function resolveBurstMergeCandidate(options = {}) {
     const commit = await readCommit({ repo: expectedRepo, sha: mergeSha, signal: commitSignal });
 
     if (nowFn() - startTime >= overallBudgetMs) throw new Error("[BURST_MERGE_FAIL] Polling budget exceeded.");
+    if (isStalePredecessorMerge(commit, mergeSha, expected)) {
+      const currentElapsed = nowFn() - startTime;
+      if (currentElapsed + pollIntervalMs > overallBudgetMs) {
+        throw new Error(`[BURST_MERGE_FAIL] Polling budget exceeded while a stale predecessor merge '${mergeSha}' remained current (attempts: ${attempt}, elapsed: ${currentElapsed}ms).`);
+      }
+      await sleepFn(pollIntervalMs);
+      continue;
+    }
     validateCandidateCommit(commit, mergeSha, expected);
 
     const treeSha = typeof commit.tree === "string" ? commit.tree : commit.tree?.sha ?? commit.commit?.tree?.sha;

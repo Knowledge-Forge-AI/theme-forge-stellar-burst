@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 export const DIRECTORY_SNAPSHOT_BACKEND = "native-addon-posix-openat-v1" as const;
 export const DIRECTORY_SNAPSHOT_BACKEND_ABI = 1 as const;
 
-export type DirectorySnapshotPlatformArtifact = "darwin-arm64" | "darwin-x64" | "linux-x64-gnu";
+export type DirectorySnapshotPlatformArtifact = "darwin-arm64" | "darwin-x64" | "linux-x64-gnu" | "linux-arm64-gnu";
 export type NativeFilesystemClass = "apfs" | "ext4" | "unsupported";
 export type NativeFilesystemCategory = "qualified-local" | "unsupported";
 export type NativeEntryKind = "directory" | "file" | "symlink" | "special";
@@ -64,6 +64,7 @@ export function currentDirectorySnapshotArtifact(): DirectorySnapshotPlatformArt
   if (process.platform === "darwin" && process.arch === "arm64") return "darwin-arm64";
   if (process.platform === "darwin" && process.arch === "x64") return "darwin-x64";
   if (process.platform === "linux" && process.arch === "x64" && isGlibcRuntime()) return "linux-x64-gnu";
+  if (process.platform === "linux" && process.arch === "arm64" && isGlibcRuntime()) return "linux-arm64-gnu";
   return "none";
 }
 
