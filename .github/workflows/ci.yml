@@ -298,7 +298,46 @@ jobs:
           node tools/ci/exact-head.mjs --output .test-reports/visual/receipt.json --expected-branch staging --expected-base main --checkout-role merge-candidate
       - run: npm ci
       - name: Install Playwright browsers with OS dependencies
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: |
+          set -euo pipefail
+          apt_sources="/etc/apt/sources.list.d/tfsb-playwright.sources"
+          apt_config="/etc/apt/apt.conf.d/99-tfsb-playwright-official-sources"
+          if [ -e "$apt_sources" ] || [ -L "$apt_sources" ] || [ -e "$apt_config" ] || [ -L "$apt_config" ]; then
+            echo "::error::fixed Playwright APT paths must be absent before this job writes them"
+            exit 1
+          fi
+          sources_owned=0
+          config_owned=0
+          cleanup() {
+            status=$?
+            if [ "$config_owned" -eq 1 ]; then sudo rm -f -- "$apt_config"; fi
+            if [ "$sources_owned" -eq 1 ]; then sudo rm -f -- "$apt_sources"; fi
+            exit "$status"
+          }
+          trap cleanup EXIT
+          sources_owned=1
+          sudo tee "$apt_sources" >/dev/null <<'EOF'
+          Types: deb
+          URIs: https://archive.ubuntu.com/ubuntu
+          Suites: noble noble-updates noble-backports
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: https://security.ubuntu.com/ubuntu
+          Suites: noble-security
+          Components: main restricted universe multiverse
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          config_owned=1
+          sudo tee "$apt_config" >/dev/null <<'EOF'
+          Dir::Etc::sourcelist "/etc/apt/sources.list.d/tfsb-playwright.sources";
+          Dir::Etc::sourceparts "-";
+          APT::Get::AllowUnauthenticated "false";
+          Acquire::AllowInsecureRepositories "false";
+          Acquire::AllowDowngradeToInsecureRepositories "false";
+          EOF
+          npx playwright install --with-deps chromium firefox webkit
       - run: npm run build
       - name: Run visual test suite
         run: |
@@ -456,6 +495,7 @@ jobs:
       TFSB_LANGUAGE: ${{ matrix.language }}
       TFSB_MATRIX_JSON: '{"language":"${{ matrix.language }}"}'
       TFSB_CODEQL_REPORT_DIR: .test-reports/codeql-${{ matrix.language }}
+      TFSB_CODEQL_RECEIPT_PATH: .test-reports/codeql-receipt-${{ matrix.language }}.json
     permissions:
       contents: read
       security-events: write # Required by CodeQL analysis upload.
@@ -480,8 +520,8 @@ jobs:
           cache: npm
       - name: Record exact-head receipt
         run: |
-          mkdir -p "$TFSB_CODEQL_REPORT_DIR"
-          node tools/ci/exact-head.mjs --output "$TFSB_CODEQL_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+          mkdir -p "$TFSB_CODEQL_REPORT_DIR" "$(dirname "$TFSB_CODEQL_RECEIPT_PATH")"
+          node tools/ci/exact-head.mjs --output "$TFSB_CODEQL_RECEIPT_PATH" --expected-branch staging --expected-base main --checkout-role merge-candidate
       - name: Initialize CodeQL Action
         uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
@@ -511,7 +551,7 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           TFSB_REPORT_CATEGORY: ${{ matrix.language }}
-        run: node tools/ci/security-report.mjs "$TFSB_CODEQL_REPORT_DIR" .test-reports/security-normalized/codeql.json stellar-burst codeql "$TFSB_REPORT_CATEGORY" "$TFSB_CODEQL_REPORT_DIR/receipt.json"
+        run: node tools/ci/security-report.mjs "$TFSB_CODEQL_REPORT_DIR" .test-reports/security-normalized/codeql.json stellar-burst codeql "$TFSB_REPORT_CATEGORY" "$TFSB_CODEQL_RECEIPT_PATH"
       - name: Retain normalized codeql findings independently
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
