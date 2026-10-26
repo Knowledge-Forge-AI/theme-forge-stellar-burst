@@ -1,7 +1,7 @@
 // @ts-check
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { readFile, readdir, mkdir, writeFile, stat, lstat, open } from "node:fs/promises";
+import { readFile, readdir, mkdir, writeFile, stat, open } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { parseSarifFindings, normalizeFindingsCollection } from "./finding-ratchet.mjs";
 const [input, output, product, tool, category, receiptPathArg] = process.argv.slice(2);
@@ -28,11 +28,10 @@ async function readExactHeadReceipt(path) {
   /** @type {import("node:fs/promises").FileHandle | undefined} */
   let handle;
   try {
-    const entry = await lstat(path);
-    if (!entry.isFile() || entry.isSymbolicLink()) {
+    const noFollow = constants.O_NOFOLLOW;
+    if (!Number.isInteger(noFollow) || noFollow <= 0) {
       throw new Error("[SECURITY_REPORT_BINDING] Exact-head receipt is missing or unauthenticated.");
     }
-    const noFollow = constants.O_NOFOLLOW ?? 0;
     handle = await open(path, constants.O_RDONLY | noFollow);
     const info = await handle.stat();
     if (!info.isFile() || !Number.isSafeInteger(info.size) || info.size > MAX_RECEIPT_BYTES) {
@@ -84,7 +83,7 @@ function validateMergeCandidateReceipt(receipt, event) {
   const headSha = isRecord(pullRequest?.head) ? pullRequest.head.sha : undefined;
   const baseSha = isRecord(pullRequest?.base) ? pullRequest.base.sha : undefined;
   const prNumber = event?.number;
-  if (!SHA1.test(String(headSha ?? "")) || !SHA1.test(String(baseSha ?? "")) || !Number.isSafeInteger(prNumber) || prNumber < 1) {
+  if (!isRecord(pullRequest) || !SHA1.test(String(headSha ?? "")) || !SHA1.test(String(baseSha ?? "")) || !Number.isSafeInteger(prNumber) || prNumber < 1) {
     throw new Error("[SECURITY_REPORT_BINDING] Pull-request event identity is invalid.");
   }
 
