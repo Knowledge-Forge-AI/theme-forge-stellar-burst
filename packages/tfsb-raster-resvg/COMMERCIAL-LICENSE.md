@@ -16,4 +16,4 @@ Commercial-license use cases may include:
 
 The commercial license is not merely permission for commercial use. The AGPL allows commercial use subject to its terms. Commercial licensing is for proprietary terms, closed-source distribution, private network-service modifications, and other negotiated obligations.
 
-For commercial licensing, contact: lair001@gmail.com.
+For commercial licensing, contact: sam.lair@knowledge-forge.ai.

@@ -55,6 +55,8 @@ logs/
 coverage/
 htmlcov/
 reports/
+# Maintained CTTN candidate provenance and paired mapping reports.
+!themes/shadcn-terminal-nova/candidate/reports/
 .test-reports/
 test-results/
 .downloaded-artifacts/

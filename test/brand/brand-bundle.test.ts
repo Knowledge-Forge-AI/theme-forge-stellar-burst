@@ -7,14 +7,47 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   BRAND_BUNDLE_MANIFEST_FILENAME,
   BUNDLE_MANIFEST_FILENAME,
+  TOOL_VERSION,
   bundleBrandProject,
+  computeBrandBundleManifestDigest,
+  computeRawSha256,
   parseBrandBundleManifest,
   parseBundleManifestV2,
   planBrandBundle,
+  type BrandBundleManifest,
   type BrandBundleResult,
+  type BundleManifestV2,
 } from "../../src/index.js";
 import { runCli } from "../../src/cli.js";
-import { readRepoFile } from "../helpers.js";
+import { readRepoFile, unwrap } from "../helpers.js";
+
+interface CanonicalDigestVector {
+  readonly identifier: string;
+  readonly basis: string;
+  readonly preimage: string;
+  readonly sha256: string;
+}
+
+const VECTORS_FILE = JSON.parse(
+  readRepoFile("docs/examples/v0.4/brand-system/vectors/canonical-digest-vectors.json"),
+) as { readonly vectors: readonly CanonicalDigestVector[] };
+
+function historicalVector(identifier: string): CanonicalDigestVector {
+  const match = VECTORS_FILE.vectors.find((entry) => entry.identifier === identifier);
+  if (match === undefined) {
+    throw new Error(`Missing canonical digest vector: ${identifier}`);
+  }
+  return match;
+}
+
+const HISTORICAL_GENERIC_TEXT = readRepoFile(
+  "docs/examples/v0.4/brand-system/core-minimal/bundle/tfsb-manifest.json",
+);
+const HISTORICAL_GENERIC: BundleManifestV2 = unwrap(parseBundleManifestV2(HISTORICAL_GENERIC_TEXT));
+const HISTORICAL_BRAND_TEXT = readRepoFile(
+  "docs/examples/v0.4/brand-system/core-minimal/bundle/tfsb-brand-manifest.json",
+);
+const HISTORICAL_BRAND: BrandBundleManifest = unwrap(parseBrandBundleManifest(HISTORICAL_BRAND_TEXT));
 
 const roots: string[] = [];
 
@@ -70,9 +103,15 @@ describe("brand package bundling", () => {
     const root = await setupCoreMinimalProject();
     const outputPath = "core-fixture.zip";
 
+    const genericVector = historicalVector("generic-bundle-manifest-v2-raw-bytes");
+    const packageVector = historicalVector("brand-package-toml-core-fixture");
+    const systemVector = historicalVector("brand-system-core-fixture");
+    const brandManifestVector = historicalVector("brand-bundle-manifest-core-fixture");
+
     const result = await bundleBrandProject({
       root,
       output: outputPath,
+      generator: HISTORICAL_GENERIC.generator,
     });
 
     expect(result.written).toBe(true);
@@ -80,10 +119,14 @@ describe("brand package bundling", () => {
     expect(result.companionCount).toBe(1);
     expect(result.packageId).toBe("core-fixture-brand");
     expect(result.brandVersion).toBe("0.4.0-fixture.1");
-    expect(result.genericManifestByteDigest).toBe("sha256:f937e53a25f2527db8db12a8bec302e9dc41a147949b0b7f56fb2783e73a8898");
+    expect(result.genericManifestByteDigest).toBe(genericVector.sha256);
+    expect(result.genericManifestByteDigest).toBe("sha256:53ece77670595a24f49bbdfb0af0498e093e5a08366ecaff090814a02c9f70e8");
+    expect(result.brandPackageDigest).toBe(packageVector.sha256);
     expect(result.brandPackageDigest).toBe("sha256:1c14df2cf73b282f366a5cef541cea1f3d9d08c1ab55c1ebbbf34e2f63ab9f23");
+    expect(result.brandSystemDigest).toBe(systemVector.sha256);
     expect(result.brandSystemDigest).toBe("sha256:4e10ef25161f37bdd137bcf85fcf1b842b4e0a6512f863d7f2fbba0d8a7e9c4d");
-    expect(result.brandManifestDigest).toBe("sha256:e0c6ac8bc0d13f08e2f12d1306d73916e2786f79e64d31ba65aa96e57f4adb7e");
+    expect(result.brandManifestDigest).toBe(brandManifestVector.sha256);
+    expect(result.brandManifestDigest).toBe("sha256:9ac4ecc30676224eba1d044fbce94345906b5ca76e12a932fad16a26eb480585");
 
     // Read and unzip archive
     const zipBytes = await readFile(join(root, outputPath));
@@ -102,16 +145,83 @@ describe("brand package bundling", () => {
 
     // Check generic manifest
     const genericManifestText = new TextDecoder("utf8").decode(unzipped[BUNDLE_MANIFEST_FILENAME]!);
+    expect(genericManifestText).toBe(genericVector.preimage);
+    expect(genericManifestText).toBe(HISTORICAL_GENERIC_TEXT);
     const parsedGeneric = parseBundleManifestV2(genericManifestText);
     expect(parsedGeneric.ok).toBe(true);
+    if (parsedGeneric.ok) {
+      expect(parsedGeneric.value).toEqual(HISTORICAL_GENERIC);
+    }
 
     // Check brand manifest
     const brandManifestText = new TextDecoder("utf8").decode(unzipped[BRAND_BUNDLE_MANIFEST_FILENAME]!);
+    expect(brandManifestText).toBe(HISTORICAL_BRAND_TEXT);
     const parsedBrand = parseBrandBundleManifest(brandManifestText);
     expect(parsedBrand.ok).toBe(true);
     if (parsedBrand.ok) {
-      expect(parsedBrand.value.brandManifestDigest).toBe("sha256:e0c6ac8bc0d13f08e2f12d1306d73916e2786f79e64d31ba65aa96e57f4adb7e");
+      expect(parsedBrand.value).toEqual(HISTORICAL_BRAND);
+      expect(parsedBrand.value.brandManifestDigest).toBe("sha256:9ac4ecc30676224eba1d044fbce94345906b5ca76e12a932fad16a26eb480585");
     }
+  });
+
+  it("binds the default producer to TOOL_VERSION with consistent, repeatable manifests", async () => {
+    const root = await setupCoreMinimalProject();
+    const firstOutput = "current-producer-1.zip";
+    const secondOutput = "current-producer-2.zip";
+
+    const result = await bundleBrandProject({
+      root,
+      output: firstOutput,
+    });
+
+    expect(result.written).toBe(true);
+    expect(result.packageId).toBe("core-fixture-brand");
+    expect(result.brandVersion).toBe("0.4.0-fixture.1");
+    expect(result.brandPackageDigest).toBe(HISTORICAL_BRAND.brandPackageDigest);
+    expect(result.brandSystemDigest).toBe(HISTORICAL_BRAND.brandSystemDigest);
+
+    const zipBytes = await readFile(join(root, firstOutput));
+    const unzipped = unzipSync(zipBytes);
+    const genericBytes = unzipped[BUNDLE_MANIFEST_FILENAME]!;
+    const brandBytes = unzipped[BRAND_BUNDLE_MANIFEST_FILENAME]!;
+
+    const parsedGeneric = unwrap(parseBundleManifestV2(new TextDecoder("utf8").decode(genericBytes)));
+    expect(parsedGeneric.generator).toEqual({
+      name: "@knowledge-forge-ai/theme-forge-stellar-burst",
+      version: TOOL_VERSION,
+    });
+    expect(parsedGeneric).toEqual({
+      ...HISTORICAL_GENERIC,
+      generator: {
+        name: "@knowledge-forge-ai/theme-forge-stellar-burst",
+        version: TOOL_VERSION,
+      },
+    });
+
+    const expectedGenericDigest = `sha256:${computeRawSha256(genericBytes)}`;
+    expect(result.genericManifestByteDigest).toBe(expectedGenericDigest);
+
+    const parsedBrand = unwrap(parseBrandBundleManifest(new TextDecoder("utf8").decode(brandBytes)));
+    expect(parsedBrand.genericManifestByteDigest).toBe(result.genericManifestByteDigest);
+
+    const { brandManifestDigest: _selfDigest, ...brandWithoutSelfDigest } = parsedBrand;
+    const recomputedBrandDigest = computeBrandBundleManifestDigest(brandWithoutSelfDigest);
+    expect(recomputedBrandDigest).toBe(result.brandManifestDigest);
+    expect(parsedBrand.brandManifestDigest).toBe(result.brandManifestDigest);
+    expect(parsedBrand).toEqual({
+      ...HISTORICAL_BRAND,
+      genericManifestByteDigest: result.genericManifestByteDigest,
+      brandManifestDigest: result.brandManifestDigest,
+    });
+
+    const secondResult = await bundleBrandProject({
+      root,
+      output: secondOutput,
+    });
+    const secondZipBytes = await readFile(join(root, secondOutput));
+    expect(secondResult.genericManifestByteDigest).toBe(result.genericManifestByteDigest);
+    expect(secondResult.brandManifestDigest).toBe(result.brandManifestDigest);
+    expect(Buffer.compare(zipBytes, secondZipBytes)).toBe(0);
   });
 
   it("supports rebundling from an imported project when producer source is absent", async () => {
@@ -187,6 +297,18 @@ describe("brand package bundling", () => {
     expect(parsed.status).toBe("ok");
     expect(parsed.exitCode).toBe(0);
     expect(parsed.data.packageId).toBe("core-fixture-brand");
-    expect(parsed.data.brandManifestDigest).toBe("sha256:e0c6ac8bc0d13f08e2f12d1306d73916e2786f79e64d31ba65aa96e57f4adb7e");
+
+    const directResult = await bundleBrandProject({
+      root,
+      output: "cli-test-direct.zip",
+    });
+    const cliUnzipped = unzipSync(await readFile(join(root, "cli-test-2.zip")));
+    const cliBrandManifest = unwrap(
+      parseBrandBundleManifest(new TextDecoder("utf8").decode(cliUnzipped[BRAND_BUNDLE_MANIFEST_FILENAME]!)),
+    );
+    const { brandManifestDigest: _cliSelfDigest, ...cliBrandWithoutSelfDigest } = cliBrandManifest;
+    expect(parsed.data.brandManifestDigest).toBe(directResult.brandManifestDigest);
+    expect(parsed.data.brandManifestDigest).toBe(cliBrandManifest.brandManifestDigest);
+    expect(parsed.data.brandManifestDigest).toBe(computeBrandBundleManifestDigest(cliBrandWithoutSelfDigest));
   });
 });

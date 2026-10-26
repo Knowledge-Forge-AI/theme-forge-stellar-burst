@@ -156,7 +156,7 @@ describe("TFSB34 combined v0.3 qualification", () => {
     expect(pkg.dependencies).toEqual({
       "@xmldom/xmldom": "0.9.12",
       fflate: "0.8.3",
-      "smol-toml": "1.8.0",
+      "smol-toml": "1.9.1",
     });
     expect(pkg.exports).toEqual({
       ".": {
@@ -207,8 +207,34 @@ describe("TFSB34 combined v0.3 qualification", () => {
     // negative corpus: 20 entries.
     // TFSB61A adds the scene domain, CLI/file wrappers and closed scene protocol.
     // TFSB62A adds three importer modules (JS + declarations) and one contract document.
-    expect(packResult?.entryCount).toBe(348 + nativePaths.length);
-    expect(paths.length).toBe(348 + nativePaths.length);
+    // The public Stellar Burst membership contains 133 src modules (266 JS /
+    // declaration entries), 77 protocol entries, and npm's five fixed root
+    // entries: 266 + 77 + 5 = 348 before native prebuilds.  The canonical
+    // private checkout additionally carries exactly eight DesignDirector
+    // modules; those become sixteen dist entries there, but are intentionally
+    // absent from the public composition.  Keep both contracts explicit.
+    const privateDesignDirectorModules = [
+      "candidate-generation",
+      "candidate-set",
+      "index",
+      "schema",
+      "v1-canonical",
+      "v1-lineage",
+      "v1-types",
+      "v1-validate",
+    ] as const;
+    const privateDesignDirectorSourcesPresent = privateDesignDirectorModules.map((module) => existsSync(repoPath(`src/design-director/${module}.ts`)));
+    expect(new Set(privateDesignDirectorSourcesPresent).size).toBe(1);
+    const privateDesignDirectorEntries = privateDesignDirectorModules.flatMap((module) => [
+      `dist/design-director/${module}.js`,
+      `dist/design-director/${module}.d.ts`,
+    ]);
+    for (const path of privateDesignDirectorEntries) {
+      expect(paths.includes(path)).toBe(privateDesignDirectorSourcesPresent[0]);
+    }
+    const expectedEntryCount = 348 + (privateDesignDirectorSourcesPresent[0] ? privateDesignDirectorEntries.length : 0) + nativePaths.length;
+    expect(packResult?.entryCount).toBe(expectedEntryCount);
+    expect(paths.length).toBe(expectedEntryCount);
     expect(paths).toEqual(expect.arrayContaining([
       "dist/scene/import-svg.js",
       "dist/scene/import-svg.d.ts",

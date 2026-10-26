@@ -16,4 +16,4 @@ A `Signed-off-by` line may be included, but it does not replace the explicit pul
 
 Pull requests should also confirm that the contributor has authority to submit the work under `CLA.md`.
 
-Questions about commercial licensing or contribution terms can be sent to lair001@gmail.com.
+Questions about commercial licensing or contribution terms can be sent to sam.lair@knowledge-forge.ai.
