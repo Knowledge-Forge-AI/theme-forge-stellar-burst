@@ -511,7 +511,7 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           TFSB_REPORT_CATEGORY: ${{ matrix.language }}
-        run: node tools/ci/security-report.mjs "$TFSB_CODEQL_REPORT_DIR" .test-reports/security-normalized/codeql.json stellar-burst codeql "$TFSB_REPORT_CATEGORY"
+        run: node tools/ci/security-report.mjs "$TFSB_CODEQL_REPORT_DIR" .test-reports/security-normalized/codeql.json stellar-burst codeql "$TFSB_REPORT_CATEGORY" "$TFSB_CODEQL_REPORT_DIR/receipt.json"
       - name: Retain normalized codeql findings independently
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
@@ -643,7 +643,7 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           TFSB_REPORT_CATEGORY: supply-chain
-        run: node tools/ci/security-report.mjs .test-reports/supply-chain/root-package.grype.sarif .test-reports/security-normalized/grype.json stellar-burst grype "$TFSB_REPORT_CATEGORY"
+        run: node tools/ci/security-report.mjs .test-reports/supply-chain/root-package.grype.sarif .test-reports/security-normalized/grype.json stellar-burst grype "$TFSB_REPORT_CATEGORY" .test-reports/supply-chain/receipt.json
       - name: Retain normalized grype findings independently
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
