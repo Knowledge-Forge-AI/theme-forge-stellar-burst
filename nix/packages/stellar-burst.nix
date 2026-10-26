@@ -9,7 +9,7 @@
 , makeWrapper
 , source ? null
 , customSrc ? null
-, npmDepsHash ? "sha256-8633Xz/V+2Amu2wRydbQJVlkJgNwkgd3d5aR4/mWlac="
+, npmDepsHash ? "sha256-hMkb6xTygkpk3rDUAsjs8/HzpRBKTGYyHnQQbGEVuWc="
 }:
 
 let
@@ -55,7 +55,7 @@ assert builtins.hasAttr stdenv.hostPlatform.system targets;
 assert !stdenv.hostPlatform.isLinux || stdenv.hostPlatform.libc == "glibc";
 buildNpmPackage {
   pname = "theme-forge-stellar-burst";
-  version = "0.6.1";
+  version = "0.7.0";
 
   src = filteredSrc;
 

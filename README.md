@@ -26,7 +26,7 @@ TFSB brings software-engineering discipline to vector asset pipelines:
 
 Install the current registry release globally via npm. The registry's `latest` tag is the installation
 target; `npm view @knowledge-forge-ai/theme-forge-stellar-burst dist-tags.latest` shows which version that is.
-When this 0.6.1 source was prepared, 0.6.0 was the latest published release and 0.6.1 had not yet been published.
+This source describes version 0.7.0.
 
 ```sh
 npm install --global @knowledge-forge-ai/theme-forge-stellar-burst
@@ -54,8 +54,9 @@ of social-platform image compatibility.
 
 ## Release family and history
 
-Version 0.6.1 is a patch successor of 0.6.0, which follows the
-[0.5.0 release](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/releases/tag/v0.5.0).
+Version 0.7.0 follows the 0.6.1 maintenance line.
+Historical [0.5.0 release](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/releases/tag/v0.5.0)
+content remains part of the release history.
 Historical [0.4.0 release notes](docs/releases/v0.4.0.md) retain their original scope.
 Related products are independently versioned:
 [Stellar Loom](https://github.com/Knowledge-Forge-AI/theme-forge-stellar-loom),
@@ -342,7 +343,7 @@ and [v0.2 lifecycle examples](docs/examples/v0.2/README.md).
 
 This project is licensed under the **GNU Affero General Public License v3.0 or later** ([AGPL-3.0-or-later](LICENSE)). See [NOTICE](NOTICE) for copyright and attribution details.
 
-Commercial licenses are available for proprietary integration, closed-source distribution, OEM bundling, or organizations requiring custom licensing terms. Commercial licensing does not restrict permitted AGPL use. Inquiries: `lair001@gmail.com`. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
+Commercial licenses are available for proprietary integration, closed-source distribution, OEM bundling, or organizations requiring custom licensing terms. Commercial licensing does not restrict permitted AGPL use. Inquiries: `sam.lair@knowledge-forge.ai`. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
 
 
 ## Multi-platform native build

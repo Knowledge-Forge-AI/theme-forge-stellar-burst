@@ -1,6 +1,6 @@
 {
   "name": "@knowledge-forge-ai/theme-forge-stellar-burst",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Declarative SVG compiler, transactional installer, and drift checker",
   "keywords": [
     "svg",
@@ -76,7 +76,7 @@
   "dependencies": {
     "@xmldom/xmldom": "0.9.12",
     "fflate": "0.8.3",
-    "smol-toml": "1.8.0"
+    "smol-toml": "1.9.1"
   },
   "devDependencies": {
     "@openpgp/web-stream-tools": "0.3.1",
@@ -84,7 +84,7 @@
     "@types/node": "22.20.1",
     "openpgp": "6.3.1",
     "typescript": "7.0.2",
-    "vitest": "4.1.11",
+    "vitest": "4.1.12",
     "yaml": "2.9.0"
   }
 }

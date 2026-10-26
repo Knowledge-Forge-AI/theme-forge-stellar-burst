@@ -41,4 +41,4 @@ A `Signed-off-by` line may be included, but it does not replace this explicit pu
 
 ## Contact
 
-Questions about contribution terms can be sent to lair001@gmail.com.
+Questions about contribution terms can be sent to sam.lair@knowledge-forge.ai.
