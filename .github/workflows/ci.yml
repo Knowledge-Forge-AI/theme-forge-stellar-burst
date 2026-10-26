@@ -361,7 +361,9 @@ jobs:
 
   raster-companion:
     name: Raster companion candidate (${{ matrix.tuple }})
-    needs: source-policy
+    needs:
+      - source-policy
+      - root-package
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -396,15 +398,26 @@ jobs:
         run: |
           mkdir -p "$TFSB_RASTER_REPORT_DIR"
           node tools/ci/exact-head.mjs --output "$TFSB_RASTER_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - name: Download canonical root package artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: root-package-artifacts
+          path: ${{ runner.temp }}/tfsb-canonical-root-package
+      - name: Authenticate canonical root package bytes
+        shell: bash
+        run: >-
+          node tools/ci/verify-root-package-artifact.mjs
+          --input "$RUNNER_TEMP/tfsb-canonical-root-package"
+          --consumer-receipt "$TFSB_RASTER_REPORT_DIR/receipt.json"
+          --output "$TFSB_RASTER_REPORT_DIR/root-package.tgz"
+          --manifest-output "$TFSB_RASTER_REPORT_DIR/root-pack-manifest.json"
       - run: npm ci
       - run: npm ci --prefix packages/tfsb-raster-resvg
       - run: npm run build
-      - name: Pack release root and raster companion packages
+      - name: Pack raster companion package
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/root-pack" "$RUNNER_TEMP/raster-pack"
-          npm pack --pack-destination "$RUNNER_TEMP/root-pack" --json > "$TFSB_RASTER_REPORT_DIR/root-pack-manifest.json"
-          mv "$RUNNER_TEMP/root-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/root-package.tgz"
+          mkdir -p "$RUNNER_TEMP/raster-pack"
           npm pack ./packages/tfsb-raster-resvg --pack-destination "$RUNNER_TEMP/raster-pack" --json > "$TFSB_RASTER_REPORT_DIR/raster-pack-manifest.json"
           mv "$RUNNER_TEMP/raster-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz"
       - name: Run raster companion test with network denial
@@ -429,7 +442,9 @@ jobs:
 
   raster-companion-intel-advisory:
     name: Raster companion candidate (darwin-x64 advisory)
-    needs: source-policy
+    needs:
+      - source-policy
+      - root-package
     timeout-minutes: 20
     runs-on: macos-15-intel
     env:
@@ -454,15 +469,26 @@ jobs:
         run: |
           mkdir -p "$TFSB_RASTER_REPORT_DIR"
           node tools/ci/exact-head.mjs --output "$TFSB_RASTER_REPORT_DIR/receipt.json" --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - name: Download canonical root package artifact
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: root-package-artifacts
+          path: ${{ runner.temp }}/tfsb-canonical-root-package
+      - name: Authenticate canonical root package bytes
+        shell: bash
+        run: >-
+          node tools/ci/verify-root-package-artifact.mjs
+          --input "$RUNNER_TEMP/tfsb-canonical-root-package"
+          --consumer-receipt "$TFSB_RASTER_REPORT_DIR/receipt.json"
+          --output "$TFSB_RASTER_REPORT_DIR/root-package.tgz"
+          --manifest-output "$TFSB_RASTER_REPORT_DIR/root-pack-manifest.json"
       - run: npm ci
       - run: npm ci --prefix packages/tfsb-raster-resvg
       - run: npm run build
-      - name: Pack release root and raster companion packages
+      - name: Pack raster companion package
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/root-pack" "$RUNNER_TEMP/raster-pack"
-          npm pack --pack-destination "$RUNNER_TEMP/root-pack" --json > "$TFSB_RASTER_REPORT_DIR/root-pack-manifest.json"
-          mv "$RUNNER_TEMP/root-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/root-package.tgz"
+          mkdir -p "$RUNNER_TEMP/raster-pack"
           npm pack ./packages/tfsb-raster-resvg --pack-destination "$RUNNER_TEMP/raster-pack" --json > "$TFSB_RASTER_REPORT_DIR/raster-pack-manifest.json"
           mv "$RUNNER_TEMP/raster-pack/"*.tgz "$TFSB_RASTER_REPORT_DIR/raster-companion.tgz"
       - name: Run raster companion test with network denial
