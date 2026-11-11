@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tar --directory website -cf "$RUNNER_TEMP/artifact.tar" index.html styles.css main.js robots.txt CNAME
+          tar --directory website -cf "$RUNNER_TEMP/artifact.tar" index.html styles.css main.js robots.txt CNAME orihime.webp
       - name: Upload the website transport
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
