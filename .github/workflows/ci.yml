@@ -318,13 +318,13 @@ jobs:
           sources_owned=1
           sudo tee "$apt_sources" >/dev/null <<'EOF'
           Types: deb
-          URIs: https://archive.ubuntu.com/ubuntu
+          URIs: https://mirrors.edge.kernel.org/ubuntu
           Suites: noble noble-updates noble-backports
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
 
           Types: deb
-          URIs: https://security.ubuntu.com/ubuntu
+          URIs: https://mirrors.edge.kernel.org/ubuntu
           Suites: noble-security
           Components: main restricted universe multiverse
           Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
