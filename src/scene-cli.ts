@@ -30,11 +30,12 @@ import {
 export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
-  tfsb scene compile <json> --output <absent.svg> [--dry-run] [--json]
+  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--dry-run] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
   --output <file>       Publish destination for SVG or scene JSON (absent target only)
+  --palette <file>      Override declared scene color tokens for this compilation
   --dry-run             Validate and plan compilation without writing SVG output
   --json                Emit one versioned machine-result envelope`;
 
@@ -47,6 +48,7 @@ interface ParsedSceneArgs {
   readonly action?: string | undefined;
   readonly positional?: string | undefined;
   readonly output?: string | undefined;
+  readonly palette?: string | undefined;
   readonly dryRun: boolean;
   readonly json: boolean;
   readonly error?: string | undefined;
@@ -93,6 +95,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   }
 
   let output: string | undefined;
+  let palette: string | undefined;
   let dryRun = false;
   const positionals: string[] = [];
   let i = 0;
@@ -118,6 +121,16 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       }
       dryRun = true;
       i += 1;
+      continue;
+    }
+
+    if (arg === "--palette") {
+      const next = rest[i + 1];
+      if (action !== "compile" || palette !== undefined || !next || next.startsWith("-")) {
+        return { action, dryRun, json, error: "Use --palette <json> once with scene compile." };
+      }
+      palette = next;
+      i += 2;
       continue;
     }
 
@@ -207,9 +220,35 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     action,
     positional: positionals[0],
     output,
+    palette,
     dryRun,
     json,
   };
+}
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function withScenePalette(scene: unknown, palette: unknown): unknown {
+  if (!isJsonRecord(scene) || !isJsonRecord(scene["tokenBindings"]) || !isJsonRecord(palette)) {
+    throw new DiagnosticError(diagnostic(
+      { operation: "build", domain: "scene" },
+      "SCENE_INVALID_PALETTE",
+      "A palette must be a JSON object and the scene must declare tokenBindings.",
+    ));
+  }
+  const tokens = scene["tokenBindings"];
+  for (const [name, color] of Object.entries(palette)) {
+    if (!Object.hasOwn(tokens, name) || typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color)) {
+      throw new DiagnosticError(diagnostic(
+        { operation: "build", domain: "scene" },
+        "SCENE_INVALID_PALETTE",
+        "Palette entries must name existing scene tokens and use six-digit #RRGGBB colors.",
+      ));
+    }
+  }
+  return { ...scene, tokenBindings: { ...tokens, ...palette } };
 }
 
 function emitJson<D>(
@@ -265,7 +304,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, dryRun, json: jsonMode } = parsed;
 
   try {
     const inputPath = resolve(cwd, positional!);
@@ -492,7 +531,12 @@ export async function runSceneCli(
     }
 
     if (action === "compile") {
-      const result = compileScene(raw);
+      const sourceValidation = palette === undefined ? undefined : validateScene(raw);
+      const result = sourceValidation?.ok === false
+        ? sourceValidation
+        : compileScene(palette === undefined
+          ? raw
+          : withScenePalette(raw, await readSceneFile(resolve(cwd, palette))));
       if (!result.ok) {
         if (jsonMode) {
           return emitJson(
