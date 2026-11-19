@@ -231,20 +231,20 @@ function isJsonRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function withScenePalette(scene: unknown, palette: unknown): unknown {
-  const tokens = isJsonRecord(scene) ? scene["tokenBindings"] : undefined;
-  if (!isJsonRecord(scene) || !isJsonRecord(tokens) || !isJsonRecord(palette)) {
+  if (!isJsonRecord(scene) || !isJsonRecord(scene["tokenBindings"]) || !isJsonRecord(palette)) {
     throw new DiagnosticError(diagnostic(
       { operation: "build", domain: "scene" },
       "SCENE_INVALID_PALETTE",
       "A palette must be a JSON object and the scene must declare tokenBindings.",
     ));
   }
+  const tokens = scene["tokenBindings"];
   for (const [name, color] of Object.entries(palette)) {
-    if (!Object.hasOwn(tokens, name) || typeof color !== "string" || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)) {
+    if (!Object.hasOwn(tokens, name) || typeof color !== "string" || !/^#[0-9a-f]{6}$/i.test(color)) {
       throw new DiagnosticError(diagnostic(
         { operation: "build", domain: "scene" },
         "SCENE_INVALID_PALETTE",
-        "Palette entries must name existing scene tokens and use three- or six-digit hex colors.",
+        "Palette entries must name existing scene tokens and use six-digit #RRGGBB colors.",
       ));
     }
   }
@@ -531,10 +531,12 @@ export async function runSceneCli(
     }
 
     if (action === "compile") {
-      const input = palette === undefined
-        ? raw
-        : withScenePalette(raw, await readSceneFile(resolve(cwd, palette)));
-      const result = compileScene(input);
+      const sourceValidation = palette === undefined ? undefined : validateScene(raw);
+      const result = sourceValidation?.ok === false
+        ? sourceValidation
+        : compileScene(palette === undefined
+          ? raw
+          : withScenePalette(raw, await readSceneFile(resolve(cwd, palette))));
       if (!result.ok) {
         if (jsonMode) {
           return emitJson(

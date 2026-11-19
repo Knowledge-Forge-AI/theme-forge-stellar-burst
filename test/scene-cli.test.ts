@@ -118,7 +118,7 @@ describe("tfsb scene CLI integration", () => {
       expect(await readFile(join(dir, "scene.json"), "utf8")).toBe(original);
     });
 
-    it.each(['{"iris-colour":"#135C60"}', '{"iris-color":"url(#other)"}', "[]"])(
+    it.each(['{"iris-colour":"#135C60"}', '{"iris-color":"url(#other)"}', '{"iris-color":"#abc"}', "[]"])(
       "refuses an invalid palette and leaves the target absent (%s)",
       async (palette) => {
         const dir = await makeTestDir();
@@ -133,6 +133,41 @@ describe("tfsb scene CLI integration", () => {
         await expect(access(join(dir, "refused.svg"))).rejects.toMatchObject({ code: "ENOENT" });
       },
     );
+
+    it.each([
+      { ...source, tokenBindings: { ...source.tokenBindings, "blue-base": "token:missing" } },
+      { ...source, tokenBindings: { ...source.tokenBindings, "blue-base": "token:iris-color" } },
+      sampleInvalidScene,
+    ])("preserves source errors even when a palette could replace a broken binding", async (invalidScene) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(invalidScene));
+      await writeFile(join(dir, "palette.json"), '{"blue-base":"#135C60"}');
+      const base = capture();
+      const themed = capture();
+      const compile = ["scene", "compile", "scene.json", "--output", "refused.svg", "--json"];
+      expect(await runCli(compile, dir, base.io)).toBe(1);
+      expect(await runCli([...compile, "--palette", "palette.json"], dir, themed.io)).toBe(1);
+      expect(JSON.parse(themed.stdout()).diagnostics).toEqual(JSON.parse(base.stdout()).diagnostics);
+      await expect(access(join(dir, "refused.svg"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
+
+    it("binds the effective palette to the dry-run receipt without writing output", async () => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      await writeFile(join(dir, "palette.json"), '{"iris-color":"#135C60"}');
+      const base = capture();
+      const themed = capture();
+      const compile = ["scene", "compile", "scene.json", "--output", "planned.svg", "--dry-run", "--json"];
+      expect(await runCli(compile, dir, base.io)).toBe(0);
+      expect(await runCli([...compile, "--palette", "palette.json"], dir, themed.io)).toBe(0);
+      const { data } = JSON.parse(themed.stdout());
+      const { receipt } = JSON.parse(base.stdout()).data;
+      expect(data).toMatchObject({ dryRun: true, written: false });
+      expect(data.receipt.tokenDigest).not.toBe(receipt.tokenDigest);
+      expect(data.receipt.sourceDigest).not.toBe(receipt.sourceDigest);
+      expect(data.receipt.svgDigest).not.toBe(receipt.svgDigest);
+      await expect(access(join(dir, "planned.svg"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
   });
 
   describe("validate", () => {

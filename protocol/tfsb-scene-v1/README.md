@@ -98,8 +98,9 @@ may reject a scene whose actual compact SVG would be smaller. There is no bypass
 CLI: `tfsb scene validate|inspect <scene.json> [--json]` and
 `tfsb scene compile <scene.json> --output <absent.svg> [--palette <colors.json>] [--dry-run] [--json]`.
 The optional palette overrides declared color tokens during compilation. It
-accepts a JSON object of existing token names and hex colors. The source
-scene stays editable and each compilation receipt binds its resolved colors.
+accepts a JSON object of existing token names and six-digit `#RRGGBB` colors.
+The source must validate before overrides are applied. The compilation receipt
+binds the effective scene and resolved colors after applying the palette.
 To recolor the [illustration example](examples/scene-illustration.json), save
 `{"burst-cyan":"#83e5cf","hull-primary":"#59466f"}` in `palette.json` and
 compile with that palette.
