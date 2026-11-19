@@ -94,6 +94,47 @@ const sampleInvalidScene = {
 };
 
 describe("tfsb scene CLI integration", () => {
+  describe("palette overrides", () => {
+    const source = {
+      ...sampleValidScene,
+      tokenBindings: { "blue-base": "#4a90e2", "iris-color": "token:blue-base" },
+      elements: [{
+        ...sampleValidScene.elements[0],
+        presentation: { fill: { type: "token", name: "iris-color" } },
+      }],
+    };
+
+    it("recolors referenced and aliased tokens without editing the scene", async () => {
+      const dir = await makeTestDir();
+      const original = JSON.stringify(source);
+      await writeFile(join(dir, "scene.json"), original);
+      await writeFile(join(dir, "palette.json"), JSON.stringify({ "blue-base": "#135C60" }));
+      const cap = capture();
+      expect(await runCli([
+        "scene", "compile", "scene.json", "--palette", "palette.json",
+        "--output", "themed.svg",
+      ], dir, cap.io)).toBe(0);
+      expect(await readFile(join(dir, "themed.svg"), "utf8")).toContain('fill="#135C60"');
+      expect(await readFile(join(dir, "scene.json"), "utf8")).toBe(original);
+    });
+
+    it.each(['{"iris-colour":"#135C60"}', '{"iris-color":"url(#other)"}', "[]"])(
+      "refuses an invalid palette and leaves the target absent (%s)",
+      async (palette) => {
+        const dir = await makeTestDir();
+        await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+        await writeFile(join(dir, "palette.json"), palette);
+        const cap = capture();
+        expect(await runCli([
+          "scene", "compile", "scene.json", "--palette", "palette.json",
+          "--output", "refused.svg", "--json",
+        ], dir, cap.io)).toBe(1);
+        expect(cap.stdout()).toContain("SCENE_INVALID_PALETTE");
+        await expect(access(join(dir, "refused.svg"))).rejects.toMatchObject({ code: "ENOENT" });
+      },
+    );
+  });
+
   describe("validate", () => {
     it("validates a valid scene in human mode", async () => {
       const dir = await makeTestDir();
@@ -534,7 +575,7 @@ describe("tfsb scene CLI integration", () => {
       expect(await runCli(["--help"], "/tmp", cap.io)).toBe(0);
       expect(cap.stdout()).toContain("tfsb scene validate <json> [--json]");
       expect(cap.stdout()).toContain("tfsb scene inspect <json> [--json]");
-      expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--dry-run] [--json]");
+      expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--dry-run] [--json]");
     });
   });
 });

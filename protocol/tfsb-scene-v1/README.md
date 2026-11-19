@@ -96,7 +96,22 @@ and conservative SVG estimates/output over 32 MiB. Conservative output accountin
 may reject a scene whose actual compact SVG would be smaller. There is no bypass.
 
 CLI: `tfsb scene validate|inspect <scene.json> [--json]` and
-`tfsb scene compile <scene.json> --output <absent.svg> [--dry-run] [--json]`.
+`tfsb scene compile <scene.json> --output <absent.svg> [--palette <colors.json>] [--dry-run] [--json]`.
+The optional palette overrides declared color tokens during compilation. It
+accepts a JSON object of existing token names and hex colors. The source
+scene stays editable and each compilation receipt binds its resolved colors.
+To recolor the [illustration example](examples/scene-illustration.json), save
+`{"burst-cyan":"#83e5cf","hull-primary":"#59466f"}` in `palette.json` and
+compile with that palette.
+
+```sh
+tfsb scene compile protocol/tfsb-scene-v1/examples/scene-illustration.json \
+  --palette palette.json --output illustration.svg
+```
+
+Only paints that use those tokens change. To recolor a gradient stop, give the
+stop a token reference in the scene.
+
 Input is a bounded regular-file snapshot. Dry-run writes nothing. Output must be
 absent; there is no overwrite option. Existing symlink parents and final-component
 symlinks are rejected. Publication writes and syncs complete staged bytes before
