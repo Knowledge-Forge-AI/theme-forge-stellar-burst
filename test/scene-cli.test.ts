@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -6,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli.js";
 import { runSceneCli } from "../src/scene-cli.js";
-import type { JsonResultEnvelope, SceneJsonData } from "../src/json.js";
+import type { JsonResultEnvelope, SceneJsonData, SceneValidateJsonData } from "../src/json.js";
 
 const roots: string[] = [];
 
@@ -94,6 +95,72 @@ const sampleInvalidScene = {
 };
 
 describe("tfsb scene CLI integration", () => {
+  describe("path revisions", () => {
+    const source = {
+      ...sampleValidScene,
+      elements: [{
+        id: "face", type: "group", children: [
+          { id: "mouth", type: "path", d: "M 4 5 L 9 5", presentation: { stroke: { type: "solid", color: "#4A90E2" } } },
+          { id: "brow", type: "path", d: "M 7 3 L 9 3" },
+        ],
+      }, ...sampleValidScene.elements, {
+        id: "ornament", type: "use", href: "#badge", width: 10, height: 10,
+      }],
+      definitions: {
+        symbols: [{ type: "symbol", id: "badge", viewBox: [0, 0, 10, 10],
+          elements: [{ id: "badge-detail", type: "path", d: "M 1 2 L 3 4" }] }],
+      },
+    };
+
+    it("revises editable paths, preserves the source, and produces deterministic compilable JSON", async () => {
+      const dir = await makeTestDir();
+      const original = JSON.stringify(source);
+      const edits = JSON.stringify([
+        { id: "mouth", d: "M 4 5 Q 6 7 9 5" },
+        { id: "badge-detail", d: "M 2 1 L 4 3" },
+      ]);
+      await writeFile(join(dir, "scene.json"), original);
+      await writeFile(join(dir, "edits.json"), edits);
+      const args = ["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revise.json", "--json"];
+      const preview = capture();
+      expect(await runCli([...args, "--dry-run"], dir, preview.io)).toBe(0);
+      await expect(access(join(dir, "revise.json"))).rejects.toThrow();
+      const actual = capture();
+      expect(await runCli(args, dir, actual.io)).toBe(0);
+      const revised = await readFile(join(dir, "revise.json"), "utf8");
+      const digest = createHash("sha256").update(revised).digest("hex");
+      expect(JSON.parse(preview.stdout()).data).toMatchObject({ action: "revise", written: false, dryRun: true, outputSha256: digest });
+      expect(JSON.parse(actual.stdout()).data).toMatchObject({ action: "revise", written: true, dryRun: false, outputSha256: digest });
+      expect(JSON.parse(revised)).toMatchObject({
+        elements: [{ id: "face", children: [
+          { id: "mouth", d: "M 4 5 Q 6 7 9 5", presentation: { stroke: { color: "#4A90E2" } } },
+          { id: "brow", d: "M 7 3 L 9 3" },
+        ] }, { id: "rect-1" }, { id: "ornament" }],
+        definitions: { symbols: [{ elements: [{ id: "badge-detail", d: "M 2 1 L 4 3" }] }] },
+      });
+      expect(await readFile(join(dir, "scene.json"), "utf8")).toBe(original);
+      expect(await runCli(args, dir, capture().io)).toBe(1);
+      expect(await readFile(join(dir, "revise.json"), "utf8")).toBe(revised);
+      expect(await runCli(["scene", "compile", "revise.json", "--output", "revise.svg"], dir, capture().io)).toBe(0);
+      expect(await readFile(join(dir, "revise.svg"), "utf8")).toContain('d="M 4 5 Q 6 7 9 5"');
+    });
+
+    it.each([
+      [{ id: "missing", d: "M 0 0 L 1 1" }],
+      [{ id: "rect-1", d: "M 0 0 L 1 1" }],
+      [{ id: "mouth", d: "M 0 0 L 1 1", fill: "red" }],
+      [{ id: "mouth", d: "M 0 0 L 1 1" }, { id: "mouth", d: "M 1 1 L 2 2" }],
+      [{ id: "mouth", d: "M 0 0 L" }],
+    ].map((edits) => [edits] as const))("refuses invalid edits without creating a revision", async (edits) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      await writeFile(join(dir, "edits.json"), JSON.stringify(edits));
+      const cap = capture();
+      expect(await runCli(["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "bad.json", "--json"], dir, cap.io)).toBe(1);
+      await expect(access(join(dir, "bad.json"))).rejects.toThrow();
+    });
+  });
+
   describe("palette overrides", () => {
     const source = {
       ...sampleValidScene,
@@ -196,7 +263,7 @@ describe("tfsb scene CLI integration", () => {
       expect(exitCode).toBe(0);
       expect(cap.stderr()).toBe("");
 
-      const envelope = JSON.parse(cap.stdout()) as JsonResultEnvelope<"scene", SceneJsonData>;
+      const envelope = JSON.parse(cap.stdout()) as JsonResultEnvelope<"scene", SceneValidateJsonData>;
       expect(envelope.schemaVersion).toBe(1);
       expect(envelope.command).toBe("scene");
       expect(envelope.status).toBe("ok");

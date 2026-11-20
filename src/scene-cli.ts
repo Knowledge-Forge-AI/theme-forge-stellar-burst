@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
 import { DiagnosticError, diagnostic, type Diagnostic } from "./diagnostics.js";
@@ -11,6 +12,7 @@ import {
   type SceneImportSvgJsonData,
   type SceneInspectJsonData,
   type SceneJsonData,
+  type SceneReviseJsonData,
   type SceneValidateJsonData,
 } from "./json.js";
 import {
@@ -26,17 +28,20 @@ import {
   validateScene,
   type SceneImportResult,
 } from "./scene/index.js";
+import { reviseScenePaths } from "./scene/path-edits.js";
 
 export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--dry-run] [--json]
+  tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
   --output <file>       Publish destination for SVG or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
-  --dry-run             Validate and plan compilation without writing SVG output
+  --edits <file>        Apply path replacements by element ID
+  --dry-run             Validate and plan compilation or revision without writing output
   --json                Emit one versioned machine-result envelope`;
 
 export interface SceneCliIo {
@@ -49,6 +54,7 @@ interface ParsedSceneArgs {
   readonly positional?: string | undefined;
   readonly output?: string | undefined;
   readonly palette?: string | undefined;
+  readonly edits?: string | undefined;
   readonly dryRun: boolean;
   readonly json: boolean;
   readonly error?: string | undefined;
@@ -75,12 +81,13 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     action !== "validate" &&
     action !== "inspect" &&
     action !== "compile" &&
+    action !== "revise" &&
     action !== "import-svg"
   ) {
     return {
       dryRun: false,
       json,
-      error: `Unknown scene action '${action}'. Expected validate, inspect, or compile.`,
+      error: `Unknown scene action '${action}'. Expected validate, inspect, compile, revise, or import-svg.`,
     };
   }
 
@@ -96,6 +103,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
 
   let output: string | undefined;
   let palette: string | undefined;
+  let edits: string | undefined;
   let dryRun = false;
   const positionals: string[] = [];
   let i = 0;
@@ -113,7 +121,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg === "--dry-run") {
-      if (action !== "compile") {
+      if (action !== "compile" && action !== "revise") {
         return { action, dryRun, json, error: `--dry-run is not supported by scene ${action}.` };
       }
       if (dryRun) {
@@ -134,8 +142,18 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       continue;
     }
 
+    if (arg === "--edits") {
+      const next = rest[i + 1];
+      if (action !== "revise" || edits !== undefined || !next || next.startsWith("-")) {
+        return { action, dryRun, json, error: "Use --edits <json> once with scene revise." };
+      }
+      edits = next;
+      i += 2;
+      continue;
+    }
+
     if (arg === "--output") {
-      if (action !== "compile" && action !== "import-svg") {
+      if (action !== "compile" && action !== "import-svg" && action !== "revise") {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -151,7 +169,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg.startsWith("--output=")) {
-      if (action !== "compile" && action !== "import-svg") {
+      if (action !== "compile" && action !== "import-svg" && action !== "revise") {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -216,11 +234,16 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     };
   }
 
+  if (action === "revise" && (edits === undefined || output === undefined)) {
+    return { action, dryRun, json, error: "scene revise requires --edits <json> and --output <absent-scene.json>." };
+  }
+
   return {
     action,
     positional: positionals[0],
     output,
     palette,
+    edits,
     dryRun,
     json,
   };
@@ -304,7 +327,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, dryRun, json: jsonMode } = parsed;
 
   try {
     const inputPath = resolve(cwd, positional!);
@@ -440,6 +463,29 @@ export async function runSceneCli(
     }
 
     const raw = await readSceneFile(inputPath);
+
+    if (action === "revise") {
+      const result = reviseScenePaths(raw, await readSceneFile(resolve(cwd, edits!)));
+      if (!result.ok) {
+        if (jsonMode) {
+          return emitJson(io, "error", 1, "Scene revision failed.", result.diagnostics.map(mapMachineDiagnostic), null);
+        }
+        for (const diag of result.diagnostics) {
+          io.stderr(`${diag.code}: ${diag.message}${diag.location === undefined ? "" : ` (${diag.location})`}\n`);
+        }
+        return 1;
+      }
+      const published = await publishSceneJson(resolve(cwd, output!), result.value, dryRun);
+      const data: SceneReviseJsonData = {
+        schema: "tfsb.scene-result-v1", action, valid: true, output: output!,
+        dryRun: published.dryRun, written: published.published, cleanupResidue: published.cleanupResidue,
+        outputSha256: createHash("sha256").update(result.value).digest("hex"),
+      };
+      const summary = dryRun ? "Scene revision planned." : "Scene revised.";
+      if (jsonMode) return emitJson(io, "ok", 0, summary, [], data);
+      io.stdout(`${summary} ${output}\n`);
+      return 0;
+    }
 
     if (action === "validate") {
       const result = validateScene(raw);

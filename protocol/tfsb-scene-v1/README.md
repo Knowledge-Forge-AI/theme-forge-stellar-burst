@@ -113,6 +113,21 @@ tfsb scene compile protocol/tfsb-scene-v1/examples/scene-illustration.json \
 Only paints that use those tokens change. To recolor a gradient stop, give the
 stop a token reference in the scene.
 
+To change a path's shape while keeping the editable scene, use
+`tfsb scene revise <scene.json> --edits <edits.json> --output <absent-scene.json>`.
+The edits file is a nonempty array of objects containing an existing path
+element's `id` and its new SVG path string `d`. For the illustration example,
+save this as `edits.json`.
+
+```json
+[{ "id": "flightVector", "d": "M 100 620 C 400 650 800 460 1300 420" }]
+```
+
+Revision supports paths inside groups and symbol definitions. It validates the
+original scene, rejects repeated or unknown IDs and invalid geometry, and writes
+canonical scene JSON to a new file. The JSON result reports the output SHA-256
+in both `--dry-run` and write mode. Compile the revised scene to export its SVG.
+
 Input is a bounded regular-file snapshot. Dry-run writes nothing. Output must be
 absent; there is no overwrite option. Existing symlink parents and final-component
 symlinks are rejected. Publication writes and syncs complete staged bytes before
