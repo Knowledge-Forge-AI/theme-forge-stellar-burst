@@ -176,11 +176,23 @@ export interface SceneImportSvgJsonData {
   readonly metrics?: SceneMetrics;
 }
 
+export interface SceneReviseJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "revise";
+  readonly valid: true;
+  readonly output: string;
+  readonly dryRun: boolean;
+  readonly written: boolean;
+  readonly cleanupResidue: string | null;
+  readonly outputSha256: string;
+}
+
 export type SceneJsonData =
   | SceneValidateJsonData
   | SceneInspectJsonData
   | SceneCompileJsonData
-  | SceneImportSvgJsonData;
+  | SceneImportSvgJsonData
+  | SceneReviseJsonData;
 
 function safeRelative(value: string): boolean {
   return value !== "" && !value.includes("\0") && !isAbsolute(value) && !/^[A-Za-z]:[\\/]/.test(value) &&
