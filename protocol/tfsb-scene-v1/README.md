@@ -125,7 +125,8 @@ save this as `edits.json`.
 
 Revision supports paths inside groups and symbol definitions. It validates the
 original scene, rejects repeated or unknown IDs and invalid geometry, and writes
-canonical scene JSON to a new file. The JSON result reports the output SHA-256
+canonical scene JSON to a new file. If expanded path spacing exceeds the scene
+file size limit, revision uses compact path spacing. The JSON result reports the output SHA-256
 in both `--dry-run` and write mode. Compile the revised scene to export its SVG.
 
 Use `tfsb scene trace-png source.png --output traced.scene.json` to trace an

@@ -70,6 +70,20 @@ test("Cloe native-detail SVG preserves line work at raster delivery sizes", asyn
   test.setTimeout(90_000);
   const svg = await traceCloe(page, info, "--native-detail");
   expect(svg).toContain('viewBox="0 0 1024 1536"');
+
+  const replacement = "M0 0H1023V1536H0Z";
+  await writeFile(info.outputPath("edit.json"), JSON.stringify([{ id: "trace-base", d: replacement }]));
+  let messages = "";
+  const io = { stdout: (value: string) => { messages += value; }, stderr: (value: string) => { messages += value; } };
+  expect(await runSceneCli([
+    "revise", "cloe.json", "--edits", "edit.json", "--output", "revised.json",
+  ], info.outputDir, io), messages).toBe(0);
+  const revised = await readFile(info.outputPath("revised.json"), "utf8");
+  expect(Buffer.byteLength(revised)).toBeLessThanOrEqual(8 * 1024 * 1024);
+  expect(JSON.parse(revised).elements[0]).toMatchObject({ id: "trace-base", d: replacement });
+  expect(await runSceneCli(["compile", "revised.json", "--output", "revised.svg"], info.outputDir, io), messages).toBe(0);
+  const revisedSvg = await readFile(info.outputPath("revised.svg"), "utf8");
+  expect(revisedSvg).toBe(svg.replace('d="M 0 0 H 1024 V 1536 H 0 Z"', 'd="M 0 0 H 1023 V 1536 H 0 Z"'));
   for (const width of [512, 1024]) {
     const height = width * 1.5;
     const before = await render(page, "/reference.webp", width, height);

@@ -45,9 +45,9 @@ import type {
   VectorScene,
 } from "./types.js";
 import { countTextPathSegments, validateScene } from "./validate.js";
-import { canonicalPathData } from "./path-canonical.js";
+import { canonicalPathData, compactCanonicalPathData } from "./path-canonical.js";
 
-function canonicalScenePaths(scene: VectorScene): VectorScene {
+function canonicalScenePaths(scene: VectorScene, compact = false): VectorScene {
   let bytes = 0;
   const visit = (items: readonly SceneElement[]): SceneElement[] => items.map((item) => {
     if (item.type === "group") return { ...item, children: visit(item.children) };
@@ -55,7 +55,7 @@ function canonicalScenePaths(scene: VectorScene): VectorScene {
     const d = canonicalPathData(item.d);
     bytes += d.length;
     if (bytes > 16_777_216) throw new RangeError("Canonical scene paths exceed 16 MiB.");
-    return { ...item, d };
+    return { ...item, d: compact ? compactCanonicalPathData(d) : d };
   });
   return { ...scene, elements: visit(scene.elements), ...(scene.definitions ? { definitions: { ...scene.definitions, ...(scene.definitions.symbols ? { symbols: scene.definitions.symbols.map((symbol) => ({ ...symbol, elements: visit(symbol.elements) })) } : {}) } } : {}) };
 }
@@ -97,11 +97,16 @@ function sceneWarnings(scene: VectorScene): string[] {
   return warnings;
 }
 
-export function canonicalizeScene(input: unknown): Result<string> {
+export function canonicalizeScene(input: unknown, options?: { readonly fitInput?: boolean }): Result<string> {
   const result = validateScene(input);
   if (!result.ok) return result;
-  try { return { ok: true, value: canonicalJsonStringify(canonicalScenePaths(result.value.scene)) }; }
-  catch { return { ok: false, diagnostics: [diagnostic({ operation: "validate", domain: "scene" }, "SCENE_CANONICAL_LIMIT", "Scene cannot be represented within canonical output limits.")] }; }
+  try {
+    const canonical = canonicalJsonStringify(canonicalScenePaths(result.value.scene));
+    if (options?.fitInput && Buffer.byteLength(canonical, "utf8") > SCENE_LIMITS.maxInputBytes) {
+      return { ok: true, value: canonicalJsonStringify(canonicalScenePaths(result.value.scene, true)) };
+    }
+    return { ok: true, value: canonical };
+  } catch { return { ok: false, diagnostics: [diagnostic({ operation: "validate", domain: "scene" }, "SCENE_CANONICAL_LIMIT", "Scene cannot be represented within canonical output limits.")] }; }
 }
 
 /**

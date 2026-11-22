@@ -49,5 +49,5 @@ export function reviseScenePaths(source: unknown, edits: unknown): Result<string
         symbols: scene.definitions.symbols.map((symbol) => ({ ...symbol, elements: revise(symbol.elements) })),
       };
   if (remaining.size !== 0) invalidEdits("Every edit must name an existing path element.");
-  return canonicalizeScene({ ...scene, elements, ...(definitions === undefined ? {} : { definitions }) });
+  return canonicalizeScene({ ...scene, elements, ...(definitions === undefined ? {} : { definitions }) }, { fitInput: true });
 }
