@@ -38,13 +38,14 @@ export const SCENE_USAGE = `Usage:
   tfsb scene inspect <json> [--json]
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--high-detail] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
   --output <file>       Publish destination for SVG or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
   --edits <file>        Apply path replacements by element ID
+  --high-detail         Trace sharp edges at finer resolution for zoomed viewing
   --compact-paths       Remove optional SVG path spacing when compiling
   --dry-run             Validate and plan compilation or revision without writing output
   --json                Emit one versioned machine-result envelope`;
@@ -61,6 +62,7 @@ interface ParsedSceneArgs {
   readonly palette?: string | undefined;
   readonly edits?: string | undefined;
   readonly compactPaths?: boolean;
+  readonly highDetail?: boolean;
   readonly dryRun: boolean;
   readonly json: boolean;
   readonly error?: string | undefined;
@@ -113,6 +115,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let edits: string | undefined;
   let dryRun = false;
   let compactPaths = false;
+  let highDetail = false;
   const positionals: string[] = [];
   let i = 0;
 
@@ -136,6 +139,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "--dry-run cannot be repeated." };
       }
       dryRun = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--high-detail") {
+      if (action !== "trace-png" || highDetail) {
+        return { action, dryRun, json, error: "Use --high-detail once with scene trace-png." };
+      }
+      highDetail = true;
       i += 1;
       continue;
     }
@@ -268,6 +280,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     palette,
     edits,
     compactPaths,
+    highDetail,
     dryRun,
     json,
   };
@@ -351,7 +364,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, highDetail = false, dryRun, json: jsonMode } = parsed;
 
   try {
     const inputPath = resolve(cwd, positional!);
@@ -490,7 +503,7 @@ export async function runSceneCli(
       const bytes = await readSceneFileBytes(inputPath);
       let scene;
       try {
-        scene = traceRasterScene(decodeStrictPng(bytes));
+        scene = traceRasterScene(decodeStrictPng(bytes), { highDetail });
       } catch {
         throw new DiagnosticError(diagnostic(
           { operation: "import", domain: "scene" },

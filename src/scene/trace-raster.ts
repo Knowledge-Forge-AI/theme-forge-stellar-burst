@@ -16,49 +16,96 @@ const MAX_SOURCE_PIXELS = 4_194_304;
 const MAX_TRACE_EDGE = 576;
 class TraceContourLimitError extends RangeError {}
 
-function sampleRaster(source: PixelSource, bits: ChannelBits) {
+function traceGrid(source: PixelSource) {
   const { width, height, rgba8 } = source;
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1
       || width * height > MAX_SOURCE_PIXELS || rgba8.length !== width * height * 4) {
     throw new RangeError("Raster tracing requires a bounded RGBA8 image.");
   }
   const scale = Math.min(1, MAX_TRACE_EDGE / Math.max(width, height));
-  const cols = Math.max(1, Math.round(width * scale));
-  const rows = Math.max(1, Math.round(height * scale));
-  const keys = new Uint32Array(cols * rows);
-  const shift = 8 - bits;
-  const histogram = new Map<number, Sample>();
-  for (let y = 0; y < rows; y += 1) {
-    const top = y * height, bottom = (y + 1) * height;
-    for (let x = 0; x < cols; x += 1) {
-      const left = x * width, right = (x + 1) * width;
-      const sum: Color = [0, 0, 0];
-      // Integrate the exact pixel coverage of each cell. Integer weights
-      // avoid alternating two/three-pixel averages across smooth gradients.
-      for (let sy = Math.floor(top / rows); sy < Math.ceil(bottom / rows); sy += 1) {
-        const overlapY = Math.min(bottom, (sy + 1) * rows) - Math.max(top, sy * rows);
-        for (let sx = Math.floor(left / cols); sx < Math.ceil(right / cols); sx += 1) {
-          const overlapX = Math.min(right, (sx + 1) * cols) - Math.max(left, sx * cols);
-          const weight = overlapX * overlapY;
-          const index = (sy * width + sx) * 4;
-          if (rgba8[index + 3] !== 255) throw new RangeError("Raster tracing requires opaque pixels.");
-          sum[0] += rgba8[index]! * weight;
-          sum[1] += rgba8[index + 1]! * weight;
-          sum[2] += rgba8[index + 2]! * weight;
-        }
-      }
-      const rgb = sum.map((channel) => Math.round(channel / (width * height))) as Color;
-      const key = ((rgb[0] >> shift) << (2 * bits)) | ((rgb[1] >> shift) << bits) | (rgb[2] >> shift);
-      keys[y * cols + x] = key;
-      const sample = histogram.get(key);
-      if (sample === undefined) histogram.set(key, { key, count: 1, sum: rgb });
-      else {
-        sample.count += 1;
-        for (let axis = 0; axis < 3; axis += 1) sample.sum[axis]! += rgb[axis]!;
-      }
+  return { cols: Math.max(1, Math.round(width * scale)), rows: Math.max(1, Math.round(height * scale)) };
+}
+
+interface SampledRaster {
+  readonly cols: number;
+  readonly rows: number;
+  readonly bits: ChannelBits;
+  readonly keys: Uint32Array;
+  readonly histogram: Map<number, Sample>;
+}
+
+function makeSamples(cols: number, rows: number, bits: ChannelBits): SampledRaster {
+  return { cols, rows, bits, keys: new Uint32Array(cols * rows), histogram: new Map() };
+}
+
+function sampleCell(source: PixelSource, cols: number, rows: number, x: number, y: number): Color {
+  const { width, height, rgba8 } = source;
+  const left = x * width, right = (x + 1) * width;
+  const top = y * height, bottom = (y + 1) * height;
+  const sum: Color = [0, 0, 0];
+  // Integrate exact pixel coverage with integer weights.
+  for (let sy = Math.floor(top / rows); sy < Math.ceil(bottom / rows); sy += 1) {
+    const overlapY = Math.min(bottom, (sy + 1) * rows) - Math.max(top, sy * rows);
+    for (let sx = Math.floor(left / cols); sx < Math.ceil(right / cols); sx += 1) {
+      const overlapX = Math.min(right, (sx + 1) * cols) - Math.max(left, sx * cols);
+      const weight = overlapX * overlapY;
+      const index = (sy * width + sx) * 4;
+      if (rgba8[index + 3] !== 255) throw new RangeError("Raster tracing requires opaque pixels.");
+      sum[0] += rgba8[index]! * weight;
+      sum[1] += rgba8[index + 1]! * weight;
+      sum[2] += rgba8[index + 2]! * weight;
     }
   }
-  return { cols, rows, keys, histogram, bits };
+  return sum.map((value) => Math.round(value / (width * height))) as Color;
+}
+
+function recordColor({ bits, keys, histogram }: SampledRaster, i: number, rgb: Color) {
+  const shift = 8 - bits;
+  const key = ((rgb[0] >> shift) << (2 * bits)) | ((rgb[1] >> shift) << bits) | (rgb[2] >> shift);
+  keys[i] = key;
+  const sample = histogram.get(key);
+  if (sample === undefined) histogram.set(key, { key, count: 1, sum: [...rgb] });
+  else {
+    sample.count += 1;
+    for (let axis = 0; axis < 3; axis += 1) sample.sum[axis]! += rgb[axis]!;
+  }
+}
+
+function sampleRaster(source: PixelSource, bits: ChannelBits, { cols, rows }: { cols: number; rows: number }) {
+  const sampled = makeSamples(cols, rows, bits);
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
+      recordColor(sampled, y * cols + x, sampleCell(source, cols, rows, x, y));
+    }
+  }
+  return sampled;
+}
+
+function sampleAdaptiveRaster(source: PixelSource, coarse: { cols: number; rows: number }): SampledRaster {
+  const cols = coarse.cols * 2, rows = coarse.rows * 2;
+  const sampled = makeSamples(cols, rows, 6);
+  for (let y = 0; y < coarse.rows; y += 1) {
+    for (let x = 0; x < coarse.cols; x += 1) {
+      const left = 2 * x, top = 2 * y;
+      const subcells = [
+        sampleCell(source, cols, rows, left, top),
+        sampleCell(source, cols, rows, left + 1, top),
+        sampleCell(source, cols, rows, left, top + 1),
+        sampleCell(source, cols, rows, left + 1, top + 1),
+      ];
+      // Subdivide only where the four samples span a strong color transition.
+      const resolveEdge = [0, 1, 2].some((channel) => {
+        const values = subcells.map((rgb) => rgb[channel]!);
+        return Math.max(...values) - Math.min(...values) >= 48;
+      });
+      const shared = resolveEdge ? undefined : sampleCell(source, coarse.cols, coarse.rows, x, y);
+      subcells.forEach((color, offset) => {
+        const index = (top + (offset >> 1)) * cols + left + (offset & 1);
+        recordColor(sampled, index, shared ?? color);
+      });
+    }
+  }
+  return sampled;
 }
 
 function channel(key: number, axis: number, bits: ChannelBits): number {
@@ -208,13 +255,15 @@ interface TraceSettings {
   block?: 2 | 4;
   segmentLimit?: number;
   underpaintColors?: number;
+  underpaintSource?: SampledRaster;
 }
 
 function traceSampledRaster(
   source: PixelSource,
-  { cols, rows, keys, histogram, bits }: ReturnType<typeof sampleRaster>,
-  { paletteSize, block = 2, segmentLimit = Infinity, underpaintColors }: TraceSettings,
+  sampled: SampledRaster,
+  { paletteSize, block = 2, segmentLimit = Infinity, underpaintColors, underpaintSource = sampled }: TraceSettings,
 ): VectorScene {
+  const { cols, rows, keys, histogram, bits } = sampled;
   const samples = [...histogram.values()];
   const { indices, colors, centers } = quantize(samples, paletteSize, bits);
   const pixels = Uint16Array.from(keys, (key) => indices[key]!);
@@ -224,7 +273,7 @@ function traceSampledRaster(
   const base = { type: "solid", color: colors[0]! } as const;
 
   function addLayer(
-    data: Uint16Array, width: number, height: number, name: string, scale: number, palette = colors,
+    data: Uint16Array, width: number, height: number, name: string, scale: number, palette = colors, scaleY = scale,
   ) {
     const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined);
     shapes.forEach(({ contours, segments }, index) => {
@@ -235,7 +284,7 @@ function traceSampledRaster(
       if (d.length > SCENE_LIMITS.maxPathBytes) throw new TraceContourLimitError("Raster contours exceed the per-color path limit.");
       if (d) elements.push({
         type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
-        ...(scale === 1 ? {} : { transform: [{ type: "scale", x: scale }] }),
+        ...(scale === 1 && scaleY === 1 ? {} : { transform: [{ type: "scale", x: scale, ...(scaleY === scale ? {} : { y: scaleY }) }] }),
       });
     });
   }
@@ -244,9 +293,11 @@ function traceSampledRaster(
     totalSegments += 5; // One move, three sides, and close.
     elements.push({ type: "path", id: "trace-base", d: `M0 0H${cols}V${rows}H0Z`, presentation: { fill: base } });
     if (underpaintColors !== undefined) {
-      const underpaint = quantize(samples, underpaintColors, bits);
-      const paint = Uint16Array.from(keys, (key) => underpaint.indices[key]!);
-      addLayer(paint, cols, rows, "undercoat", 1, underpaint.colors);
+      const paintGrid = underpaintSource;
+      const underpaint = quantize([...paintGrid.histogram.values()], underpaintColors, paintGrid.bits);
+      const paint = Uint16Array.from(paintGrid.keys, (key) => underpaint.indices[key]!);
+      addLayer(paint, paintGrid.cols, paintGrid.rows, "undercoat",
+        cols / paintGrid.cols, underpaint.colors, rows / paintGrid.rows);
     } else {
       const underCols = Math.ceil(cols / block);
       const underRows = Math.ceil(rows / block);
@@ -282,21 +333,31 @@ function traceSampledRaster(
 }
 
 /** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
-export function traceRasterScene(source: PixelSource): VectorScene {
+export function traceRasterScene(source: PixelSource, options: { readonly highDetail?: boolean } = {}): VectorScene {
+  const grid = traceGrid(source);
   const segmentLimit = SCENE_LIMITS.maxAggregatePathSegments;
+  if (options.highDetail && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
+      && grid.cols > 4 && grid.rows > 4) {
+    try {
+      const sampled = sampleAdaptiveRaster(source, grid);
+      const underpaintSource = sampleRaster(source, 6, { cols: Math.ceil(grid.cols / 2), rows: Math.ceil(grid.rows / 2) });
+      return traceSampledRaster(source, sampled, { paletteSize: 352, underpaintColors: 128, underpaintSource, segmentLimit });
+    } catch (error) {
+      if (!(error instanceof TraceContourLimitError)) throw error;
+    }
+  }
   try {
-    return traceSampledRaster(source, sampleRaster(source, 6), {
+    return traceSampledRaster(source, sampleRaster(source, 6, grid), {
       paletteSize: 448, underpaintColors: 96, segmentLimit,
     });
   } catch (error) {
     if (!(error instanceof TraceContourLimitError)) throw error;
   }
-  const sampled = sampleRaster(source, 5);
+  const sampled = sampleRaster(source, 5, grid);
   try {
     return traceSampledRaster(source, sampled, { paletteSize: 256, block: 2, segmentLimit });
   } catch (error) {
     if (!(error instanceof TraceContourLimitError)) throw error;
-    // Preserve the original trace for inputs that exceed both finer budgets.
     return traceSampledRaster(source, sampled, { paletteSize: 160, block: 4 });
   }
 }
