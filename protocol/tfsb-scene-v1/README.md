@@ -154,9 +154,11 @@ grouped by paint color. Review the export at its intended display size.
 
 Use `--native-detail` to prioritize the native raster delivery size for complex
 artwork. It attempts a finer grid with up to 1,536 cells on the long edge
-without upsampling the source. It subdivides cells based on the mean RGB
-error that averaging would introduce, with up to 1,536 detail colors. The
-densest trace uses SVG’s implicit fill closure to reserve more of the budget
+without upsampling the source. The first pass can split a cell into rows,
+columns, or four samples depending on the mean RGB error of each option.
+Finer color bins preserve small differences before quantization to up to
+1,664 detail colors. Images that exceed the earlier palette search’s bin
+count limit fall back to six-bit bins. The densest trace uses SVG’s implicit fill closure to reserve more of the budget
 for detail. Its subpaths are open for stroking and closed for filling. When
 a native trace exceeds the 16 MB SVG budget, 8 MiB scene file limit, or
 contour limits, the tracer tries earlier native-detail settings before high

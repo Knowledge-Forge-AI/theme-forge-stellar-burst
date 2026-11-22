@@ -10,7 +10,7 @@ interface PixelSource {
   readonly rgba8: Uint8Array;
 }
 
-type ChannelBits = 5 | 6;
+type ChannelBits = 5 | 6 | 7;
 type Color = [number, number, number];
 type Sample = { key: number; count: number; sum: Color };
 type Bucket = { samples: Sample[]; axis: number; score: number };
@@ -83,34 +83,64 @@ function sampleRaster(source: PixelSource, bits: ChannelBits, { cols, rows }: { 
   return sampled;
 }
 
+function colorDifference(a: Color, b: Color): number {
+  return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+}
+
+function averagePair(a: Color, b: Color): Color {
+  return [
+    Math.round((a[0] + b[0]) / 2),
+    Math.round((a[1] + b[1]) / 2),
+    Math.round((a[2] + b[2]) / 2),
+  ];
+}
+
+function splitAlongEdge(
+  [topLeft, topRight, bottomLeft, bottomRight]: [Color, Color, Color, Color],
+  errorLimit: number,
+): Color[] | undefined {
+  // Summed absolute error from each rounded pair average equals the
+  // difference between the pair. Test both splits before averaging either.
+  const rowError = colorDifference(topLeft, topRight) + colorDifference(bottomLeft, bottomRight);
+  const columnError = colorDifference(topLeft, bottomLeft) + colorDifference(topRight, bottomRight);
+  if (Math.min(rowError, columnError) > errorLimit) return undefined;
+  if (rowError <= columnError) {
+    const top = averagePair(topLeft, topRight), bottom = averagePair(bottomLeft, bottomRight);
+    return [top, top, bottom, bottom];
+  }
+  const left = averagePair(topLeft, bottomLeft), right = averagePair(topRight, bottomRight);
+  return [left, right, left, right];
+}
+
 function sampleAdaptiveRaster(
   source: PixelSource, coarse: { cols: number; rows: number }, edgeThreshold: number,
-  subdivision: "span" | "mean-error" = "span",
+  subdivision: "span" | "mean-error" | "directional" = "span",
 ): SampledRaster {
   const cols = coarse.cols * 2, rows = coarse.rows * 2;
-  const sampled = makeSamples(cols, rows, 6);
+  const sampled = makeSamples(cols, rows, subdivision === "directional" ? 7 : 6);
   for (let y = 0; y < coarse.rows; y += 1) {
     for (let x = 0; x < coarse.cols; x += 1) {
       const left = 2 * x, top = 2 * y;
-      const subcells = [
+      const subcells: [Color, Color, Color, Color] = [
         sampleCell(source, cols, rows, left, top),
         sampleCell(source, cols, rows, left + 1, top),
         sampleCell(source, cols, rows, left, top + 1),
         sampleCell(source, cols, rows, left + 1, top + 1),
       ];
-      const center = subdivision === "mean-error" ? sampleCell(source, coarse.cols, coarse.rows, x, y) : undefined;
+      const center = subdivision === "span" ? undefined : sampleCell(source, coarse.cols, coarse.rows, x, y);
       const resolveEdge = center === undefined
         ? [0, 1, 2].some((channel) => {
             const values = subcells.map((rgb) => rgb[channel]!);
             return Math.max(...values) - Math.min(...values) >= edgeThreshold;
           })
-        : subcells.reduce((error, [r, g, b]) =>
-            error + Math.abs(r - center[0]) + Math.abs(g - center[1]) + Math.abs(b - center[2]), 0)
+        : subcells.reduce((error, color) => error + colorDifference(color, center), 0)
           >= edgeThreshold * subcells.length * 3;
       const shared = resolveEdge ? undefined : center ?? sampleCell(source, coarse.cols, coarse.rows, x, y);
+      const pairs = resolveEdge && subdivision === "directional"
+        ? splitAlongEdge(subcells, edgeThreshold * subcells.length * 3) : undefined;
       subcells.forEach((color, offset) => {
         const index = (top + (offset >> 1)) * cols + left + (offset & 1);
-        recordColor(sampled, index, shared ?? color);
+        recordColor(sampled, index, shared ?? pairs?.[offset] ?? color);
       });
     }
   }
@@ -377,6 +407,8 @@ export function traceRasterScene(
         cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
       });
       for (const { edgeThreshold, subdivision, ...traceSettings } of [
+        { edgeThreshold: 2.625, subdivision: "directional" as const, paletteSize: 1664, underpaintColors: 96, implicitClose: true,
+          segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 4, subdivision: "mean-error" as const, paletteSize: 1536, underpaintColors: 96, implicitClose: true,
           segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 5.5, subdivision: "mean-error" as const, paletteSize: 1152, underpaintColors: 96, implicitClose: true,
@@ -390,6 +422,8 @@ export function traceRasterScene(
       ]) {
         try {
           const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold, subdivision);
+          // Keep palette search within the six-bit pass's maximum occupied-bin count.
+          if (subdivision === "directional" && sampled.histogram.size > 2 ** 18) continue;
           const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource });
           if (Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
         } catch (error) {
