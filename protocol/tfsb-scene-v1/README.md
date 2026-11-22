@@ -140,7 +140,9 @@ color contours and uses 2-by-2 cell averages to underpaint their joins.
 `--compact-paths` removes optional spacing from the SVG path data and preserves
 the geometry and scene digest. The SVG contains no raster image. Regions
 are grouped by paint color and do not identify portrait features as separate
-semantic objects. Large or unusually complex inputs can exceed scene limits.
+semantic objects. If the finer trace exceeds a contour limit, the tracer retries
+with the previous 160-color palette and 4-by-4 underpainting. Large or unusually
+complex inputs can still exceed scene limits.
 Review the export at its intended display size.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces
