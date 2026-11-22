@@ -31,3 +31,8 @@ export function canonicalPathData(validated: string): string {
   }
   return output.join(" ");
 }
+
+/** Remove optional spacing from canonical path data. */
+export function compactCanonicalPathData(path: string): string {
+  return path.replace(/ *([AaCcHhLlMmQqSsTtVvZz]) */g, "$1");
+}

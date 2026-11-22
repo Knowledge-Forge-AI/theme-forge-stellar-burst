@@ -359,6 +359,8 @@ function traceSampledRaster(
   };
 }
 
+const HIGH_DETAIL_SVG_BUDGET = 12_000_000;
+
 /** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
 export function traceRasterScene(
   source: PixelSource,
@@ -375,6 +377,8 @@ export function traceRasterScene(
         cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
       });
       for (const { edgeThreshold, subdivision, ...traceSettings } of [
+        { edgeThreshold: 4, subdivision: "mean-error" as const, paletteSize: 1536, underpaintColors: 96, implicitClose: true,
+          segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 5.5, subdivision: "mean-error" as const, paletteSize: 1152, underpaintColors: 96, implicitClose: true,
           segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 6.75, subdivision: "mean-error" as const, paletteSize: 1152, underpaintColors: 96,
@@ -386,7 +390,8 @@ export function traceRasterScene(
       ]) {
         try {
           const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold, subdivision);
-          return traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource });
+          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource });
+          if (Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
         }
@@ -399,7 +404,7 @@ export function traceRasterScene(
       const sampled = sampleAdaptiveRaster(source, grid, 2);
       return traceSampledRaster(source, sampled, {
         paletteSize: 1152, underpaintColors: 96, underpaintSource: sampleRaster(source, 6, grid),
-        segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES,
+        segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: HIGH_DETAIL_SVG_BUDGET,
       });
     } catch (error) {
       if (!(error instanceof TraceContourLimitError)) throw error;

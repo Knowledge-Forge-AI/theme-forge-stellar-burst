@@ -16,7 +16,7 @@ async function traceCloe(page: Page, info: TestInfo, detail?: "--regular" | "--n
   const svg = await readFile(info.outputPath("cloe.svg"), "utf8");
   expect(svg).not.toMatch(/<(?:image|foreignObject|script)\b|\bhref\s*=/);
   expect(svg.match(/<path /g)?.length).toBeGreaterThan(1);
-  expect(Buffer.byteLength(svg)).toBeLessThan(12_000_000);
+  expect(Buffer.byteLength(svg)).toBeLessThan(16_000_000);
   await page.route("http://cloe.test/cloe.svg", (route) =>
     route.fulfill({ contentType: "image/svg+xml", body: svg }));
   return svg;
@@ -70,13 +70,27 @@ test("Cloe native-detail SVG preserves line work at raster delivery sizes", asyn
   test.setTimeout(90_000);
   const svg = await traceCloe(page, info, "--native-detail");
   expect(svg).toContain('viewBox="0 0 1024 1536"');
+
+  const replacement = "M0 0H1023V1536H0Z";
+  await writeFile(info.outputPath("edit.json"), JSON.stringify([{ id: "trace-base", d: replacement }]));
+  let messages = "";
+  const io = { stdout: (value: string) => { messages += value; }, stderr: (value: string) => { messages += value; } };
+  expect(await runSceneCli([
+    "revise", "cloe.json", "--edits", "edit.json", "--output", "revised.json",
+  ], info.outputDir, io), messages).toBe(0);
+  const revised = await readFile(info.outputPath("revised.json"), "utf8");
+  expect(Buffer.byteLength(revised)).toBeLessThanOrEqual(8 * 1024 * 1024);
+  expect(JSON.parse(revised).elements[0]).toMatchObject({ id: "trace-base", d: replacement });
+  expect(await runSceneCli(["compile", "revised.json", "--output", "revised.svg"], info.outputDir, io), messages).toBe(0);
+  const revisedSvg = await readFile(info.outputPath("revised.svg"), "utf8");
+  expect(revisedSvg).toBe(svg.replace('d="M 0 0 H 1024 V 1536 H 0 Z"', 'd="M 0 0 H 1023 V 1536 H 0 Z"'));
   for (const width of [512, 1024]) {
     const height = width * 1.5;
     const before = await render(page, "/reference.webp", width, height);
     const after = await render(page, "/cloe.svg", width, height);
     const results = compareCloe(before, after, width, height);
     await info.attach(`native-detail-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
-    const limits = width === 1024 ? { full: 2.45, face: 2.63, tablet: 3.5 } : { full: 3.5, face: 5, tablet: 4.5 };
+    const limits = width === 1024 ? { full: 2.12, face: 2.29, tablet: 3.1 } : { full: 3.5, face: 5, tablet: 4.5 };
     for (const region of ["full", "face", "tablet"] as const) {
       expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(limits[region]);
       expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.025);

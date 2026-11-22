@@ -1,3 +1,4 @@
+import { compactCanonicalPathData } from "./path-canonical.js";
 import { fail, type DiagnosticContext } from "../diagnostics.js";
 import { formatCanonicalNumber } from "./canonical.js";
 import {
@@ -124,7 +125,7 @@ function renderElement(
   switch (element.type) {
     case "path": {
       // Commands delimit operands. Preserve spacing between numbers and arc flags.
-      const path = compactPaths ? element.d.replace(/ *([AaCcHhLlMmQqSsTtVvZz]) */g, "$1") : element.d;
+      const path = compactPaths ? compactCanonicalPathData(element.d) : element.d;
       pushLine(`${indent}<path${idAttr} d="${escapeAttr(path)}"${presAttr}${ariaLabelAttr}${transAttr}/>`);
       return;
     }

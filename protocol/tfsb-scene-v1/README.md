@@ -125,7 +125,8 @@ save this as `edits.json`.
 
 Revision supports paths inside groups and symbol definitions. It validates the
 original scene, rejects repeated or unknown IDs and invalid geometry, and writes
-canonical scene JSON to a new file. The JSON result reports the output SHA-256
+canonical scene JSON to a new file. If expanded path spacing exceeds the scene
+file size limit, revision uses compact path spacing. The JSON result reports the output SHA-256
 in both `--dry-run` and write mode. Compile the revised scene to export its SVG.
 
 Use `tfsb scene trace-png source.png --output traced.scene.json` to trace an
@@ -137,7 +138,7 @@ to PNG before invoking the tracer. Then run
 High-detail tracing is the default for `trace-png`. On sufficiently large
 inputs, it subdivides cells at color transitions on a finer grid to retain
 thin strokes. It uses up to 1,152 detail colors with a separate 96-color
-underpaint. The denser trace stays within the 12 MB SVG budget, with earlier
+underpaint. The default trace uses a 12 MB SVG budget, with earlier
 high-detail settings and the regular trace available when it exceeds the byte
 or contour limits. Illustration scenes
 admit up to 2,600,000 path segments within the usual per-path and input limits.
@@ -154,12 +155,13 @@ grouped by paint color. Review the export at its intended display size.
 Use `--native-detail` to prioritize the native raster delivery size for complex
 artwork. It attempts a finer grid with up to 1,536 cells on the long edge
 without upsampling the source. It subdivides cells based on the mean RGB
-error that averaging would introduce, with up to 1,152 detail colors. The
+error that averaging would introduce, with up to 1,536 detail colors. The
 densest trace uses SVG’s implicit fill closure to reserve more of the budget
 for detail. Its subpaths are open for stroking and closed for filling. When
-the denser trace exceeds the byte or contour limits, earlier native-detail
-settings come first, followed by high detail and the regular trace. Use high detail for intermediate
-display widths where its grid better matches the intended scale.
+a native trace exceeds the 16 MB SVG budget, 8 MiB scene file limit, or
+contour limits, the tracer tries earlier native-detail settings before high
+detail and the regular trace. Use high detail for intermediate display widths
+where its grid better matches the intended scale.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces
 a PNG decoded from those bytes, and renders the compiled SVG in Chromium
@@ -169,11 +171,11 @@ trace is checked at 512 and 1024 CSS pixels. It checks mean absolute
 RGB channel error in the whole image, face and tablet, and limits the
 fraction of pixels with any channel error above 48. The browser-specific
 tolerances account for differences in downsampling. The uncompressed SVG
-must stay below 12,000,000 bytes.
+must stay below 16,000,000 bytes.
 
 Use `tfsb scene rasterize traced.scene.json --output traced.png --json`
 with the qualified resvg companion to produce PNG from the same compiled SVG
-at the scene's artboard dimensions. The renderer accepts up to 12,000,000 SVG
+at the scene's artboard dimensions. The renderer accepts up to 16,000,000 SVG
 bytes. Use the same palette and path options as `scene compile` when matching an existing SVG's digest. The raster receipt
 binds that SVG digest to the PNG digest. The maintained illustration exporter
 can encode the PNG as WebP with a source-bound recipe.
