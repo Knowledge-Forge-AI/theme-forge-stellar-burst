@@ -1,5 +1,5 @@
 import type { HexColor } from "../types.js";
-import { SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
+import { ILLUSTRATION_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
 import type { PathElement, VectorScene } from "./types.js";
 
 interface PixelSource {
@@ -81,7 +81,9 @@ function sampleRaster(source: PixelSource, bits: ChannelBits, { cols, rows }: { 
   return sampled;
 }
 
-function sampleAdaptiveRaster(source: PixelSource, coarse: { cols: number; rows: number }): SampledRaster {
+function sampleAdaptiveRaster(
+  source: PixelSource, coarse: { cols: number; rows: number }, edgeThreshold: number,
+): SampledRaster {
   const cols = coarse.cols * 2, rows = coarse.rows * 2;
   const sampled = makeSamples(cols, rows, 6);
   for (let y = 0; y < coarse.rows; y += 1) {
@@ -96,7 +98,7 @@ function sampleAdaptiveRaster(source: PixelSource, coarse: { cols: number; rows:
       // Subdivide only where the four samples span a strong color transition.
       const resolveEdge = [0, 1, 2].some((channel) => {
         const values = subcells.map((rgb) => rgb[channel]!);
-        return Math.max(...values) - Math.min(...values) >= 48;
+        return Math.max(...values) - Math.min(...values) >= edgeThreshold;
       });
       const shared = resolveEdge ? undefined : sampleCell(source, coarse.cols, coarse.rows, x, y);
       subcells.forEach((color, offset) => {
@@ -338,12 +340,17 @@ export function traceRasterScene(source: PixelSource, options: { readonly highDe
   const segmentLimit = SCENE_LIMITS.maxAggregatePathSegments;
   if (options.highDetail && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
       && grid.cols > 4 && grid.rows > 4) {
-    try {
-      const sampled = sampleAdaptiveRaster(source, grid);
-      const underpaintSource = sampleRaster(source, 6, { cols: Math.ceil(grid.cols / 2), rows: Math.ceil(grid.rows / 2) });
-      return traceSampledRaster(source, sampled, { paletteSize: 352, underpaintColors: 128, underpaintSource, segmentLimit });
-    } catch (error) {
-      if (!(error instanceof TraceContourLimitError)) throw error;
+    const underpaintSource = sampleRaster(source, 6, { cols: Math.ceil(grid.cols / 2), rows: Math.ceil(grid.rows / 2) });
+    for (const settings of [
+      { edgeThreshold: 24, paletteSize: 576, underpaintColors: 96, segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments },
+      { edgeThreshold: 48, paletteSize: 352, underpaintColors: 128, segmentLimit },
+    ]) {
+      try {
+        const sampled = sampleAdaptiveRaster(source, grid, settings.edgeThreshold);
+        return traceSampledRaster(source, sampled, { ...settings, underpaintSource });
+      } catch (error) {
+        if (!(error instanceof TraceContourLimitError)) throw error;
+      }
     }
   }
   try {

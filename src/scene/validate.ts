@@ -17,6 +17,7 @@ import {
 } from "./glyphs/labels.js";
 import {
   CARDINAL_ANCHORS,
+  ILLUSTRATION_SCENE_LIMITS,
   SCENE_COMPATIBILITY,
   SCENE_COMPILER_LEVEL,
   SCENE_LIMITS,
@@ -1862,6 +1863,7 @@ export function validateScene(input: unknown): Result<{
       );
     }
 
+    const pathSegmentLimit = (profile === "illustration" ? ILLUSTRATION_SCENE_LIMITS : SCENE_LIMITS).maxAggregatePathSegments;
     const artboard = validateArtboard(root["artboard"], ctx, "$.artboard");
     const accessibility = validateAccessibility(root["accessibility"], ctx, "$.accessibility");
 
@@ -2118,11 +2120,11 @@ export function validateScene(input: unknown): Result<{
           loc,
         );
       }
-      if (totalPathSegments > SCENE_LIMITS.maxAggregatePathSegments) {
+      if (totalPathSegments > pathSegmentLimit) {
         fail(
           ctx,
           "SCENE_LIMIT_EXCEEDED",
-          `Total path segment count ${totalPathSegments} exceeds maximum allowed (${SCENE_LIMITS.maxAggregatePathSegments}).`,
+          `Total path segment count ${totalPathSegments} exceeds maximum allowed (${pathSegmentLimit}).`,
           loc,
         );
       }
@@ -2179,11 +2181,11 @@ export function validateScene(input: unknown): Result<{
         "$.definitions.symbols",
       );
     }
-    if (totalPathSegments > SCENE_LIMITS.maxAggregatePathSegments) {
+    if (totalPathSegments > pathSegmentLimit) {
       fail(
         ctx,
         "SCENE_LIMIT_EXCEEDED",
-        `Total path segment count ${totalPathSegments} exceeds maximum allowed (${SCENE_LIMITS.maxAggregatePathSegments}).`,
+        `Total path segment count ${totalPathSegments} exceeds maximum allowed (${pathSegmentLimit}).`,
         "$.definitions.symbols",
       );
     }

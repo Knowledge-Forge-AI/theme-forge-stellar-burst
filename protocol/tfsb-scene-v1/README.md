@@ -149,10 +149,11 @@ with 4-by-4 underpainting. Large or unusually complex inputs can still exceed
 scene limits. Review the export at its intended display size.
 
 Use `--high-detail` with `trace-png` for artwork intended for enlarged viewing.
-On sufficiently large inputs, it subdivides cells at strong color transitions
-and traces the resulting finer grid. The regular trace remains the default
-for ordinary display sizes. If the finer grid exceeds a scene contour limit,
-the command uses the regular trace.
+On sufficiently large inputs, it subdivides cells at color transitions on a
+finer grid to retain thin strokes. The regular trace remains the default for
+ordinary display sizes. Illustration scenes admit up to 1,500,000 path segments
+within the usual per-path and input limits. If the denser grid exceeds its contour budget, tracing tries the
+earlier high-detail settings and then the regular trace.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces
 a PNG decoded from those bytes, and renders the compiled SVG in Chromium
@@ -161,7 +162,14 @@ The high-detail trace is checked at 512, 768 and 1024 CSS pixels. It checks mean
 RGB channel error in the whole image, face and tablet, and limits the
 fraction of pixels with any channel error above 48. The browser-specific
 tolerances account for differences in downsampling. The uncompressed SVG
-must stay below 5,000,000 bytes.
+must stay below 8,000,000 bytes.
+
+Use `tfsb scene rasterize traced.scene.json --output traced.png --json`
+with the qualified resvg companion to produce PNG from the same compiled SVG
+at the scene's artboard dimensions. Use the same palette and path options as
+`scene compile` when matching an existing SVG's digest. The raster receipt
+binds that SVG digest to the PNG digest. The maintained illustration exporter
+can encode the PNG as WebP with a source-bound recipe.
 
 Input is a bounded regular-file snapshot. Dry-run writes nothing. Output must be
 absent; there is no overwrite option. Existing symlink parents and final-component

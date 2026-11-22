@@ -643,6 +643,21 @@ describe("tfsb scene CLI integration", () => {
     });
   });
 
+  describe("rasterize", () => {
+    it("requires an output and a whole-pixel artboard before loading the renderer", async () => {
+      const dir = await makeTestDir();
+      const input = { ...sampleValidScene, artboard: { ...sampleValidScene.artboard, width: 1440.5 } };
+      await writeFile(join(dir, "scene.json"), JSON.stringify(input));
+      const missing = capture();
+      expect(await runSceneCli(["rasterize", "scene.json"], dir, missing.io)).toBe(1);
+      expect(missing.stderr()).toContain("requires --output");
+      const invalid = capture();
+      expect(await runSceneCli(["rasterize", "scene.json", "--output", "scene.png", "--json"], dir, invalid.io)).toBe(1);
+      expect(JSON.parse(invalid.stdout()).diagnostics[0].code).toBe("SCENE_RASTER_SIZE_INVALID");
+      await expect(access(join(dir, "scene.png"))).rejects.toThrow();
+    });
+  });
+
   describe("direct runSceneCli invocation", () => {
     it("can be invoked directly without runCli prefix", async () => {
       const dir = await makeTestDir();

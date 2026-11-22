@@ -11,6 +11,7 @@ import {
   computeCanonicalDigest,
 } from "./canonical.js";
 import {
+  ILLUSTRATION_SCENE_LIMITS,
   SCENE_COMPATIBILITY,
   SCENE_COMPILER_LEVEL,
   SCENE_LIMITS,
@@ -318,7 +319,7 @@ export function compileScene(
 
     const receipt: SceneReceipt = {
       schema: "tfsb.scene-compile-receipt-v1",
-      limits: SCENE_LIMITS,
+      limits: metrics.pathSegmentCount > SCENE_LIMITS.maxAggregatePathSegments ? ILLUSTRATION_SCENE_LIMITS : SCENE_LIMITS,
       diagnostics: sceneWarnings(scene),
       sourceSnapshotDigest: computeCanonicalDigest(scene.provenance ?? {}),
       sceneSchema: SCENE_SCHEMA,

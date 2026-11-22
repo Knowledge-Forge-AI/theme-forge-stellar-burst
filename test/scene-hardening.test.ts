@@ -34,6 +34,23 @@ describe("scene production boundary challenges", () => {
   it("counts repeated symbol labels toward scene glyph ceiling before lowering", () => {
     expect(validateScene({ ...scene(), definitions: { symbols: [{ type: "symbol", id: "word", viewBox: [0, 0, 100, 10], elements: [{ type: "label", id: "label", text: "A".repeat(1024), x: 0, y: 0 }] }] }, elements: Array.from({ length: 9 }, (_, n) => ({ type: "use", id: `instance${n}`, href: "#word", width: 100, height: 10 })) }).ok).toBe(false);
   });
+  it("admits bounded illustration contours without extending the diagram budget", () => {
+    const withInstances = (profile: string, count: number) => ({
+      ...scene(), profile,
+      definitions: { symbols: [{
+        type: "symbol", id: "contour", viewBox: [0, 0, 16, 16],
+        elements: [{ type: "path", id: "lines", d: "M0 0" + "H1V1H0V0".repeat(2500) + "Z" }],
+      }] },
+      elements: Array.from({ length: count }, (_, n) => ({
+        type: "use", id: `contour${n}`, href: "#contour", width: 16, height: 16,
+      })),
+    });
+    expect(validateScene(withInstances("diagram", 110)).ok).toBe(false);
+    const illustrated = compileScene(withInstances("illustration", 110));
+    if (!illustrated.ok) throw new Error("Expected the illustration to fit its contour budget");
+    expect(illustrated.value.receipt.limits.maxAggregatePathSegments).toBe(1_500_000);
+    expect(validateScene(withInstances("illustration", 150)).ok).toBe(false);
+  });
   it("returns a diagnostic for non-finite intermediate transforms", () => {
     expect(compileScene({ ...scene(), elements: [{ ...rect, transform: [{ type: "scale", x: 1e308 }, { type: "scale", x: 1e308 }] }] }).ok).toBe(false);
   });

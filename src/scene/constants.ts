@@ -107,6 +107,13 @@ export const SCENE_LIMITS = Object.freeze({
   maxLabelCharacters: 2_048,
 } as const);
 
+// Larger editable illustrations need more contour geometry. Keep the default
+// scene budget for every other profile and retain the per-path/byte bounds.
+export const ILLUSTRATION_SCENE_LIMITS = Object.freeze({
+  ...SCENE_LIMITS,
+  maxAggregatePathSegments: 1_500_000,
+} as const);
+
 for (const preset of Object.values(SCENE_PRESETS)) { Object.freeze(preset.viewBox); Object.freeze(preset); }
 Object.freeze(SCENE_PRESETS);
 Object.freeze(SCENE_PROFILES);
