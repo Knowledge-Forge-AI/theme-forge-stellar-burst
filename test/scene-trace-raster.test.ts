@@ -21,6 +21,20 @@ test("traces holes and point-touching contours into a deterministic editable sce
   expect(compileScene(JSON.parse(JSON.stringify(scene))).ok).toBe(true);
 });
 
+test("uses fractional pixel coverage when the source does not divide into trace cells", () => {
+  const rgba8 = new Uint8Array(1440 * 4);
+  for (let x = 0; x < 1440; x += 1) {
+    const gray = x % 2 === 0 ? 0 : 240;
+    rgba8.set([gray, gray, gray, 255], x * 4);
+  }
+  const scene = traceRasterScene({ width: 1440, height: 1, rgba8 });
+  expect(scene.artboard.viewBox).toEqual([0, 0, 576, 1]);
+  expect(new Set(scene.elements.map((element) => {
+    const fill = element.presentation?.fill;
+    return fill?.type === "solid" ? fill.color : undefined;
+  }))).toEqual(new Set(["#606060", "#909090"]));
+});
+
 test("refuses invalid dimensions and any nonopaque sample", () => {
   expect(() => traceRasterScene({ width: 4096, height: 4096, rgba8: new Uint8Array() })).toThrow(RangeError);
   expect(() => traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(1, 2, 3, 0) })).toThrow(/opaque/);
