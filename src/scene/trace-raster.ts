@@ -1,5 +1,5 @@
 import type { HexColor } from "../types.js";
-import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
+import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, PREVIOUS_NATIVE_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
 import type { PathElement, VectorScene } from "./types.js";
 
 interface PixelSource {
@@ -346,21 +346,25 @@ export function traceRasterScene(
     if ((nativeGrid.cols > grid.cols || nativeGrid.rows > grid.rows)
         && nativeGrid.cols * 2 <= source.width && nativeGrid.rows * 2 <= source.height
         && nativeGrid.cols > 4 && nativeGrid.rows > 4) {
-      try {
-        const sampled = sampleAdaptiveRaster(source, nativeGrid, 36);
-        const underpaintSource = sampleRaster(source, 6, {
-          cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
-        });
-        return traceSampledRaster(source, sampled, {
-          paletteSize: 640, underpaintColors: 96, underpaintSource,
-          segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments,
-        });
-      } catch (error) {
-        if (!(error instanceof TraceContourLimitError)) throw error;
+      const underpaintSource = sampleRaster(source, 6, {
+        cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
+      });
+      for (const { edgeThreshold, ...traceSettings } of [
+        { edgeThreshold: 24, paletteSize: 1024, underpaintColors: 96,
+          segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments },
+        { edgeThreshold: 36, paletteSize: 640, underpaintColors: 96,
+          segmentLimit: PREVIOUS_NATIVE_SCENE_LIMITS.maxAggregatePathSegments },
+      ]) {
+        try {
+          const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold);
+          return traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource });
+        } catch (error) {
+          if (!(error instanceof TraceContourLimitError)) throw error;
+        }
       }
     }
   }
-  if ((options.highDetail || options.nativeDetail) && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
+  if ((options.highDetail !== false || options.nativeDetail) && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
       && grid.cols > 4 && grid.rows > 4) {
     const underpaintSource = sampleRaster(source, 6, { cols: Math.ceil(grid.cols / 2), rows: Math.ceil(grid.rows / 2) });
     for (const settings of [

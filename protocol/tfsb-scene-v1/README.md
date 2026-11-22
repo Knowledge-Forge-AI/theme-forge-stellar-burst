@@ -134,26 +134,20 @@ RGB or RGBA PNG of at most 4,194,304 pixels. For a WebP reference, decode it
 to PNG before invoking the tracer. Then run
 `tfsb scene compile traced.scene.json --output traced.svg --compact-paths`.
 
-The tracer samples each cell by exact pixel coverage and refines a palette
-of up to 448 colors from six-bit color bins. A separate 96-color underpaint
-at the same resolution reduces seams between contours. It uses shorter
-relative path commands where they preserve the same geometry.
+High-detail tracing is the default for `trace-png`. On sufficiently large
+inputs, it subdivides cells at color transitions on a finer grid to retain
+thin strokes. The command falls back through the earlier high-detail settings
+and the regular trace when a contour budget is exceeded. Illustration scenes
+admit up to 2,600,000 path segments within the usual per-path and input limits.
+
+Use `--regular` to select the smaller trace for ordinary display sizes. The
+regular trace samples each cell by exact pixel coverage and uses a palette of
+up to 448 colors, with a separate 96-color underpaint to reduce seams. If it
+exceeds a contour limit, it tries the earlier 256-color and 160-color traces.
+
 `--compact-paths` removes optional spacing from SVG path data and preserves
-the geometry and scene digest. The SVG contains no raster image. Regions
-are grouped by paint color and do not identify portrait features as separate
-semantic objects.
-
-If the finer trace exceeds a contour limit, the tracer tries the existing
-256-color trace with 2-by-2 underpainting, then the original 160-color trace
-with 4-by-4 underpainting. Large or unusually complex inputs can still exceed
-scene limits. Review the export at its intended display size.
-
-Use `--high-detail` with `trace-png` for artwork intended for enlarged viewing.
-On sufficiently large inputs, it subdivides cells at color transitions on a
-finer grid to retain thin strokes. The regular trace remains the default for
-ordinary display sizes. Illustration scenes admit up to 2,050,000 path segments
-within the usual per-path and input limits. If the denser grid exceeds its contour budget, tracing tries the
-earlier high-detail settings and then the regular trace.
+the geometry and scene digest. The SVG contains no raster image. Regions are
+grouped by paint color. Review the export at its intended display size.
 
 Use `--native-detail` to prioritize the native raster delivery size for complex
 artwork. It attempts a finer grid with up to 1,536 cells on the long edge
@@ -169,12 +163,12 @@ trace is checked at 512 and 1024 CSS pixels. It checks mean absolute
 RGB channel error in the whole image, face and tablet, and limits the
 fraction of pixels with any channel error above 48. The browser-specific
 tolerances account for differences in downsampling. The uncompressed SVG
-must stay below 10,000,000 bytes.
+must stay below 12,000,000 bytes.
 
 Use `tfsb scene rasterize traced.scene.json --output traced.png --json`
 with the qualified resvg companion to produce PNG from the same compiled SVG
-at the scene's artboard dimensions. The renderer accepts up to 10,000,000 SVG bytes. Use the same palette and path options as
-`scene compile` when matching an existing SVG's digest. The raster receipt
+at the scene's artboard dimensions. The renderer accepts up to 12,000,000 SVG
+bytes. Use the same palette and path options as `scene compile` when matching an existing SVG's digest. The raster receipt
 binds that SVG digest to the PNG digest. The maintained illustration exporter
 can encode the PNG as WebP with a source-bound recipe.
 

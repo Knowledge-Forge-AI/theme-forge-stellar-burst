@@ -33,13 +33,13 @@ describe("fixed resvg WASM adapter", () => {
     expect(rendered.rgba8).toEqual(Uint8Array.of(52, 102, 153, 128));
   });
 
-  it("accepts the 10 MB illustration boundary and refuses the next byte", async () => {
-    const bytes = Buffer.alloc(10_000_001, 32);
+  it("accepts the 12 MB illustration boundary and refuses the next byte", async () => {
+    const bytes = Buffer.alloc(12_000_001, 32);
     svg.copy(bytes);
     const capability = createRasterCapabilityFromModule({ descriptor, renderSvg });
     if (!capability.available) throw new Error(capability.reason);
     const rendered = await capability.adapter.renderSvg({
-      ...request, canonicalSvgBytes: bytes.subarray(0, 10_000_000),
+      ...request, canonicalSvgBytes: bytes.subarray(0, 12_000_000),
     });
     expect([rendered.width, rendered.height]).toEqual([16, 16]);
     await expect(capability.adapter.renderSvg({ ...request, canonicalSvgBytes: bytes })).rejects.toThrow(/source limit/);

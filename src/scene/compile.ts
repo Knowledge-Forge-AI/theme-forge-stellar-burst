@@ -13,6 +13,7 @@ import {
 import {
   HIGH_DETAIL_SCENE_LIMITS,
   ILLUSTRATION_SCENE_LIMITS,
+  PREVIOUS_NATIVE_SCENE_LIMITS,
   SCENE_COMPATIBILITY,
   SCENE_COMPILER_LEVEL,
   SCENE_LIMITS,
@@ -319,8 +320,9 @@ export function compileScene(
         : computeCanonicalDigest({});
 
     const segments = metrics.pathSegmentCount;
-    const limits = segments > HIGH_DETAIL_SCENE_LIMITS.maxAggregatePathSegments ? ILLUSTRATION_SCENE_LIMITS
-      : segments > SCENE_LIMITS.maxAggregatePathSegments ? HIGH_DETAIL_SCENE_LIMITS : SCENE_LIMITS;
+    // Retain the earlier receipt limits for scenes that fit those budgets.
+    const limits = [SCENE_LIMITS, HIGH_DETAIL_SCENE_LIMITS, PREVIOUS_NATIVE_SCENE_LIMITS]
+      .find((budget) => segments <= budget.maxAggregatePathSegments) ?? ILLUSTRATION_SCENE_LIMITS;
     const receipt: SceneReceipt = {
       schema: "tfsb.scene-compile-receipt-v1",
       limits,

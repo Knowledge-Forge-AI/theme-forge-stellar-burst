@@ -99,7 +99,7 @@
     },
     {
       "name": "receipt.schema.json",
-      "sha256": "d339de79ece032c1fad34e525aa18c1c3fb883cfdb89766f9989256498f3cedb"
+      "sha256": "3f311d6b68474fe9d4581fb98b0f1456f42e6be33dccbc037b637c1a1c30e6b0"
     }
   ],
   "examples": [
@@ -160,6 +160,6 @@
     "coverage": "ASCII 32..126"
   },
   "illustrationLimitOverrides": {
-    "maxAggregatePathSegments": 2050000
+    "maxAggregatePathSegments": 2600000
   }
 }

@@ -114,9 +114,14 @@ export const HIGH_DETAIL_SCENE_LIMITS = Object.freeze({
   maxAggregatePathSegments: 1_500_000,
 } as const);
 
-export const ILLUSTRATION_SCENE_LIMITS = Object.freeze({
+export const PREVIOUS_NATIVE_SCENE_LIMITS = Object.freeze({
   ...SCENE_LIMITS,
   maxAggregatePathSegments: 2_050_000,
+} as const);
+
+export const ILLUSTRATION_SCENE_LIMITS = Object.freeze({
+  ...SCENE_LIMITS,
+  maxAggregatePathSegments: 2_600_000,
 } as const);
 
 for (const preset of Object.values(SCENE_PRESETS)) { Object.freeze(preset.viewBox); Object.freeze(preset); }
