@@ -48,6 +48,27 @@ test("uses the previous endpoint for a relative move between filled native conto
   expect(compileScene(scene).ok).toBe(true);
 });
 
+test.each([
+  { orientation: "horizontal", pixels: [20, 24, 140, 144], colors: ["#161616", "#8e8e8e"] },
+  { orientation: "vertical", pixels: [20, 140, 24, 144], colors: ["#161616", "#8e8e8e"] },
+  { orientation: "diagonal", pixels: [20, 140, 144, 24], colors: ["#141414", "#181818", "#8c8c8c", "#909090"] },
+])("adapts native samples to a $orientation edge without averaging across it", ({ pixels, colors }) => {
+  const width = 32;
+  const height = 1536;
+  const rgba8 = new Uint8Array(width * height * 4).fill(255);
+  pixels.forEach((value, index) => {
+    const x = 8 + index % 2, y = 10 + Math.floor(index / 2);
+    rgba8.set([value, value, value, 255], (y * width + x) * 4);
+  });
+  const scene = traceRasterScene({ width, height, rgba8 }, { nativeDetail: true });
+  const detailColors = scene.elements
+    .filter(({ id }) => id?.startsWith("trace-detail-"))
+    .map(({ presentation }) => presentation?.fill)
+    .filter((fill) => fill?.type === "solid")
+    .map((fill) => fill.color);
+  expect(detailColors.sort()).toEqual([...colors, "#ffffff"].sort());
+});
+
 test("compacts validated path spacing without changing geometry or source identity", () => {
   const scene = traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) });
   const input = {
