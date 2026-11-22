@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
-import { decodeStrictPng } from "./brand/raster-capability.js";
+import { assertRasterSvgIsSelfContained, decodeStrictPng, loadRasterCapability } from "./brand/raster-capability.js";
 import { DiagnosticError, diagnostic, type Diagnostic } from "./diagnostics.js";
 import {
   createJsonEnvelope,
@@ -14,10 +14,12 @@ import {
   type SceneInspectJsonData,
   type SceneJsonData,
   type SceneReviseJsonData,
+  type SceneRasterizeJsonData,
   type SceneValidateJsonData,
   type SceneTracePngJsonData,
 } from "./json.js";
 import {
+  publishSceneBytes,
   publishSceneJson,
   publishSceneSvg,
   readSceneFile,
@@ -37,12 +39,13 @@ export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
+  tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
   tfsb scene trace-png <png> --output <absent-scene.json> [--high-detail] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
-  --output <file>       Publish destination for SVG or scene JSON (absent target only)
+  --output <file>       Publish destination for SVG, PNG or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
   --edits <file>        Apply path replacements by element ID
   --high-detail         Trace sharp edges at finer resolution for zoomed viewing
@@ -89,6 +92,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     action !== "validate" &&
     action !== "inspect" &&
     action !== "compile" &&
+    action !== "rasterize" &&
     action !== "revise" &&
     action !== "import-svg" &&
     action !== "trace-png"
@@ -96,7 +100,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     return {
       dryRun: false,
       json,
-      error: `Unknown scene action '${action}'. Expected validate, inspect, compile, revise, import-svg, or trace-png.`,
+      error: `Unknown scene action '${action}'. Expected validate, inspect, compile, rasterize, revise, import-svg, or trace-png.`,
     };
   }
 
@@ -153,8 +157,8 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg === "--compact-paths") {
-      if (action !== "compile" || compactPaths) {
-        return { action, dryRun, json, error: "Use --compact-paths once with scene compile." };
+      if ((action !== "compile" && action !== "rasterize") || compactPaths) {
+        return { action, dryRun, json, error: "Use --compact-paths once with scene compile or rasterize." };
       }
       compactPaths = true;
       i += 1;
@@ -163,8 +167,8 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
 
     if (arg === "--palette") {
       const next = rest[i + 1];
-      if (action !== "compile" || palette !== undefined || !next || next.startsWith("-")) {
-        return { action, dryRun, json, error: "Use --palette <json> once with scene compile." };
+      if ((action !== "compile" && action !== "rasterize") || palette !== undefined || !next || next.startsWith("-")) {
+        return { action, dryRun, json, error: "Use --palette <json> once with scene compile or rasterize." };
       }
       palette = next;
       i += 2;
@@ -182,7 +186,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg === "--output") {
-      if (action !== "compile" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
+      if (action !== "compile" && action !== "rasterize" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -198,7 +202,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg.startsWith("--output=")) {
-      if (action !== "compile" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
+      if (action !== "compile" && action !== "rasterize" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -254,6 +258,10 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       json,
       error: "scene compile requires --output <absent.svg>.",
     };
+  }
+
+  if (action === "rasterize" && output === undefined) {
+    return { action, dryRun, json, error: "scene rasterize requires --output <absent.png>." };
   }
 
   if (action === "import-svg" && (output === undefined || output.length === 0)) {
@@ -641,7 +649,7 @@ export async function runSceneCli(
       return 0;
     }
 
-    if (action === "compile") {
+    if (action === "compile" || action === "rasterize") {
       const sourceValidation = palette === undefined ? undefined : validateScene(raw);
       const result = sourceValidation?.ok === false
         ? sourceValidation
@@ -668,6 +676,42 @@ export async function runSceneCli(
       }
 
       const resolvedOutput = resolve(cwd, output!);
+      if (action === "rasterize") {
+        const { receipt, svg } = result.value;
+        const { width, height } = receipt.artboard;
+        const ctx = { operation: "build", domain: "scene" } as const;
+        if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+            || width < 1 || height < 1 || width > 16_384 || height > 16_384
+            || width * height > 16_777_216) {
+          throw new DiagnosticError(diagnostic(ctx, "SCENE_RASTER_SIZE_INVALID", "Rasterization requires bounded whole-pixel artboard dimensions."));
+        }
+        const capability = await loadRasterCapability();
+        if (!capability.available) {
+          throw new DiagnosticError(diagnostic(ctx, capability.code, "Scene rasterization requires the qualified TFSB resvg companion."));
+        }
+        const svgBytes = Buffer.from(svg, "utf8");
+        let pngBytes: Uint8Array;
+        try {
+          assertRasterSvgIsSelfContained(svgBytes);
+          ({ pngBytes } = await capability.adapter.renderSvg({
+            canonicalSvgBytes: svgBytes, width, height, backgroundRgba: null,
+            alpha: "straight", fit: "contain-pad", colorSpace: "srgb",
+          }));
+        } catch {
+          throw new DiagnosticError(diagnostic(ctx, "SCENE_RASTERIZE_FAILED", "The compiled SVG could not be rasterized within the supported limits."));
+        }
+        const published = await publishSceneBytes(resolvedOutput, pngBytes);
+        const data: SceneRasterizeJsonData = {
+          schema: "tfsb.scene-result-v1", action: "rasterize", valid: true, output: output!,
+          written: published.published, cleanupResidue: published.cleanupResidue,
+          width, height, svgDigest: receipt.svgDigest,
+          pngDigest: `sha256:${createHash("sha256").update(pngBytes).digest("hex")}`,
+          rendererBuildDigest: capability.adapter.descriptor.rendererBuildDigest,
+        };
+        if (jsonMode) return emitJson(io, "ok", 0, "Scene PNG published.", [], data);
+        io.stdout(`Rasterized scene: ${output} (${pngBytes.length} B)\n  SVG digest: ${data.svgDigest}\n  PNG digest: ${data.pngDigest}\n`);
+        return 0;
+      }
       const published = await publishSceneSvg(resolvedOutput, result.value.svg, dryRun);
 
       if (jsonMode) {

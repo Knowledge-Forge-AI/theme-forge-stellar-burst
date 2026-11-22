@@ -99,7 +99,7 @@
     },
     {
       "name": "receipt.schema.json",
-      "sha256": "f709641d0142dc44a63ba31f305f9c20c0b9598430cdbf6f765c14d3ced24024"
+      "sha256": "67b695ba3344e37a3f37108a13d7f4cc6afa723a30eea5149188636e8338d587"
     }
   ],
   "examples": [
@@ -158,5 +158,8 @@
     "name": "Forge Grid Label v1",
     "digest": "sha256:8ec3bc8e99cf1cda2cdc362f5a0b6e1f94a8e1c544853d9af46bd999f8a0941a",
     "coverage": "ASCII 32..126"
+  },
+  "illustrationLimitOverrides": {
+    "maxAggregatePathSegments": 1500000
   }
 }

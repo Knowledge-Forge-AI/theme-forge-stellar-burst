@@ -199,13 +199,28 @@ export interface SceneTracePngJsonData {
   readonly metrics: SceneMetrics;
 }
 
+export interface SceneRasterizeJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "rasterize";
+  readonly valid: true;
+  readonly output: string;
+  readonly written: boolean;
+  readonly cleanupResidue: string | null;
+  readonly width: number;
+  readonly height: number;
+  readonly svgDigest: string;
+  readonly pngDigest: string;
+  readonly rendererBuildDigest: string;
+}
+
 export type SceneJsonData =
   | SceneValidateJsonData
   | SceneInspectJsonData
   | SceneCompileJsonData
   | SceneImportSvgJsonData
   | SceneReviseJsonData
-  | SceneTracePngJsonData;
+  | SceneTracePngJsonData
+  | SceneRasterizeJsonData;
 
 function safeRelative(value: string): boolean {
   return value !== "" && !value.includes("\0") && !isAbsolute(value) && !/^[A-Za-z]:[\\/]/.test(value) &&

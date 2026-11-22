@@ -64,30 +64,56 @@
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "limits": {
-      "const": {
-        "maxInputBytes": 8388608,
-        "maxExpandedElements": 10000,
-        "maxAuthoredElements": 2000,
-        "maxNestingDepth": 32,
-        "maxGradientStops": 128,
-        "maxGlyphsPerLabel": 1024,
-        "maxGlyphsPerScene": 8192,
-        "maxAggregatePathSegments": 1000000,
-        "maxPathBytes": 65536,
-        "maxDefinitions": 500,
-        "maxTokens": 1000,
-        "maxLayoutDirectives": 256,
-        "maxSymbolDepth": 8,
-        "maxSymbolAmplification": 500,
-        "maxStructuralDepth": 128,
-        "maxInputNodes": 100000,
-        "maxOutputBytes": 33554432,
-        "maxCanonicalPathBytes": 1048576,
-        "maxCanonicalPathsBytes": 16777216,
-        "maxTransforms": 32,
-        "maxPoints": 10000,
-        "maxLabelCharacters": 2048
-      }
+      "enum": [
+        {
+          "maxInputBytes": 8388608,
+          "maxExpandedElements": 10000,
+          "maxAuthoredElements": 2000,
+          "maxNestingDepth": 32,
+          "maxGradientStops": 128,
+          "maxGlyphsPerLabel": 1024,
+          "maxGlyphsPerScene": 8192,
+          "maxAggregatePathSegments": 1000000,
+          "maxPathBytes": 65536,
+          "maxDefinitions": 500,
+          "maxTokens": 1000,
+          "maxLayoutDirectives": 256,
+          "maxSymbolDepth": 8,
+          "maxSymbolAmplification": 500,
+          "maxStructuralDepth": 128,
+          "maxInputNodes": 100000,
+          "maxOutputBytes": 33554432,
+          "maxCanonicalPathBytes": 1048576,
+          "maxCanonicalPathsBytes": 16777216,
+          "maxTransforms": 32,
+          "maxPoints": 10000,
+          "maxLabelCharacters": 2048
+        },
+        {
+          "maxInputBytes": 8388608,
+          "maxExpandedElements": 10000,
+          "maxAuthoredElements": 2000,
+          "maxNestingDepth": 32,
+          "maxGradientStops": 128,
+          "maxGlyphsPerLabel": 1024,
+          "maxGlyphsPerScene": 8192,
+          "maxAggregatePathSegments": 1500000,
+          "maxPathBytes": 65536,
+          "maxDefinitions": 500,
+          "maxTokens": 1000,
+          "maxLayoutDirectives": 256,
+          "maxSymbolDepth": 8,
+          "maxSymbolAmplification": 500,
+          "maxStructuralDepth": 128,
+          "maxInputNodes": 100000,
+          "maxOutputBytes": 33554432,
+          "maxCanonicalPathBytes": 1048576,
+          "maxCanonicalPathsBytes": 16777216,
+          "maxTransforms": 32,
+          "maxPoints": 10000,
+          "maxLabelCharacters": 2048
+        }
+      ]
     },
     "diagnostics": {
       "type": "array",
@@ -135,5 +161,27 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "limits": {
+            "properties": {
+              "maxAggregatePathSegments": {
+                "const": 1500000
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "profile": {
+            "const": "illustration"
+          }
+        }
+      }
+    }
+  ]
 }

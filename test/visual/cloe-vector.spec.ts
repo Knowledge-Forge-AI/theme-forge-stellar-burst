@@ -16,7 +16,7 @@ async function traceCloe(page: Page, info: TestInfo, highDetail: boolean) {
   const svg = await readFile(info.outputPath("cloe.svg"), "utf8");
   expect(svg).not.toMatch(/<(?:image|foreignObject|script)\b|\bhref\s*=/);
   expect(svg.match(/<path /g)?.length).toBeGreaterThan(1);
-  expect(Buffer.byteLength(svg)).toBeLessThan(5_000_000);
+  expect(Buffer.byteLength(svg)).toBeLessThan(8_000_000);
   await page.route("http://cloe.test/cloe.svg", (route) =>
     route.fulfill({ contentType: "image/svg+xml", body: svg }));
   return svg;
@@ -57,8 +57,8 @@ test("Cloe high-detail SVG preserves sharp features when enlarged", async ({ pag
     const results = compareCloe(before, after, width, height);
     await info.attach(`high-detail-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
     const meanLimits = width === 1024
-      ? { full: 7.6, face: 12.5, tablet: 8.5 }
-      : { full: 6, face: 8.6, tablet: 7 };
+      ? { full: 7, face: 11.5, tablet: 8 }
+      : width === 768 ? { full: 4, face: 5.2, tablet: 5 } : { full: 5.8, face: 8.1, tablet: 6.5 };
     for (const region of ["full", "face", "tablet"] as const) {
       expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(meanLimits[region]);
       expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.08);
