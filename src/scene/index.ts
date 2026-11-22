@@ -23,6 +23,8 @@ export {
   type GlyphMetric,
 } from "./glyphs/catalog.js";
 
+export { traceRasterScene } from "./trace-raster.js";
+
 export { validateScene } from "./validate.js";
 
 export {
