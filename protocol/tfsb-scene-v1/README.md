@@ -153,8 +153,10 @@ grouped by paint color. Review the export at its intended display size.
 
 Use `--native-detail` to prioritize the native raster delivery size for complex
 artwork. It attempts a finer grid with up to 1,536 cells on the long edge
-without upsampling the source and falls back to high detail or the regular
-trace when the finer grid does not fit. Use high detail for intermediate
+without upsampling the source. It subdivides cells based on the mean RGB
+error that averaging would introduce, with up to 1,152 detail colors. When
+the denser trace exceeds the byte or contour limits, earlier native-detail
+settings come first, followed by high detail and the regular trace. Use high detail for intermediate
 display widths where its grid better matches the intended scale.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces

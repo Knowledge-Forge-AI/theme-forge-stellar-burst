@@ -1,6 +1,7 @@
 import { RASTER_MAX_SVG_BYTES } from "../brand/raster-capability.js";
 import type { HexColor } from "../types.js";
 import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, PREVIOUS_NATIVE_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
+import { serializeTransforms } from "./transforms.js";
 import type { PathElement, VectorScene } from "./types.js";
 
 interface PixelSource {
@@ -84,6 +85,7 @@ function sampleRaster(source: PixelSource, bits: ChannelBits, { cols, rows }: { 
 
 function sampleAdaptiveRaster(
   source: PixelSource, coarse: { cols: number; rows: number }, edgeThreshold: number,
+  subdivision: "span" | "mean-error" = "span",
 ): SampledRaster {
   const cols = coarse.cols * 2, rows = coarse.rows * 2;
   const sampled = makeSamples(cols, rows, 6);
@@ -96,12 +98,16 @@ function sampleAdaptiveRaster(
         sampleCell(source, cols, rows, left, top + 1),
         sampleCell(source, cols, rows, left + 1, top + 1),
       ];
-      // Subdivide only where the four samples span a strong color transition.
-      const resolveEdge = [0, 1, 2].some((channel) => {
-        const values = subcells.map((rgb) => rgb[channel]!);
-        return Math.max(...values) - Math.min(...values) >= edgeThreshold;
-      });
-      const shared = resolveEdge ? undefined : sampleCell(source, coarse.cols, coarse.rows, x, y);
+      const center = subdivision === "mean-error" ? sampleCell(source, coarse.cols, coarse.rows, x, y) : undefined;
+      const resolveEdge = center === undefined
+        ? [0, 1, 2].some((channel) => {
+            const values = subcells.map((rgb) => rgb[channel]!);
+            return Math.max(...values) - Math.min(...values) >= edgeThreshold;
+          })
+        : subcells.reduce((error, [r, g, b]) =>
+            error + Math.abs(r - center[0]) + Math.abs(g - center[1]) + Math.abs(b - center[2]), 0)
+          >= edgeThreshold * subcells.length * 3;
+      const shared = resolveEdge ? undefined : center ?? sampleCell(source, coarse.cols, coarse.rows, x, y);
       subcells.forEach((color, offset) => {
         const index = (top + (offset >> 1)) * cols + left + (offset & 1);
         recordColor(sampled, index, shared ?? color);
@@ -280,6 +286,10 @@ function traceSampledRaster(
   function addLayer(
     data: Uint16Array, width: number, height: number, name: string, scale: number, palette = colors, scaleY = scale,
   ) {
+    const transform = scale === 1 && scaleY === 1 ? undefined : [
+      { type: "scale" as const, x: scale, ...(scaleY === scale ? {} : { y: scaleY }) },
+    ];
+    const pathOverhead = 128 + (serializeTransforms(transform)?.length ?? 0);
     const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined);
     shapes.forEach(({ contours, segments }, index) => {
       totalSegments += segments;
@@ -289,12 +299,13 @@ function traceSampledRaster(
       if (d.length > SCENE_LIMITS.maxPathBytes) throw new TraceContourLimitError("Raster contours exceed the per-color path limit.");
       if (d) {
         // ASCII path data gains a separator before each command and after each
-        // non-close command in the spaced SVG. Reserve 256 bytes for tag and paint.
-        svgBytes += d.length + 2 * segments - contours.length + 256;
+        // non-close command in the spaced SVG. The remaining reserve covers the
+        // short generated ID, tag, indentation and fixed paint syntax.
+        svgBytes += d.length + 2 * segments - contours.length + pathOverhead;
         if (svgBytes > maxSvgBytes) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
         elements.push({
           type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
-          ...(scale === 1 && scaleY === 1 ? {} : { transform: [{ type: "scale", x: scale, ...(scaleY === scale ? {} : { y: scaleY }) }] }),
+          ...(transform === undefined ? {} : { transform }),
         });
       }
     });
@@ -358,14 +369,16 @@ export function traceRasterScene(
       const underpaintSource = sampleRaster(source, 6, {
         cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
       });
-      for (const { edgeThreshold, ...traceSettings } of [
+      for (const { edgeThreshold, subdivision, ...traceSettings } of [
+        { edgeThreshold: 6.75, subdivision: "mean-error" as const, paletteSize: 1152, underpaintColors: 96,
+          segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 24, paletteSize: 1024, underpaintColors: 96,
           segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments },
         { edgeThreshold: 36, paletteSize: 640, underpaintColors: 96,
           segmentLimit: PREVIOUS_NATIVE_SCENE_LIMITS.maxAggregatePathSegments },
       ]) {
         try {
-          const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold);
+          const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold, subdivision);
           return traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource });
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
