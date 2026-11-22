@@ -76,7 +76,7 @@ test("Cloe native-detail SVG preserves line work at raster delivery sizes", asyn
     const after = await render(page, "/cloe.svg", width, height);
     const results = compareCloe(before, after, width, height);
     await info.attach(`native-detail-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
-    const limits = width === 1024 ? { full: 2.62, face: 2.84, tablet: 3.5 } : { full: 3.5, face: 5, tablet: 4.5 };
+    const limits = width === 1024 ? { full: 2.45, face: 2.63, tablet: 3.5 } : { full: 3.5, face: 5, tablet: 4.5 };
     for (const region of ["full", "face", "tablet"] as const) {
       expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(limits[region]);
       expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.025);
