@@ -11,6 +11,7 @@ import {
   computeCanonicalDigest,
 } from "./canonical.js";
 import {
+  HIGH_DETAIL_SCENE_LIMITS,
   ILLUSTRATION_SCENE_LIMITS,
   SCENE_COMPATIBILITY,
   SCENE_COMPILER_LEVEL,
@@ -317,9 +318,12 @@ export function compileScene(
         ? computeCanonicalDigest(scene.tokenBindings)
         : computeCanonicalDigest({});
 
+    const segments = metrics.pathSegmentCount;
+    const limits = segments > HIGH_DETAIL_SCENE_LIMITS.maxAggregatePathSegments ? ILLUSTRATION_SCENE_LIMITS
+      : segments > SCENE_LIMITS.maxAggregatePathSegments ? HIGH_DETAIL_SCENE_LIMITS : SCENE_LIMITS;
     const receipt: SceneReceipt = {
       schema: "tfsb.scene-compile-receipt-v1",
-      limits: metrics.pathSegmentCount > SCENE_LIMITS.maxAggregatePathSegments ? ILLUSTRATION_SCENE_LIMITS : SCENE_LIMITS,
+      limits,
       diagnostics: sceneWarnings(scene),
       sourceSnapshotDigest: computeCanonicalDigest(scene.provenance ?? {}),
       sceneSchema: SCENE_SCHEMA,

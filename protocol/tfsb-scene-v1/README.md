@@ -151,22 +151,29 @@ scene limits. Review the export at its intended display size.
 Use `--high-detail` with `trace-png` for artwork intended for enlarged viewing.
 On sufficiently large inputs, it subdivides cells at color transitions on a
 finer grid to retain thin strokes. The regular trace remains the default for
-ordinary display sizes. Illustration scenes admit up to 1,500,000 path segments
+ordinary display sizes. Illustration scenes admit up to 2,050,000 path segments
 within the usual per-path and input limits. If the denser grid exceeds its contour budget, tracing tries the
 earlier high-detail settings and then the regular trace.
+
+Use `--native-detail` to prioritize the native raster delivery size for complex
+artwork. It attempts a finer grid with up to 1,536 cells on the long edge
+without upsampling the source and falls back to high detail or the regular
+trace when the finer grid does not fit. Use high detail for intermediate
+display widths where its grid better matches the intended scale.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces
 a PNG decoded from those bytes, and renders the compiled SVG in Chromium
 and WebKit. The regular trace is checked at 256, 336, 384 and 512 CSS pixels.
-The high-detail trace is checked at 512, 768 and 1024 CSS pixels. It checks mean absolute
+The high-detail trace is checked at 512, 768 and 1024 CSS pixels. The native-detail
+trace is checked at 512 and 1024 CSS pixels. It checks mean absolute
 RGB channel error in the whole image, face and tablet, and limits the
 fraction of pixels with any channel error above 48. The browser-specific
 tolerances account for differences in downsampling. The uncompressed SVG
-must stay below 8,000,000 bytes.
+must stay below 10,000,000 bytes.
 
 Use `tfsb scene rasterize traced.scene.json --output traced.png --json`
 with the qualified resvg companion to produce PNG from the same compiled SVG
-at the scene's artboard dimensions. Use the same palette and path options as
+at the scene's artboard dimensions. The renderer accepts up to 10,000,000 SVG bytes. Use the same palette and path options as
 `scene compile` when matching an existing SVG's digest. The raster receipt
 binds that SVG digest to the PNG digest. The maintained illustration exporter
 can encode the PNG as WebP with a source-bound recipe.
