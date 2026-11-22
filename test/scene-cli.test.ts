@@ -677,7 +677,7 @@ describe("tfsb scene CLI integration", () => {
       expect(await runCli(["--help"], "/tmp", cap.io)).toBe(0);
       expect(cap.stdout()).toContain("tfsb scene validate <json> [--json]");
       expect(cap.stdout()).toContain("tfsb scene inspect <json> [--json]");
-      expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--dry-run] [--json]");
+      expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]");
     });
   });
 });

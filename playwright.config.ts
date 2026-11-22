@@ -62,7 +62,7 @@ export default defineConfig({
     },
     {
       name: "webkit",
-      testMatch: ["cross-browser-smoke.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts"],
+      testMatch: ["cross-browser-smoke.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts", "cloe-vector.spec.ts"],
       use: { browserName: "webkit" },
     },
     

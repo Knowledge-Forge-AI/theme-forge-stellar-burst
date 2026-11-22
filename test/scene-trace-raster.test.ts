@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { runSceneCli } from "../src/scene-cli.js";
-import { compileScene, traceRasterScene } from "../src/scene/index.js";
+import { canonicalPathData } from "../src/scene/path-canonical.js";
+import { compileScene, traceRasterScene, validateScene } from "../src/scene/index.js";
 import { rgbaPng } from "./brand/raster-test-helper.js";
 
 test("traces holes and point-touching contours into a deterministic editable scene", () => {
@@ -21,6 +23,25 @@ test("traces holes and point-touching contours into a deterministic editable sce
   expect(compileScene(JSON.parse(JSON.stringify(scene))).ok).toBe(true);
 });
 
+test("compacts validated path spacing without changing geometry or source identity", () => {
+  const scene = traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) });
+  const input = {
+    ...scene,
+    elements: [{ type: "group", id: "nested", children: [{
+      type: "path", id: "mixed", d: "M1e-2 -2A5 5 0 0 1 10 10l3 -4z",
+    }] }],
+  };
+  const plain = compileScene(input);
+  const compact = compileScene(input, { compactPaths: true });
+  if (!plain.ok || !compact.ok) throw new Error("Expected valid scene");
+  const plainPath = plain.value.svg.match(/ d="([^"]+)"/)?.[1];
+  const compactPath = compact.value.svg.match(/ d="([^"]+)"/)?.[1];
+  expect(compactPath).toBe("M0.01 -2A5 5 0 0 1 10 10l3 -4z");
+  expect(canonicalPathData(compactPath!)).toBe(plainPath);
+  expect(compact.value.receipt.sourceDigest).toBe(plain.value.receipt.sourceDigest);
+  expect(compact.value.receipt.svgDigest).toBe("sha256:" + createHash("sha256").update(compact.value.svg).digest("hex"));
+});
+
 test("uses fractional pixel coverage when the source does not divide into trace cells", () => {
   const rgba8 = new Uint8Array(1440 * 4);
   for (let x = 0; x < 1440; x += 1) {
@@ -33,6 +54,31 @@ test("uses fractional pixel coverage when the source does not divide into trace 
     const fill = element.presentation?.fill;
     return fill?.type === "solid" ? fill.color : undefined;
   }))).toEqual(new Set(["#606060", "#909090"]));
+});
+
+test("keeps a noisy gradient traceable when the finer contours exceed the segment limit", () => {
+  const size = 576;
+  const rgba8 = new Uint8Array(size * size * 4);
+  let seed = 123;
+  const noise = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return (seed >>> 24) * 24 / 256;
+  };
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const offset = (y * size + x) * 4;
+      rgba8[offset] = x * 23 / 64 + 8 + noise();
+      rgba8[offset + 1] = y * 23 / 64 + 8 + noise();
+      rgba8[offset + 2] = (x + y) * 23 / 128 + 8 + noise();
+      rgba8[offset + 3] = 255;
+    }
+  }
+  const scene = traceRasterScene({ width: size, height: size, rgba8 });
+  expect(scene.elements.find(({ id }) => id?.startsWith("trace-undercoat-"))?.transform)
+    .toEqual([{ type: "scale", x: 4 }]);
+  const validated = validateScene(scene);
+  if (!validated.ok) throw new Error("Expected the fallback trace to stay within scene limits");
+  expect(validated.value.metrics.pathSegmentCount).toBe(884_919);
 });
 
 test("refuses invalid dimensions and any nonopaque sample", () => {

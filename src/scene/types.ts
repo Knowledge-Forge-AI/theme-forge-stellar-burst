@@ -325,6 +325,7 @@ export interface SceneReceipt {
 
 export interface SceneCompileOptions {
   readonly dryRun?: boolean;
+  readonly compactPaths?: boolean;
 }
 
 export type SceneDiagnostic = import("../diagnostics.js").Diagnostic;

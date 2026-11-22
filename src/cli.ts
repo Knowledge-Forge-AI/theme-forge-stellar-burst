@@ -78,7 +78,7 @@ const USAGE = `Usage:
   tfsb evidence inspect <packet> [--json]
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
-  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--dry-run] [--json]
+  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
 
 Options:
   -h, --help            Show this help and exit

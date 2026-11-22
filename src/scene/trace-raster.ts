@@ -13,7 +13,7 @@ type Sample = { key: number; count: number; sum: Color };
 type Bucket = { samples: Sample[]; axis: number; score: number };
 const MAX_SOURCE_PIXELS = 4_194_304;
 const MAX_TRACE_EDGE = 576;
-const PALETTE_SIZE = 160;
+class TraceContourLimitError extends RangeError {}
 
 function sampleRaster(source: PixelSource) {
   const { width, height, rgba8 } = source;
@@ -102,9 +102,9 @@ function nearestColor(rgb: Color, centers: readonly Color[]): number {
   return best;
 }
 
-function quantize(samples: Sample[]) {
+function quantize(samples: Sample[], paletteSize: number) {
   const buckets = [partition(samples)];
-  while (buckets.length < PALETTE_SIZE) {
+  while (buckets.length < paletteSize) {
     buckets.sort((a, b) => b.score - a.score);
     const { samples: items, axis, score } = buckets[0]!;
     if (score === 0) break;
@@ -155,10 +155,12 @@ function traceContours(pixels: Uint8Array, width: number, height: number, count:
   }
   return edges.map((boundary) => {
     const contours: string[] = [];
+    let segments = 0;
     for (const first of boundary) {
       const start = Math.floor(first / 4);
       let direction = first % 4, vertex = start;
       let path = `M${vertex % stride} ${Math.floor(vertex / stride)}`;
+      segments += 2; // Move and close commands.
       do {
         boundary.delete(vertex * 4 + direction);
         vertex += steps[direction]!;
@@ -168,22 +170,29 @@ function traceContours(pixels: Uint8Array, width: number, height: number, count:
         const next = [1, 0, 3].map((offset) => (direction + offset) % 4)
           .find((candidate) => boundary.has(vertex * 4 + candidate));
         if (next === undefined) throw new Error("Raster contour did not close.");
-        if (direction !== next) path += direction % 2 === 0 ? `H${vertex % stride}` : `V${Math.floor(vertex / stride)}`;
+        if (direction !== next) {
+          path += direction % 2 === 0 ? `H${vertex % stride}` : `V${Math.floor(vertex / stride)}`;
+          segments += 1;
+        }
         direction = next;
       } while (true);
       contours.push(path + "Z");
     }
-    return contours;
+    return { contours, segments };
   });
 }
 
-/** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
-export function traceRasterScene(source: PixelSource): VectorScene {
-  const { cols, rows, keys, histogram } = sampleRaster(source);
-  const { indices, colors, centers } = quantize([...histogram.values()]);
+function traceSampledRaster(
+  source: PixelSource,
+  { cols, rows, keys, histogram }: ReturnType<typeof sampleRaster>,
+  paletteSize: number,
+  block: number,
+  segmentLimit = Infinity,
+): VectorScene {
+  const { indices, colors, centers } = quantize([...histogram.values()], paletteSize);
   const pixels = Uint8Array.from(keys, (key) => indices[key]!);
   const elements: PathElement[] = [];
-  const block = 4;
+  let totalSegments = 0;
   const underCols = Math.ceil(cols / block);
   const underRows = Math.ceil(rows / block);
   const undercoat = new Uint8Array(underCols * underRows);
@@ -207,11 +216,13 @@ export function traceRasterScene(source: PixelSource): VectorScene {
   const base = { type: "solid", color: colors[0]! } as const;
 
   function addLayer(data: Uint8Array, width: number, height: number, name: string, scale: number) {
-    const contours = traceContours(data, width, height, colors.length);
-    contours.forEach((paths, index) => {
+    const shapes = traceContours(data, width, height, colors.length);
+    shapes.forEach(({ contours, segments }, index) => {
+      totalSegments += segments;
+      if (totalSegments > segmentLimit) throw new TraceContourLimitError("Raster contours exceed the scene path segment limit.");
       const fill = { type: "solid", color: colors[index]! } as const;
-      const d = paths.join("");
-      if (d.length > SCENE_LIMITS.maxPathBytes) throw new RangeError("Raster contours exceed the per-color path limit.");
+      const d = contours.join("");
+      if (d.length > SCENE_LIMITS.maxPathBytes) throw new TraceContourLimitError("Raster contours exceed the per-color path limit.");
       if (d) elements.push({
         type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
         ...(scale === 1 ? {} : { transform: [{ type: "scale", x: scale }] }),
@@ -219,7 +230,8 @@ export function traceRasterScene(source: PixelSource): VectorScene {
     });
   }
   // Similar underpainting remains visible through fractional-pixel seams.
-  if (cols > block && rows > block) {
+  if (cols > 4 && rows > 4) {
+    totalSegments += 5; // One move, three sides, and close.
     elements.push({ type: "path", id: "trace-base", d: `M0 0H${cols}V${rows}H0Z`, presentation: { fill: base } });
     addLayer(undercoat, underCols, underRows, "undercoat", block);
   }
@@ -231,4 +243,16 @@ export function traceRasterScene(source: PixelSource): VectorScene {
     accessibility: { mode: "labelled", title: "Traced illustration" },
     elements,
   };
+}
+
+/** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
+export function traceRasterScene(source: PixelSource): VectorScene {
+  const sampled = sampleRaster(source);
+  try {
+    return traceSampledRaster(source, sampled, 256, 2, SCENE_LIMITS.maxAggregatePathSegments);
+  } catch (error) {
+    if (!(error instanceof TraceContourLimitError)) throw error;
+    // Preserve the previous trace for inputs that exceed the finer contour budget.
+    return traceSampledRaster(source, sampled, 160, 4);
+  }
 }
