@@ -187,12 +187,25 @@ export interface SceneReviseJsonData {
   readonly outputSha256: string;
 }
 
+export interface SceneTracePngJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "trace-png";
+  readonly valid: true;
+  readonly output: string;
+  readonly written: boolean;
+  readonly cleanupResidue: string | null;
+  readonly sourceSha256: string;
+  readonly outputSha256: string;
+  readonly metrics: SceneMetrics;
+}
+
 export type SceneJsonData =
   | SceneValidateJsonData
   | SceneInspectJsonData
   | SceneCompileJsonData
   | SceneImportSvgJsonData
-  | SceneReviseJsonData;
+  | SceneReviseJsonData
+  | SceneTracePngJsonData;
 
 function safeRelative(value: string): boolean {
   return value !== "" && !value.includes("\0") && !isAbsolute(value) && !/^[A-Za-z]:[\\/]/.test(value) &&

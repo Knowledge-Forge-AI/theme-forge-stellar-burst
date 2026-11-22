@@ -52,7 +52,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testMatch: ["visual-equivalence.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts"],
+      testMatch: ["visual-equivalence.spec.ts", "preview.spec.ts", "dogfood-shards.spec.ts", "cloe-vector.spec.ts"],
       use: { browserName: "chromium" },
     },
     {

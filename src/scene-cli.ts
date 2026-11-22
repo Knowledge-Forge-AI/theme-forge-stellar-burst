@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
+import { decodeStrictPng } from "./brand/raster-capability.js";
 import { DiagnosticError, diagnostic, type Diagnostic } from "./diagnostics.js";
 import {
   createJsonEnvelope,
@@ -14,6 +15,7 @@ import {
   type SceneJsonData,
   type SceneReviseJsonData,
   type SceneValidateJsonData,
+  type SceneTracePngJsonData,
 } from "./json.js";
 import {
   publishSceneJson,
@@ -25,6 +27,7 @@ import {
   compileScene,
   inspectScene,
   sceneImportSvg,
+  traceRasterScene,
   validateScene,
   type SceneImportResult,
 } from "./scene/index.js";
@@ -35,6 +38,7 @@ export const SCENE_USAGE = `Usage:
   tfsb scene inspect <json> [--json]
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--dry-run] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
@@ -82,12 +86,13 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     action !== "inspect" &&
     action !== "compile" &&
     action !== "revise" &&
-    action !== "import-svg"
+    action !== "import-svg" &&
+    action !== "trace-png"
   ) {
     return {
       dryRun: false,
       json,
-      error: `Unknown scene action '${action}'. Expected validate, inspect, compile, revise, or import-svg.`,
+      error: `Unknown scene action '${action}'. Expected validate, inspect, compile, revise, import-svg, or trace-png.`,
     };
   }
 
@@ -153,7 +158,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg === "--output") {
-      if (action !== "compile" && action !== "import-svg" && action !== "revise") {
+      if (action !== "compile" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -169,7 +174,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg.startsWith("--output=")) {
-      if (action !== "compile" && action !== "import-svg" && action !== "revise") {
+      if (action !== "compile" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -200,6 +205,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       error:
         action === "import-svg"
           ? "scene import-svg requires exactly one input SVG file."
+          : action === "trace-png" ? "scene trace-png requires exactly one input PNG file."
           : `scene ${action} requires exactly one scene JSON file.`,
     };
   }
@@ -212,6 +218,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       error:
         action === "import-svg"
           ? "scene import-svg requires exactly one input SVG file."
+          : action === "trace-png" ? "scene trace-png requires exactly one input PNG file."
           : `scene ${action} requires exactly one scene JSON file.`,
     };
   }
@@ -232,6 +239,10 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       json,
       error: "scene import-svg requires --output <absent-scene.json>.",
     };
+  }
+
+  if (action === "trace-png" && output === undefined) {
+    return { action, dryRun, json, error: "scene trace-png requires --output <absent-scene.json>." };
   }
 
   if (action === "revise" && (edits === undefined || output === undefined)) {
@@ -459,6 +470,34 @@ export async function runSceneCli(
       for (const normalization of result.normalizations ?? []) {
         io.stdout(`  normalization: ${normalization}\n`);
       }
+      return 0;
+    }
+
+    if (action === "trace-png") {
+      const bytes = await readSceneFileBytes(inputPath);
+      let scene;
+      try {
+        scene = traceRasterScene(decodeStrictPng(bytes));
+      } catch {
+        throw new DiagnosticError(diagnostic(
+          { operation: "import", domain: "scene" },
+          "SCENE_RASTER_TRACE_REJECTED",
+          "Trace requires a bounded opaque 8-bit RGB or RGBA PNG and contours within scene limits.",
+        ));
+      }
+      const validation = validateScene(scene);
+      if (!validation.ok) throw new DiagnosticError(validation.diagnostics[0]!);
+      const json = JSON.stringify(scene);
+      const published = await publishSceneJson(resolve(cwd, output!), json, false);
+      const data: SceneTracePngJsonData = {
+        schema: "tfsb.scene-result-v1", action, valid: true, output: output!,
+        written: published.published, cleanupResidue: published.cleanupResidue,
+        sourceSha256: createHash("sha256").update(bytes).digest("hex"),
+        outputSha256: createHash("sha256").update(json).digest("hex"),
+        metrics: validation.value.metrics,
+      };
+      if (jsonMode) return emitJson(io, "ok", 0, "PNG traced into an editable scene.", [], data);
+      io.stdout(`Traced scene: ${output}\n`);
       return 0;
     }
 
