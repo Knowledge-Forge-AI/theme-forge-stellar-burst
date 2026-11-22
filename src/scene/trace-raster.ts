@@ -12,8 +12,8 @@ type Color = [number, number, number];
 type Sample = { key: number; count: number; sum: Color };
 type Bucket = { samples: Sample[]; axis: number; score: number };
 const MAX_SOURCE_PIXELS = 4_194_304;
-const MAX_TRACE_EDGE = 504;
-const PALETTE_SIZE = 128;
+const MAX_TRACE_EDGE = 576;
+const PALETTE_SIZE = 160;
 
 function sampleRaster(source: PixelSource) {
   const { width, height, rgba8 } = source;
@@ -27,21 +27,25 @@ function sampleRaster(source: PixelSource) {
   const keys = new Uint16Array(cols * rows);
   const histogram = new Map<number, Sample>();
   for (let y = 0; y < rows; y += 1) {
-    const top = Math.floor(y * height / rows), bottom = Math.floor((y + 1) * height / rows);
+    const top = y * height, bottom = (y + 1) * height;
     for (let x = 0; x < cols; x += 1) {
-      const left = Math.floor(x * width / cols), right = Math.floor((x + 1) * width / cols);
+      const left = x * width, right = (x + 1) * width;
       const sum: Color = [0, 0, 0];
-      for (let sy = top; sy < bottom; sy += 1) {
-        for (let sx = left; sx < right; sx += 1) {
+      // Integrate the exact pixel coverage of each cell. Integer weights
+      // avoid alternating two/three-pixel averages across smooth gradients.
+      for (let sy = Math.floor(top / rows); sy < Math.ceil(bottom / rows); sy += 1) {
+        const overlapY = Math.min(bottom, (sy + 1) * rows) - Math.max(top, sy * rows);
+        for (let sx = Math.floor(left / cols); sx < Math.ceil(right / cols); sx += 1) {
+          const overlapX = Math.min(right, (sx + 1) * cols) - Math.max(left, sx * cols);
+          const weight = overlapX * overlapY;
           const index = (sy * width + sx) * 4;
           if (rgba8[index + 3] !== 255) throw new RangeError("Raster tracing requires opaque pixels.");
-          sum[0] += rgba8[index]!;
-          sum[1] += rgba8[index + 1]!;
-          sum[2] += rgba8[index + 2]!;
+          sum[0] += rgba8[index]! * weight;
+          sum[1] += rgba8[index + 1]! * weight;
+          sum[2] += rgba8[index + 2]! * weight;
         }
       }
-      const area = (right - left) * (bottom - top);
-      const rgb = sum.map((channel) => Math.round(channel / area)) as Color;
+      const rgb = sum.map((channel) => Math.round(channel / (width * height))) as Color;
       const key = ((rgb[0] >> 3) << 10) | ((rgb[1] >> 3) << 5) | (rgb[2] >> 3);
       keys[y * cols + x] = key;
       const sample = histogram.get(key);
@@ -76,6 +80,28 @@ function partition(samples: Sample[]): Bucket {
   return { samples, axis, score };
 }
 
+function average(items: readonly Sample[]): Color {
+  const sum: Color = [0, 0, 0];
+  let count = 0;
+  for (const item of items) {
+    count += item.count;
+    sum[0] += item.sum[0];
+    sum[1] += item.sum[1];
+    sum[2] += item.sum[2];
+  }
+  return [sum[0] / count, sum[1] / count, sum[2] / count];
+}
+
+function nearestColor(rgb: Color, centers: readonly Color[]): number {
+  let best = 0, distance = Infinity;
+  for (let i = 0; i < centers.length; i += 1) {
+    const color = centers[i]!;
+    const error = (rgb[0] - color[0]) ** 2 + (rgb[1] - color[1]) ** 2 + (rgb[2] - color[2]) ** 2;
+    if (error < distance) { distance = error; best = i; }
+  }
+  return best;
+}
+
 function quantize(samples: Sample[]) {
   const buckets = [partition(samples)];
   while (buckets.length < PALETTE_SIZE) {
@@ -89,17 +115,26 @@ function quantize(samples: Sample[]) {
     buckets.splice(0, 1, partition(items.slice(0, split)), partition(items.slice(split)));
   }
   const indices = new Uint8Array(32_768);
-  const colors = buckets.map(({ samples: items }, index) => {
-    const sum: Color = [0, 0, 0];
-    let count = 0;
-    for (const item of items) {
-      indices[item.key] = index;
-      count += item.count;
-      for (let c = 0; c < 3; c += 1) sum[c]! += item.sum[c]!;
+  const centers = buckets.map(({ samples: items }) => average(items));
+  const points = samples.map((sample) => ({ sample, rgb: average([sample]) }));
+  // Use median-cut for deterministic initialization, then assign each
+  // occupied bin to its closest color and refine the palette in place.
+  for (let pass = 0; pass < 4; pass += 1) {
+    const assigned = centers.map((): Sample[] => []);
+    for (const { sample, rgb } of points) {
+      const best = nearestColor(rgb, centers);
+      indices[sample.key] = best;
+      assigned[best]!.push(sample);
     }
-    return `#${sum.map((c) => Math.round(c / count).toString(16).padStart(2, "0")).join("")}` as HexColor;
-  });
-  return { indices, colors };
+    if (pass < 3) {
+      assigned.forEach((items, i) => {
+        if (items.length) centers[i] = average(items);
+      });
+    }
+  }
+  const colors = centers.map((rgb) =>
+    `#${rgb.map((channel) => Math.round(channel).toString(16).padStart(2, "0")).join("")}` as HexColor);
+  return { indices, colors, centers };
 }
 
 function traceContours(pixels: Uint8Array, width: number, height: number, count: number) {
@@ -145,7 +180,7 @@ function traceContours(pixels: Uint8Array, width: number, height: number, count:
 /** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
 export function traceRasterScene(source: PixelSource): VectorScene {
   const { cols, rows, keys, histogram } = sampleRaster(source);
-  const { indices, colors } = quantize([...histogram.values()]);
+  const { indices, colors, centers } = quantize([...histogram.values()]);
   const pixels = Uint8Array.from(keys, (key) => indices[key]!);
   const elements: PathElement[] = [];
   const block = 4;
@@ -154,9 +189,19 @@ export function traceRasterScene(source: PixelSource): VectorScene {
   const undercoat = new Uint8Array(underCols * underRows);
   for (let y = 0; y < underRows; y += 1) {
     for (let x = 0; x < underCols; x += 1) {
-      const sourceX = Math.min(x * block + block / 2, cols - 1);
-      const sourceY = Math.min(y * block + block / 2, rows - 1);
-      undercoat[y * underCols + x] = pixels[sourceY * cols + sourceX]!;
+      const right = Math.min((x + 1) * block, cols);
+      const bottom = Math.min((y + 1) * block, rows);
+      const sum: Color = [0, 0, 0];
+      const count = (right - x * block) * (bottom - y * block);
+      for (let sy = y * block; sy < bottom; sy += 1) {
+        for (let sx = x * block; sx < right; sx += 1) {
+          const color = centers[pixels[sy * cols + sx]!]!;
+          sum[0] += color[0];
+          sum[1] += color[1];
+          sum[2] += color[2];
+        }
+      }
+      undercoat[y * underCols + x] = nearestColor([sum[0] / count, sum[1] / count, sum[2] / count], centers);
     }
   }
   const base = { type: "solid", color: colors[0]! } as const;

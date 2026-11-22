@@ -65,22 +65,23 @@ test("Cloe mascot traces into a visually faithful editable SVG", async ({ page }
   expect(Buffer.byteLength(svg)).toBeLessThan(3_000_000);
   await page.route("http://cloe.test/cloe.svg", (route) =>
     route.fulfill({ contentType: "image/svg+xml", body: svg }));
-  for (const width of [384, 256]) {
+  for (const width of [384, 336, 256]) {
     const height = width * 1.5;
     const before = await render(page, "/reference.webp", width, height);
     const after = await render(page, "/cloe.svg", width, height);
     // A blank render must fail the same whole-image comparator.
     const blank = compare(before, Buffer.alloc(before.length, 255), width, height, [0, 0, 1, 1]);
-    expect(blank.mean).toBeGreaterThan(14);
+    expect(blank.mean).toBeGreaterThan(7);
     const results = {
       full: compare(before, after, width, height, [0, 0, 1, 1]),
       face: compare(before, after, width, height, [0.33, 0.045, 0.64, 0.225]),
       tablet: compare(before, after, width, height, [0.64, 0.20, 0.83, 0.34]),
     };
     await info.attach(`pixel-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
-    for (const result of Object.values(results)) {
-      expect(result.mean).toBeLessThan(14);
-      expect(result.severe).toBeLessThan(0.06);
+    const meanLimits = { full: 7, face: 10, tablet: 7 };
+    for (const region of ["full", "face", "tablet"] as const) {
+      expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(meanLimits[region]);
+      expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.025);
     }
   }
 });

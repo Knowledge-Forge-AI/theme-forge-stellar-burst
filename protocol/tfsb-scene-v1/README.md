@@ -134,17 +134,19 @@ RGB or RGBA PNG of at most 4,194,304 pixels. For a WebP reference, decode it
 to PNG before invoking the tracer. Then run
 `tfsb scene compile traced.scene.json --output traced.svg`.
 
-The tracer area-samples the source and builds closed, editable color contours
-using up to 128 adaptive colors. The SVG contains no raster image. Regions
+The tracer samples each cell by exact pixel coverage and refines a palette
+of up to 160 colors by nearest-color assignment. It builds closed, editable
+color contours and uses locally averaged underpainting at their joins. The SVG contains no raster image. Regions
 are grouped by paint color and do not identify portrait features as separate
 semantic objects. Large or unusually complex inputs can exceed scene limits.
 Review the export at its intended display size.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces
 a PNG decoded from those bytes, and renders the compiled SVG in Chromium
-at 384 and 256 CSS pixels wide. Across the whole image,
-face and tablet regions it holds mean absolute RGB channel error below 14
-out of 255 and fewer than 6% of pixels may have any channel error above 48.
+at 384, 336 and 256 CSS pixels wide. It holds mean absolute RGB channel
+error below 7 out of 255 for the whole image and tablet, and below 10 for
+the face. Fewer than 2.5% of pixels in each region may have any channel
+error above 48.
 The uncompressed SVG must stay below 3,000,000 bytes.
 
 Input is a bounded regular-file snapshot. Dry-run writes nothing. Output must be
