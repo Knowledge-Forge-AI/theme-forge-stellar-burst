@@ -57,8 +57,8 @@ test("Cloe high-detail SVG preserves sharp features when enlarged", async ({ pag
     const results = compareCloe(before, after, width, height);
     await info.attach(`high-detail-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
     const meanLimits = width === 1024
-      ? { full: 7, face: 11.5, tablet: 8 }
-      : width === 768 ? { full: 4, face: 5.2, tablet: 5 } : { full: 5.8, face: 8.1, tablet: 6.5 };
+      ? { full: 6, face: 10.2, tablet: 8 }
+      : width === 768 ? { full: 2.6, face: 3.25, tablet: 4 } : { full: 4.6, face: 6.7, tablet: 5.8 };
     for (const region of ["full", "face", "tablet"] as const) {
       expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(meanLimits[region]);
       expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.08);

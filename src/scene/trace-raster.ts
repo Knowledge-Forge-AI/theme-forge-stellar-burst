@@ -1,3 +1,4 @@
+import { RASTER_MAX_SVG_BYTES } from "../brand/raster-capability.js";
 import type { HexColor } from "../types.js";
 import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, PREVIOUS_NATIVE_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
 import type { PathElement, VectorScene } from "./types.js";
@@ -256,6 +257,7 @@ interface TraceSettings {
   paletteSize: number;
   block?: 2 | 4;
   segmentLimit?: number;
+  maxSvgBytes?: number;
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
 }
@@ -263,7 +265,7 @@ interface TraceSettings {
 function traceSampledRaster(
   source: PixelSource,
   sampled: SampledRaster,
-  { paletteSize, block = 2, segmentLimit = Infinity, underpaintColors, underpaintSource = sampled }: TraceSettings,
+  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled }: TraceSettings,
 ): VectorScene {
   const { cols, rows, keys, histogram, bits } = sampled;
   const samples = [...histogram.values()];
@@ -271,6 +273,7 @@ function traceSampledRaster(
   const pixels = Uint16Array.from(keys, (key) => indices[key]!);
   const elements: PathElement[] = [];
   let totalSegments = 0;
+  let svgBytes = 1024; // Reserve the SVG header, accessibility title and base path.
 
   const base = { type: "solid", color: colors[0]! } as const;
 
@@ -284,10 +287,16 @@ function traceSampledRaster(
       const fill = { type: "solid", color: palette[index]! } as const;
       const d = contours.join("");
       if (d.length > SCENE_LIMITS.maxPathBytes) throw new TraceContourLimitError("Raster contours exceed the per-color path limit.");
-      if (d) elements.push({
-        type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
-        ...(scale === 1 && scaleY === 1 ? {} : { transform: [{ type: "scale", x: scale, ...(scaleY === scale ? {} : { y: scaleY }) }] }),
-      });
+      if (d) {
+        // ASCII path data gains a separator before each command and after each
+        // non-close command in the spaced SVG. Reserve 256 bytes for tag and paint.
+        svgBytes += d.length + 2 * segments - contours.length + 256;
+        if (svgBytes > maxSvgBytes) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
+        elements.push({
+          type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
+          ...(scale === 1 && scaleY === 1 ? {} : { transform: [{ type: "scale", x: scale, ...(scaleY === scale ? {} : { y: scaleY }) }] }),
+        });
+      }
     });
   }
   // Similar underpainting remains visible through fractional-pixel seams.
@@ -366,6 +375,15 @@ export function traceRasterScene(
   }
   if ((options.highDetail !== false || options.nativeDetail) && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
       && grid.cols > 4 && grid.rows > 4) {
+    try {
+      const sampled = sampleAdaptiveRaster(source, grid, 2);
+      return traceSampledRaster(source, sampled, {
+        paletteSize: 1152, underpaintColors: 96, underpaintSource: sampleRaster(source, 6, grid),
+        segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES,
+      });
+    } catch (error) {
+      if (!(error instanceof TraceContourLimitError)) throw error;
+    }
     const underpaintSource = sampleRaster(source, 6, { cols: Math.ceil(grid.cols / 2), rows: Math.ceil(grid.rows / 2) });
     for (const settings of [
       { edgeThreshold: 24, paletteSize: 576, underpaintColors: 96, segmentLimit: HIGH_DETAIL_SCENE_LIMITS.maxAggregatePathSegments },
