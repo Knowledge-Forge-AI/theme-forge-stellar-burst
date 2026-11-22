@@ -67,9 +67,10 @@ test("Cloe mascot traces into a visually faithful editable SVG", async ({ page, 
     route.fulfill({ contentType: "image/svg+xml", body: svg }));
   // The engines downsample vector and raster paint differently at fractional sizes.
   const isWebKit = browserName === "webkit";
-  const meanLimits = isWebKit ? { full: 9, face: 13.5, tablet: 9.6 } : { full: 6, face: 8.5, tablet: 6 };
-  const severeLimit = isWebKit ? 0.065 : 0.015;
-  for (const width of [384, 336, 256]) {
+  const displayMeanLimits = isWebKit ? { full: 8.5, face: 13, tablet: 9.6 } : { full: 5.6, face: 8, tablet: 6 };
+  for (const width of [384, 336, 256, 512]) {
+    const meanLimits = width === 512 ? { full: 7, face: 10.5, tablet: 8 } : displayMeanLimits;
+    const severeLimit = isWebKit || width === 512 ? 0.065 : 0.015;
     const height = width * 1.5;
     const before = await render(page, "/reference.webp", width, height);
     const after = await render(page, "/cloe.svg", width, height);

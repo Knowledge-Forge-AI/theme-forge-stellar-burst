@@ -23,6 +23,18 @@ test("traces holes and point-touching contours into a deterministic editable sce
   expect(compileScene(JSON.parse(JSON.stringify(scene))).ok).toBe(true);
 });
 
+test("encodes a short relative move from the previous closed contour's start", () => {
+  const width = 128;
+  const height = 14;
+  const rgba8 = new Uint8Array(width * height * 4).fill(255);
+  for (const x of [100, 103]) rgba8.set([208, 16, 16, 255], (10 * width + x) * 4);
+  const scene = traceRasterScene({ width, height, rgba8 });
+  const red = scene.elements.find((element) => element.id?.startsWith("trace-detail-")
+    && element.presentation?.fill?.type === "solid" && element.presentation.fill.color === "#d01010");
+  expect(red).toMatchObject({ type: "path", d: "M100 10h1v1h-1Zm3 0h1v1h-1Z" });
+  expect(compileScene(scene, { compactPaths: true }).ok).toBe(true);
+});
+
 test("compacts validated path spacing without changing geometry or source identity", () => {
   const scene = traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) });
   const input = {
@@ -56,13 +68,16 @@ test("uses fractional pixel coverage when the source does not divide into trace 
   }))).toEqual(new Set(["#606060", "#909090"]));
 });
 
-test("keeps a noisy gradient traceable when the finer contours exceed the segment limit", () => {
+test.each([
+  { jitter: 16, block: 2, segments: 925_266 },
+  { jitter: 24, block: 4, segments: 884_919 },
+])("keeps a noisy gradient traceable using $block-by-$block underpainting", ({ jitter, block, segments }) => {
   const size = 576;
   const rgba8 = new Uint8Array(size * size * 4);
   let seed = 123;
   const noise = () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    return (seed >>> 24) * 24 / 256;
+    return (seed >>> 24) * jitter / 256;
   };
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
@@ -75,10 +90,10 @@ test("keeps a noisy gradient traceable when the finer contours exceed the segmen
   }
   const scene = traceRasterScene({ width: size, height: size, rgba8 });
   expect(scene.elements.find(({ id }) => id?.startsWith("trace-undercoat-"))?.transform)
-    .toEqual([{ type: "scale", x: 4 }]);
+    .toEqual([{ type: "scale", x: block }]);
   const validated = validateScene(scene);
   if (!validated.ok) throw new Error("Expected the fallback trace to stay within scene limits");
-  expect(validated.value.metrics.pathSegmentCount).toBe(884_919);
+  expect(validated.value.metrics.pathSegmentCount).toBe(segments);
 });
 
 test("refuses invalid dimensions and any nonopaque sample", () => {
