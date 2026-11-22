@@ -136,8 +136,10 @@ to PNG before invoking the tracer. Then run
 
 High-detail tracing is the default for `trace-png`. On sufficiently large
 inputs, it subdivides cells at color transitions on a finer grid to retain
-thin strokes. The command falls back through the earlier high-detail settings
-and the regular trace when a contour budget is exceeded. Illustration scenes
+thin strokes. It uses up to 1,152 detail colors with a separate 96-color
+underpaint. The denser trace stays within the 12 MB SVG budget, with earlier
+high-detail settings and the regular trace available when it exceeds the byte
+or contour limits. Illustration scenes
 admit up to 2,600,000 path segments within the usual per-path and input limits.
 
 Use `--regular` to select the smaller trace for ordinary display sizes. The
