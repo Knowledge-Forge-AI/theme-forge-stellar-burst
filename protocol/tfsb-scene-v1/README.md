@@ -135,23 +135,26 @@ to PNG before invoking the tracer. Then run
 `tfsb scene compile traced.scene.json --output traced.svg --compact-paths`.
 
 The tracer samples each cell by exact pixel coverage and refines a palette
-of up to 256 colors by nearest-color assignment. It builds closed, editable
-color contours and uses 2-by-2 cell averages to underpaint their joins.
-`--compact-paths` removes optional spacing from the SVG path data and preserves
+of up to 448 colors from six-bit color bins. A separate 96-color underpaint
+at the same resolution reduces seams between contours. It uses shorter
+relative path commands where they preserve the same geometry.
+`--compact-paths` removes optional spacing from SVG path data and preserves
 the geometry and scene digest. The SVG contains no raster image. Regions
 are grouped by paint color and do not identify portrait features as separate
-semantic objects. If the finer trace exceeds a contour limit, the tracer retries
-with the previous 160-color palette and 4-by-4 underpainting. Large or unusually
-complex inputs can still exceed scene limits.
-Review the export at its intended display size.
+semantic objects.
+
+If the finer trace exceeds a contour limit, the tracer tries the existing
+256-color trace with 2-by-2 underpainting, then the original 160-color trace
+with 4-by-4 underpainting. Large or unusually complex inputs can still exceed
+scene limits. Review the export at its intended display size.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces
 a PNG decoded from those bytes, and renders the compiled SVG in Chromium
-and WebKit at 384, 336 and 256 CSS pixels wide. It checks mean absolute RGB
-channel error in the whole image, face and tablet, and limits the fraction
-of pixels with any channel error above 48. The browser-specific tolerances
-account for differences in downsampling. The uncompressed SVG must stay below
-3,000,000 bytes.
+and WebKit at 384, 336, 256 and 512 CSS pixels wide. It checks mean absolute
+RGB channel error in the whole image, face and tablet, and limits the
+fraction of pixels with any channel error above 48. The browser-specific
+tolerances account for differences in downsampling. The uncompressed SVG
+must stay below 3,000,000 bytes.
 
 Input is a bounded regular-file snapshot. Dry-run writes nothing. Output must be
 absent; there is no overwrite option. Existing symlink parents and final-component

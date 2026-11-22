@@ -8,6 +8,7 @@ interface PixelSource {
   readonly rgba8: Uint8Array;
 }
 
+type ChannelBits = 5 | 6;
 type Color = [number, number, number];
 type Sample = { key: number; count: number; sum: Color };
 type Bucket = { samples: Sample[]; axis: number; score: number };
@@ -15,7 +16,7 @@ const MAX_SOURCE_PIXELS = 4_194_304;
 const MAX_TRACE_EDGE = 576;
 class TraceContourLimitError extends RangeError {}
 
-function sampleRaster(source: PixelSource) {
+function sampleRaster(source: PixelSource, bits: ChannelBits) {
   const { width, height, rgba8 } = source;
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1
       || width * height > MAX_SOURCE_PIXELS || rgba8.length !== width * height * 4) {
@@ -24,7 +25,8 @@ function sampleRaster(source: PixelSource) {
   const scale = Math.min(1, MAX_TRACE_EDGE / Math.max(width, height));
   const cols = Math.max(1, Math.round(width * scale));
   const rows = Math.max(1, Math.round(height * scale));
-  const keys = new Uint16Array(cols * rows);
+  const keys = new Uint32Array(cols * rows);
+  const shift = 8 - bits;
   const histogram = new Map<number, Sample>();
   for (let y = 0; y < rows; y += 1) {
     const top = y * height, bottom = (y + 1) * height;
@@ -46,7 +48,7 @@ function sampleRaster(source: PixelSource) {
         }
       }
       const rgb = sum.map((channel) => Math.round(channel / (width * height))) as Color;
-      const key = ((rgb[0] >> 3) << 10) | ((rgb[1] >> 3) << 5) | (rgb[2] >> 3);
+      const key = ((rgb[0] >> shift) << (2 * bits)) | ((rgb[1] >> shift) << bits) | (rgb[2] >> shift);
       keys[y * cols + x] = key;
       const sample = histogram.get(key);
       if (sample === undefined) histogram.set(key, { key, count: 1, sum: rgb });
@@ -56,20 +58,20 @@ function sampleRaster(source: PixelSource) {
       }
     }
   }
-  return { cols, rows, keys, histogram };
+  return { cols, rows, keys, histogram, bits };
 }
 
-function channel(key: number, axis: number): number {
-  return (key >> ((2 - axis) * 5)) & 31;
+function channel(key: number, axis: number, bits: ChannelBits): number {
+  return (key >> ((2 - axis) * bits)) & ((1 << bits) - 1);
 }
 
-function partition(samples: Sample[]): Bucket {
+function partition(samples: Sample[], bits: ChannelBits): Bucket {
   let axis = 0;
   let score = 0;
   for (let c = 0; c < 3; c += 1) {
-    let minimum = 31, maximum = 0, count = 0;
+    let minimum = (1 << bits) - 1, maximum = 0, count = 0;
     for (const sample of samples) {
-      const level = channel(sample.key, c);
+      const level = channel(sample.key, c, bits);
       minimum = Math.min(minimum, level);
       maximum = Math.max(maximum, level);
       count += sample.count;
@@ -102,19 +104,19 @@ function nearestColor(rgb: Color, centers: readonly Color[]): number {
   return best;
 }
 
-function quantize(samples: Sample[], paletteSize: number) {
-  const buckets = [partition(samples)];
+function quantize(samples: readonly Sample[], paletteSize: number, bits: ChannelBits) {
+  const buckets = [partition([...samples], bits)];
   while (buckets.length < paletteSize) {
     buckets.sort((a, b) => b.score - a.score);
     const { samples: items, axis, score } = buckets[0]!;
     if (score === 0) break;
-    items.sort((a, b) => channel(a.key, axis) - channel(b.key, axis) || a.key - b.key);
+    items.sort((a, b) => channel(a.key, axis, bits) - channel(b.key, axis, bits) || a.key - b.key);
     const midpoint = items.reduce((total, item) => total + item.count, 0) / 2;
     let split = 1, cumulative = items[0]!.count;
     while (split < items.length - 1 && cumulative < midpoint) cumulative += items[split++]!.count;
-    buckets.splice(0, 1, partition(items.slice(0, split)), partition(items.slice(split)));
+    buckets.splice(0, 1, partition(items.slice(0, split), bits), partition(items.slice(split), bits));
   }
-  const indices = new Uint8Array(32_768);
+  const indices = new Uint16Array(1 << (3 * bits));
   const centers = buckets.map(({ samples: items }) => average(items));
   const points = samples.map((sample) => ({ sample, rgb: average([sample]) }));
   // Use median-cut for deterministic initialization, then assign each
@@ -137,7 +139,7 @@ function quantize(samples: Sample[], paletteSize: number) {
   return { indices, colors, centers };
 }
 
-function traceContours(pixels: Uint8Array, width: number, height: number, count: number) {
+function traceContours(pixels: Uint16Array, width: number, height: number, count: number, relativePaths: boolean) {
   const stride = width + 1;
   const steps = [1, stride, -1, -stride];
   const edges = Array.from({ length: count }, () => new Set<number>());
@@ -156,10 +158,20 @@ function traceContours(pixels: Uint8Array, width: number, height: number, count:
   return edges.map((boundary) => {
     const contours: string[] = [];
     let segments = 0;
+    let previousStart: number | undefined;
     for (const first of boundary) {
       const start = Math.floor(first / 4);
       let direction = first % 4, vertex = start;
       let path = `M${vertex % stride} ${Math.floor(vertex / stride)}`;
+      // Closepath resets the current point to the preceding subpath start.
+      if (relativePaths && previousStart !== undefined) {
+        const dx = vertex % stride - previousStart % stride;
+        const dy = Math.floor(vertex / stride) - Math.floor(previousStart / stride);
+        const move = `m${dx} ${dy}`;
+        if (move.length < path.length) path = move;
+      }
+      previousStart = start;
+      let lastCorner = start;
       segments += 2; // Move and close commands.
       do {
         boundary.delete(vertex * 4 + direction);
@@ -171,7 +183,16 @@ function traceContours(pixels: Uint8Array, width: number, height: number, count:
           .find((candidate) => boundary.has(vertex * 4 + candidate));
         if (next === undefined) throw new Error("Raster contour did not close.");
         if (direction !== next) {
-          path += direction % 2 === 0 ? `H${vertex % stride}` : `V${Math.floor(vertex / stride)}`;
+          const horizontal = direction % 2 === 0;
+          const target = horizontal ? vertex % stride : Math.floor(vertex / stride);
+          let line = `${horizontal ? "H" : "V"}${target}`;
+          if (relativePaths) {
+            const from = horizontal ? lastCorner % stride : Math.floor(lastCorner / stride);
+            const relative = `${horizontal ? "h" : "v"}${target - from}`;
+            if (relative.length < line.length) line = relative;
+          }
+          path += line;
+          lastCorner = vertex;
           segments += 1;
         }
         direction = next;
@@ -182,45 +203,34 @@ function traceContours(pixels: Uint8Array, width: number, height: number, count:
   });
 }
 
+interface TraceSettings {
+  paletteSize: number;
+  block?: 2 | 4;
+  segmentLimit?: number;
+  underpaintColors?: number;
+}
+
 function traceSampledRaster(
   source: PixelSource,
-  { cols, rows, keys, histogram }: ReturnType<typeof sampleRaster>,
-  paletteSize: number,
-  block: number,
-  segmentLimit = Infinity,
+  { cols, rows, keys, histogram, bits }: ReturnType<typeof sampleRaster>,
+  { paletteSize, block = 2, segmentLimit = Infinity, underpaintColors }: TraceSettings,
 ): VectorScene {
-  const { indices, colors, centers } = quantize([...histogram.values()], paletteSize);
-  const pixels = Uint8Array.from(keys, (key) => indices[key]!);
+  const samples = [...histogram.values()];
+  const { indices, colors, centers } = quantize(samples, paletteSize, bits);
+  const pixels = Uint16Array.from(keys, (key) => indices[key]!);
   const elements: PathElement[] = [];
   let totalSegments = 0;
-  const underCols = Math.ceil(cols / block);
-  const underRows = Math.ceil(rows / block);
-  const undercoat = new Uint8Array(underCols * underRows);
-  for (let y = 0; y < underRows; y += 1) {
-    for (let x = 0; x < underCols; x += 1) {
-      const right = Math.min((x + 1) * block, cols);
-      const bottom = Math.min((y + 1) * block, rows);
-      const sum: Color = [0, 0, 0];
-      const count = (right - x * block) * (bottom - y * block);
-      for (let sy = y * block; sy < bottom; sy += 1) {
-        for (let sx = x * block; sx < right; sx += 1) {
-          const color = centers[pixels[sy * cols + sx]!]!;
-          sum[0] += color[0];
-          sum[1] += color[1];
-          sum[2] += color[2];
-        }
-      }
-      undercoat[y * underCols + x] = nearestColor([sum[0] / count, sum[1] / count, sum[2] / count], centers);
-    }
-  }
+
   const base = { type: "solid", color: colors[0]! } as const;
 
-  function addLayer(data: Uint8Array, width: number, height: number, name: string, scale: number) {
-    const shapes = traceContours(data, width, height, colors.length);
+  function addLayer(
+    data: Uint16Array, width: number, height: number, name: string, scale: number, palette = colors,
+  ) {
+    const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined);
     shapes.forEach(({ contours, segments }, index) => {
       totalSegments += segments;
       if (totalSegments > segmentLimit) throw new TraceContourLimitError("Raster contours exceed the scene path segment limit.");
-      const fill = { type: "solid", color: colors[index]! } as const;
+      const fill = { type: "solid", color: palette[index]! } as const;
       const d = contours.join("");
       if (d.length > SCENE_LIMITS.maxPathBytes) throw new TraceContourLimitError("Raster contours exceed the per-color path limit.");
       if (d) elements.push({
@@ -233,7 +243,33 @@ function traceSampledRaster(
   if (cols > 4 && rows > 4) {
     totalSegments += 5; // One move, three sides, and close.
     elements.push({ type: "path", id: "trace-base", d: `M0 0H${cols}V${rows}H0Z`, presentation: { fill: base } });
-    addLayer(undercoat, underCols, underRows, "undercoat", block);
+    if (underpaintColors !== undefined) {
+      const underpaint = quantize(samples, underpaintColors, bits);
+      const paint = Uint16Array.from(keys, (key) => underpaint.indices[key]!);
+      addLayer(paint, cols, rows, "undercoat", 1, underpaint.colors);
+    } else {
+      const underCols = Math.ceil(cols / block);
+      const underRows = Math.ceil(rows / block);
+      const undercoat = new Uint16Array(underCols * underRows);
+      for (let y = 0; y < underRows; y += 1) {
+        for (let x = 0; x < underCols; x += 1) {
+          const right = Math.min((x + 1) * block, cols);
+          const bottom = Math.min((y + 1) * block, rows);
+          const sum: Color = [0, 0, 0];
+          const count = (right - x * block) * (bottom - y * block);
+          for (let sy = y * block; sy < bottom; sy += 1) {
+            for (let sx = x * block; sx < right; sx += 1) {
+              const color = centers[pixels[sy * cols + sx]!]!;
+              sum[0] += color[0];
+              sum[1] += color[1];
+              sum[2] += color[2];
+            }
+          }
+          undercoat[y * underCols + x] = nearestColor([sum[0] / count, sum[1] / count, sum[2] / count], centers);
+        }
+      }
+      addLayer(undercoat, underCols, underRows, "undercoat", block);
+    }
   }
   addLayer(pixels, cols, rows, "detail", 1);
   return {
@@ -247,12 +283,20 @@ function traceSampledRaster(
 
 /** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
 export function traceRasterScene(source: PixelSource): VectorScene {
-  const sampled = sampleRaster(source);
+  const segmentLimit = SCENE_LIMITS.maxAggregatePathSegments;
   try {
-    return traceSampledRaster(source, sampled, 256, 2, SCENE_LIMITS.maxAggregatePathSegments);
+    return traceSampledRaster(source, sampleRaster(source, 6), {
+      paletteSize: 448, underpaintColors: 96, segmentLimit,
+    });
   } catch (error) {
     if (!(error instanceof TraceContourLimitError)) throw error;
-    // Preserve the previous trace for inputs that exceed the finer contour budget.
-    return traceSampledRaster(source, sampled, 160, 4);
+  }
+  const sampled = sampleRaster(source, 5);
+  try {
+    return traceSampledRaster(source, sampled, { paletteSize: 256, block: 2, segmentLimit });
+  } catch (error) {
+    if (!(error instanceof TraceContourLimitError)) throw error;
+    // Preserve the original trace for inputs that exceed both finer budgets.
+    return traceSampledRaster(source, sampled, { paletteSize: 160, block: 4 });
   }
 }
