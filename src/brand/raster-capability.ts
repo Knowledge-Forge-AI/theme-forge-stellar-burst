@@ -5,7 +5,7 @@ import type { RasterAdapterDescriptor } from "./raster-receipt.js";
 
 export const RASTER_COMPANION_PACKAGE = "@knowledge-forge-ai/tfsb-raster-resvg" as const;
 export const RASTER_ADAPTER_ID = "resvg-png-v1" as const;
-export const RASTER_MAX_SVG_BYTES = 12_000_000;
+export const RASTER_MAX_SVG_BYTES = 16_000_000;
 export const RASTER_MAX_PNG_BYTES = 32 * 1_048_576;
 /** Runtime tuples the maintained companion qualifies; its renderer refuses every other tuple. */
 export const RASTER_QUALIFIED_PLATFORM_CLAIMS: readonly string[] = Object.freeze(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"]);

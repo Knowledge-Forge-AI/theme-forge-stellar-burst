@@ -35,7 +35,7 @@ function initialize() {
 
 /** @param {Uint8Array} bytes */
 function decodeSvg(bytes) {
-  if (!(bytes instanceof Uint8Array) || bytes.length < 1 || bytes.length > 12_000_000) throw new Error("Canonical SVG bytes are invalid.");
+  if (!(bytes instanceof Uint8Array) || bytes.length < 1 || bytes.length > 16_000_000) throw new Error("Canonical SVG bytes are invalid.");
   const source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   if (/<(?:image|style|text|foreignObject)\b/iu.test(source) || /<(?:use|a)\b[^>]*(?:href|xlink:href)\s*=\s*["'](?!#)/iu.test(source) || /\burl\s*\(\s*(?!#)/iu.test(source) || /\b(?:@font-face|font-family)\b/iu.test(source)) throw new Error("Raster source contains external image, font, style, or network authority.");
   return source;

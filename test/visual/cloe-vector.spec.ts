@@ -16,7 +16,7 @@ async function traceCloe(page: Page, info: TestInfo, detail?: "--regular" | "--n
   const svg = await readFile(info.outputPath("cloe.svg"), "utf8");
   expect(svg).not.toMatch(/<(?:image|foreignObject|script)\b|\bhref\s*=/);
   expect(svg.match(/<path /g)?.length).toBeGreaterThan(1);
-  expect(Buffer.byteLength(svg)).toBeLessThan(12_000_000);
+  expect(Buffer.byteLength(svg)).toBeLessThan(16_000_000);
   await page.route("http://cloe.test/cloe.svg", (route) =>
     route.fulfill({ contentType: "image/svg+xml", body: svg }));
   return svg;
@@ -76,7 +76,7 @@ test("Cloe native-detail SVG preserves line work at raster delivery sizes", asyn
     const after = await render(page, "/cloe.svg", width, height);
     const results = compareCloe(before, after, width, height);
     await info.attach(`native-detail-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
-    const limits = width === 1024 ? { full: 2.45, face: 2.63, tablet: 3.5 } : { full: 3.5, face: 5, tablet: 4.5 };
+    const limits = width === 1024 ? { full: 2.12, face: 2.29, tablet: 3.1 } : { full: 3.5, face: 5, tablet: 4.5 };
     for (const region of ["full", "face", "tablet"] as const) {
       expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(limits[region]);
       expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.025);
