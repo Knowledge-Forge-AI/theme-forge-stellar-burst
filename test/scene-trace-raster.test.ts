@@ -114,6 +114,10 @@ test("traces a supported PNG through the CLI, refuses overwrites and rejects non
     expect(await runSceneCli(args, cwd, io)).toBe(0);
     expect(JSON.parse(stdout).data).toMatchObject({ action: "trace-png", written: true });
     const output = await readFile(join(cwd, "out/scene.json"), "utf8");
+    expect(await runSceneCli(
+      ["trace-png", "source.png", "--high-detail", "--output", "out/small-detail.json"], cwd, io,
+    )).toBe(0);
+    expect(await readFile(join(cwd, "out/small-detail.json"), "utf8")).toBe(output);
     expect(compileScene(JSON.parse(output)).ok).toBe(true);
     expect(await runSceneCli(args, cwd, io)).toBe(1);
     expect(await readFile(join(cwd, "out/scene.json"), "utf8")).toBe(output);

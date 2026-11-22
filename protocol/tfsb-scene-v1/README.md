@@ -148,13 +148,20 @@ If the finer trace exceeds a contour limit, the tracer tries the existing
 with 4-by-4 underpainting. Large or unusually complex inputs can still exceed
 scene limits. Review the export at its intended display size.
 
+Use `--high-detail` with `trace-png` for artwork intended for enlarged viewing.
+On sufficiently large inputs, it subdivides cells at strong color transitions
+and traces the resulting finer grid. The regular trace remains the default
+for ordinary display sizes. If the finer grid exceeds a scene contour limit,
+the command uses the regular trace.
+
 The Cloe visual test uses the released WebP as its fixed reference, traces
 a PNG decoded from those bytes, and renders the compiled SVG in Chromium
-and WebKit at 384, 336, 256 and 512 CSS pixels wide. It checks mean absolute
+and WebKit. The regular trace is checked at 256, 336, 384 and 512 CSS pixels.
+The high-detail trace is checked at 512, 768 and 1024 CSS pixels. It checks mean absolute
 RGB channel error in the whole image, face and tablet, and limits the
 fraction of pixels with any channel error above 48. The browser-specific
 tolerances account for differences in downsampling. The uncompressed SVG
-must stay below 3,000,000 bytes.
+must stay below 5,000,000 bytes.
 
 Input is a bounded regular-file snapshot. Dry-run writes nothing. Output must be
 absent; there is no overwrite option. Existing symlink parents and final-component
