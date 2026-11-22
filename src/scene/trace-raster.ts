@@ -195,7 +195,9 @@ function quantize(samples: readonly Sample[], paletteSize: number, bits: Channel
   return { indices, colors, centers };
 }
 
-function traceContours(pixels: Uint16Array, width: number, height: number, count: number, relativePaths: boolean) {
+function traceContours(
+  pixels: Uint16Array, width: number, height: number, count: number, relativePaths: boolean, implicitClose: boolean,
+) {
   const stride = width + 1;
   const steps = [1, stride, -1, -stride];
   const edges = Array.from({ length: count }, () => new Set<number>());
@@ -214,21 +216,20 @@ function traceContours(pixels: Uint16Array, width: number, height: number, count
   return edges.map((boundary) => {
     const contours: string[] = [];
     let segments = 0;
-    let previousStart: number | undefined;
+    let previousPosition: number | undefined;
     for (const first of boundary) {
       const start = Math.floor(first / 4);
       let direction = first % 4, vertex = start;
       let path = `M${vertex % stride} ${Math.floor(vertex / stride)}`;
-      // Closepath resets the current point to the preceding subpath start.
-      if (relativePaths && previousStart !== undefined) {
-        const dx = vertex % stride - previousStart % stride;
-        const dy = Math.floor(vertex / stride) - Math.floor(previousStart / stride);
+      // A relative move starts at the previous subpath's actual current point.
+      if (relativePaths && previousPosition !== undefined) {
+        const dx = vertex % stride - previousPosition % stride;
+        const dy = Math.floor(vertex / stride) - Math.floor(previousPosition / stride);
         const move = `m${dx} ${dy}`;
         if (move.length < path.length) path = move;
       }
-      previousStart = start;
       let lastCorner = start;
-      segments += 2; // Move and close commands.
+      segments += implicitClose ? 1 : 2; // Move and optional close command.
       do {
         boundary.delete(vertex * 4 + direction);
         vertex += steps[direction]!;
@@ -253,7 +254,10 @@ function traceContours(pixels: Uint16Array, width: number, height: number, count
         }
         direction = next;
       } while (true);
-      contours.push(path + "Z");
+      // SVG fill closes subpaths. These contours have no stroke, so the final
+      // edge can be implicit without changing the fill or the winding of holes.
+      contours.push(implicitClose ? path : path + "Z");
+      previousPosition = implicitClose ? lastCorner : start;
     }
     return { contours, segments };
   });
@@ -264,6 +268,7 @@ interface TraceSettings {
   block?: 2 | 4;
   segmentLimit?: number;
   maxSvgBytes?: number;
+  implicitClose?: boolean;
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
 }
@@ -271,7 +276,7 @@ interface TraceSettings {
 function traceSampledRaster(
   source: PixelSource,
   sampled: SampledRaster,
-  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled }: TraceSettings,
+  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled, implicitClose = false }: TraceSettings,
 ): VectorScene {
   const { cols, rows, keys, histogram, bits } = sampled;
   const samples = [...histogram.values()];
@@ -290,7 +295,7 @@ function traceSampledRaster(
       { type: "scale" as const, x: scale, ...(scaleY === scale ? {} : { y: scaleY }) },
     ];
     const pathOverhead = 128 + (serializeTransforms(transform)?.length ?? 0);
-    const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined);
+    const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined, implicitClose);
     shapes.forEach(({ contours, segments }, index) => {
       totalSegments += segments;
       if (totalSegments > segmentLimit) throw new TraceContourLimitError("Raster contours exceed the scene path segment limit.");
@@ -301,7 +306,7 @@ function traceSampledRaster(
         // ASCII path data gains a separator before each command and after each
         // non-close command in the spaced SVG. The remaining reserve covers the
         // short generated ID, tag, indentation and fixed paint syntax.
-        svgBytes += d.length + 2 * segments - contours.length + pathOverhead;
+        svgBytes += d.length + 2 * segments - (implicitClose ? 0 : contours.length) + pathOverhead;
         if (svgBytes > maxSvgBytes) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
         elements.push({
           type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
@@ -370,6 +375,8 @@ export function traceRasterScene(
         cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
       });
       for (const { edgeThreshold, subdivision, ...traceSettings } of [
+        { edgeThreshold: 5.5, subdivision: "mean-error" as const, paletteSize: 1152, underpaintColors: 96, implicitClose: true,
+          segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 6.75, subdivision: "mean-error" as const, paletteSize: 1152, underpaintColors: 96,
           segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 24, paletteSize: 1024, underpaintColors: 96,

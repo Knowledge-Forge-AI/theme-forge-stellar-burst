@@ -154,7 +154,9 @@ grouped by paint color. Review the export at its intended display size.
 Use `--native-detail` to prioritize the native raster delivery size for complex
 artwork. It attempts a finer grid with up to 1,536 cells on the long edge
 without upsampling the source. It subdivides cells based on the mean RGB
-error that averaging would introduce, with up to 1,152 detail colors. When
+error that averaging would introduce, with up to 1,152 detail colors. The
+densest trace uses SVG’s implicit fill closure to reserve more of the budget
+for detail. Its subpaths are open for stroking and closed for filling. When
 the denser trace exceeds the byte or contour limits, earlier native-detail
 settings come first, followed by high detail and the regular trace. Use high detail for intermediate
 display widths where its grid better matches the intended scale.

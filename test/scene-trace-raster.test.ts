@@ -35,6 +35,19 @@ test("encodes a short relative move from the previous closed contour's start", (
   expect(compileScene(scene, { compactPaths: true }).ok).toBe(true);
 });
 
+test("uses the previous endpoint for a relative move between filled native contours", () => {
+  const width = 32;
+  const height = 1536;
+  const rgba8 = new Uint8Array(width * height * 4).fill(255);
+  for (const x of [12, 15]) rgba8.set([208, 16, 16, 255], (10 * width + x) * 4);
+  const scene = traceRasterScene({ width, height, rgba8 }, { nativeDetail: true });
+  expect(scene.artboard.viewBox).toEqual([0, 0, width, height]);
+  const red = scene.elements.find((element) => element.id?.startsWith("trace-detail-")
+    && element.presentation?.fill?.type === "solid" && element.presentation.fill.color === "#d01010");
+  expect(red).toMatchObject({ type: "path", d: "M12 10h1v1H12m3 -1h1v1H15" });
+  expect(compileScene(scene).ok).toBe(true);
+});
+
 test("compacts validated path spacing without changing geometry or source identity", () => {
   const scene = traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) });
   const input = {
