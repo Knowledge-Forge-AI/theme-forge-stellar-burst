@@ -1,5 +1,5 @@
 import type { HexColor } from "../types.js";
-import { ILLUSTRATION_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
+import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
 import type { PathElement, VectorScene } from "./types.js";
 
 interface PixelSource {
@@ -16,13 +16,13 @@ const MAX_SOURCE_PIXELS = 4_194_304;
 const MAX_TRACE_EDGE = 576;
 class TraceContourLimitError extends RangeError {}
 
-function traceGrid(source: PixelSource) {
+function traceGrid(source: PixelSource, maxEdge = MAX_TRACE_EDGE) {
   const { width, height, rgba8 } = source;
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1
       || width * height > MAX_SOURCE_PIXELS || rgba8.length !== width * height * 4) {
     throw new RangeError("Raster tracing requires a bounded RGBA8 image.");
   }
-  const scale = Math.min(1, MAX_TRACE_EDGE / Math.max(width, height));
+  const scale = Math.min(1, maxEdge / Math.max(width, height));
   return { cols: Math.max(1, Math.round(width * scale)), rows: Math.max(1, Math.round(height * scale)) };
 }
 
@@ -335,14 +335,36 @@ function traceSampledRaster(
 }
 
 /** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
-export function traceRasterScene(source: PixelSource, options: { readonly highDetail?: boolean } = {}): VectorScene {
+export function traceRasterScene(
+  source: PixelSource,
+  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean } = {},
+): VectorScene {
   const grid = traceGrid(source);
   const segmentLimit = SCENE_LIMITS.maxAggregatePathSegments;
-  if (options.highDetail && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
+  if (options.nativeDetail) {
+    const nativeGrid = traceGrid(source, 768);
+    if ((nativeGrid.cols > grid.cols || nativeGrid.rows > grid.rows)
+        && nativeGrid.cols * 2 <= source.width && nativeGrid.rows * 2 <= source.height
+        && nativeGrid.cols > 4 && nativeGrid.rows > 4) {
+      try {
+        const sampled = sampleAdaptiveRaster(source, nativeGrid, 36);
+        const underpaintSource = sampleRaster(source, 6, {
+          cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
+        });
+        return traceSampledRaster(source, sampled, {
+          paletteSize: 640, underpaintColors: 96, underpaintSource,
+          segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments,
+        });
+      } catch (error) {
+        if (!(error instanceof TraceContourLimitError)) throw error;
+      }
+    }
+  }
+  if ((options.highDetail || options.nativeDetail) && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
       && grid.cols > 4 && grid.rows > 4) {
     const underpaintSource = sampleRaster(source, 6, { cols: Math.ceil(grid.cols / 2), rows: Math.ceil(grid.rows / 2) });
     for (const settings of [
-      { edgeThreshold: 24, paletteSize: 576, underpaintColors: 96, segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments },
+      { edgeThreshold: 24, paletteSize: 576, underpaintColors: 96, segmentLimit: HIGH_DETAIL_SCENE_LIMITS.maxAggregatePathSegments },
       { edgeThreshold: 48, paletteSize: 352, underpaintColors: 128, segmentLimit },
     ]) {
       try {

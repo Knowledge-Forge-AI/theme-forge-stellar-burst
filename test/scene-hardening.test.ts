@@ -49,7 +49,10 @@ describe("scene production boundary challenges", () => {
     const illustrated = compileScene(withInstances("illustration", 110));
     if (!illustrated.ok) throw new Error("Expected the illustration to fit its contour budget");
     expect(illustrated.value.receipt.limits.maxAggregatePathSegments).toBe(1_500_000);
-    expect(validateScene(withInstances("illustration", 150)).ok).toBe(false);
+    const dense = compileScene(withInstances("illustration", 190));
+    if (!dense.ok) throw new Error("Expected the native-detail contour budget");
+    expect(dense.value.receipt.limits.maxAggregatePathSegments).toBe(2_050_000);
+    expect(validateScene(withInstances("illustration", 205)).ok).toBe(false);
   });
   it("returns a diagnostic for non-finite intermediate transforms", () => {
     expect(compileScene({ ...scene(), elements: [{ ...rect, transform: [{ type: "scale", x: 1e308 }, { type: "scale", x: 1e308 }] }] }).ok).toBe(false);

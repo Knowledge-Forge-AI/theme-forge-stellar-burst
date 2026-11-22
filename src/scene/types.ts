@@ -309,6 +309,7 @@ export interface SceneMetrics {
 export interface SceneReceipt {
   readonly schema: "tfsb.scene-compile-receipt-v1";
   readonly limits: typeof import("./constants.js").SCENE_LIMITS
+    | typeof import("./constants.js").HIGH_DETAIL_SCENE_LIMITS
     | typeof import("./constants.js").ILLUSTRATION_SCENE_LIMITS;
   readonly diagnostics: readonly string[];
   readonly sourceSnapshotDigest: Sha256Digest;
