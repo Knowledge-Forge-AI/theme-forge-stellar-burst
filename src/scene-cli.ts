@@ -36,7 +36,7 @@ import { reviseScenePaths } from "./scene/path-edits.js";
 export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
-  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--dry-run] [--json]
+  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
   tfsb scene trace-png <png> --output <absent-scene.json> [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
@@ -45,6 +45,7 @@ Options:
   --output <file>       Publish destination for SVG or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
   --edits <file>        Apply path replacements by element ID
+  --compact-paths       Remove optional SVG path spacing when compiling
   --dry-run             Validate and plan compilation or revision without writing output
   --json                Emit one versioned machine-result envelope`;
 
@@ -59,6 +60,7 @@ interface ParsedSceneArgs {
   readonly output?: string | undefined;
   readonly palette?: string | undefined;
   readonly edits?: string | undefined;
+  readonly compactPaths?: boolean;
   readonly dryRun: boolean;
   readonly json: boolean;
   readonly error?: string | undefined;
@@ -110,6 +112,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let palette: string | undefined;
   let edits: string | undefined;
   let dryRun = false;
+  let compactPaths = false;
   const positionals: string[] = [];
   let i = 0;
 
@@ -133,6 +136,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "--dry-run cannot be repeated." };
       }
       dryRun = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--compact-paths") {
+      if (action !== "compile" || compactPaths) {
+        return { action, dryRun, json, error: "Use --compact-paths once with scene compile." };
+      }
+      compactPaths = true;
       i += 1;
       continue;
     }
@@ -255,6 +267,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     output,
     palette,
     edits,
+    compactPaths,
     dryRun,
     json,
   };
@@ -338,7 +351,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, dryRun, json: jsonMode } = parsed;
 
   try {
     const inputPath = resolve(cwd, positional!);
@@ -621,7 +634,7 @@ export async function runSceneCli(
         ? sourceValidation
         : compileScene(palette === undefined
           ? raw
-          : withScenePalette(raw, await readSceneFile(resolve(cwd, palette))));
+          : withScenePalette(raw, await readSceneFile(resolve(cwd, palette))), { compactPaths });
       if (!result.ok) {
         if (jsonMode) {
           return emitJson(

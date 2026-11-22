@@ -13,7 +13,7 @@ type Sample = { key: number; count: number; sum: Color };
 type Bucket = { samples: Sample[]; axis: number; score: number };
 const MAX_SOURCE_PIXELS = 4_194_304;
 const MAX_TRACE_EDGE = 576;
-const PALETTE_SIZE = 160;
+const PALETTE_SIZE = 256;
 
 function sampleRaster(source: PixelSource) {
   const { width, height, rgba8 } = source;
@@ -183,7 +183,7 @@ export function traceRasterScene(source: PixelSource): VectorScene {
   const { indices, colors, centers } = quantize([...histogram.values()]);
   const pixels = Uint8Array.from(keys, (key) => indices[key]!);
   const elements: PathElement[] = [];
-  const block = 4;
+  const block = 2;
   const underCols = Math.ceil(cols / block);
   const underRows = Math.ceil(rows / block);
   const undercoat = new Uint8Array(underCols * underRows);
@@ -219,7 +219,7 @@ export function traceRasterScene(source: PixelSource): VectorScene {
     });
   }
   // Similar underpainting remains visible through fractional-pixel seams.
-  if (cols > block && rows > block) {
+  if (cols > 4 && rows > 4) {
     elements.push({ type: "path", id: "trace-base", d: `M0 0H${cols}V${rows}H0Z`, presentation: { fill: base } });
     addLayer(undercoat, underCols, underRows, "undercoat", block);
   }

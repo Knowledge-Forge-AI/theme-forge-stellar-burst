@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { runSceneCli } from "../src/scene-cli.js";
+import { canonicalPathData } from "../src/scene/path-canonical.js";
 import { compileScene, traceRasterScene } from "../src/scene/index.js";
 import { rgbaPng } from "./brand/raster-test-helper.js";
 
@@ -19,6 +21,25 @@ test("traces holes and point-touching contours into a deterministic editable sce
     && element.presentation.fill.color === "#d01010");
   expect(red?.type === "path" && red.d.match(/M/g)).toHaveLength(3);
   expect(compileScene(JSON.parse(JSON.stringify(scene))).ok).toBe(true);
+});
+
+test("compacts validated path spacing without changing geometry or source identity", () => {
+  const scene = traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) });
+  const input = {
+    ...scene,
+    elements: [{ type: "group", id: "nested", children: [{
+      type: "path", id: "mixed", d: "M1e-2 -2A5 5 0 0 1 10 10l3 -4z",
+    }] }],
+  };
+  const plain = compileScene(input);
+  const compact = compileScene(input, { compactPaths: true });
+  if (!plain.ok || !compact.ok) throw new Error("Expected valid scene");
+  const plainPath = plain.value.svg.match(/ d="([^"]+)"/)?.[1];
+  const compactPath = compact.value.svg.match(/ d="([^"]+)"/)?.[1];
+  expect(compactPath).toBe("M0.01 -2A5 5 0 0 1 10 10l3 -4z");
+  expect(canonicalPathData(compactPath!)).toBe(plainPath);
+  expect(compact.value.receipt.sourceDigest).toBe(plain.value.receipt.sourceDigest);
+  expect(compact.value.receipt.svgDigest).toBe("sha256:" + createHash("sha256").update(compact.value.svg).digest("hex"));
 });
 
 test("uses fractional pixel coverage when the source does not divide into trace cells", () => {

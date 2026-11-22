@@ -308,7 +308,7 @@ export function compileScene(
     const sourceDigest = computeCanonicalDigest(scene);
 
     const lowered = lowerScene(scene, ctx);
-    const svg = emitSvg(lowered, ctx);
+    const svg = emitSvg(lowered, ctx, options?.compactPaths);
     const svgDigest = computeSha256(Buffer.from(svg, "utf8"));
 
     const tokenDigest =

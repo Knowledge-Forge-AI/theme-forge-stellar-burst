@@ -111,6 +111,7 @@ function renderElement(
   depth: number,
   location: string,
   pushLine: (line: string) => void,
+  compactPaths: boolean,
 ): void {
   const indent = "  ".repeat(depth);
   const idAttr = strAttr("id", element.id);
@@ -122,7 +123,9 @@ function renderElement(
 
   switch (element.type) {
     case "path": {
-      pushLine(`${indent}<path${idAttr} d="${escapeAttr(element.d)}"${presAttr}${ariaLabelAttr}${transAttr}/>`);
+      // Commands delimit operands. Preserve spacing between numbers and arc flags.
+      const path = compactPaths ? element.d.replace(/ *([AaCcHhLlMmQqSsTtVvZz]) */g, "$1") : element.d;
+      pushLine(`${indent}<path${idAttr} d="${escapeAttr(path)}"${presAttr}${ariaLabelAttr}${transAttr}/>`);
       return;
     }
     case "rect": {
@@ -170,7 +173,7 @@ function renderElement(
     case "group": {
       pushLine(`${indent}<g${idAttr}${presAttr}${ariaLabelAttr}${transAttr}>`);
       for (let idx = 0; idx < element.children.length; idx += 1) {
-        renderElement(element.children[idx]!, tokenBindings, ctx, depth + 1, `${location}.children[${idx}]`, pushLine);
+        renderElement(element.children[idx]!, tokenBindings, ctx, depth + 1, `${location}.children[${idx}]`, pushLine, compactPaths);
       }
       pushLine(`${indent}</g>`);
       return;
@@ -237,12 +240,13 @@ function renderSymbol(
   depth: number,
   location: string,
   pushLine: (line: string) => void,
+  compactPaths: boolean,
 ): void {
   const indent = "  ".repeat(depth);
   const vbStr = sym.viewBox.map(formatCanonicalNumber).join(" ");
   pushLine(`${indent}<symbol id="${escapeAttr(sym.id)}" viewBox="${escapeAttr(vbStr)}" preserveAspectRatio="xMidYMid meet" overflow="hidden">`);
   for (let idx = 0; idx < sym.elements.length; idx += 1) {
-    renderElement(sym.elements[idx]!, tokenBindings, ctx, depth + 1, `${location}.elements[${idx}]`, pushLine);
+    renderElement(sym.elements[idx]!, tokenBindings, ctx, depth + 1, `${location}.elements[${idx}]`, pushLine, compactPaths);
   }
   pushLine(`${indent}</symbol>`);
 }
@@ -250,7 +254,7 @@ function renderSymbol(
 /**
  * Emit canonical, deterministic SVG string for a lowered VectorScene.
  */
-export function emitSvg(scene: VectorScene, ctx: DiagnosticContext): string {
+export function emitSvg(scene: VectorScene, ctx: DiagnosticContext, compactPaths = false): string {
   const lines: string[] = [];
   let currentBytes = 0;
 
@@ -349,7 +353,7 @@ export function emitSvg(scene: VectorScene, ctx: DiagnosticContext): string {
     if (scene.definitions?.symbols !== undefined) {
       for (let i = 0; i < scene.definitions.symbols.length; i += 1) {
         const s = symbols[i]!;
-        renderSymbol(s, scene.tokenBindings, ctx, 2, `definitions.symbols[${i}]`, pushLine);
+        renderSymbol(s, scene.tokenBindings, ctx, 2, `definitions.symbols[${i}]`, pushLine, compactPaths);
       }
     }
 
@@ -358,7 +362,7 @@ export function emitSvg(scene: VectorScene, ctx: DiagnosticContext): string {
 
   // Artwork elements in authored order
   for (let i = 0; i < scene.elements.length; i += 1) {
-    renderElement(scene.elements[i]!, scene.tokenBindings, ctx, 1, `elements[${i}]`, pushLine);
+    renderElement(scene.elements[i]!, scene.tokenBindings, ctx, 1, `elements[${i}]`, pushLine, compactPaths);
   }
 
   pushLine("</svg>\n");
