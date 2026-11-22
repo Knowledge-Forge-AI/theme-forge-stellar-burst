@@ -41,14 +41,15 @@ export const SCENE_USAGE = `Usage:
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--high-detail | --native-detail] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
   --output <file>       Publish destination for SVG, PNG or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
   --edits <file>        Apply path replacements by element ID
-  --high-detail         Trace sharp edges at finer resolution for zoomed viewing
+  --regular             Use the smaller regular trace for ordinary display sizes
+  --high-detail         Trace sharp edges at finer resolution (default)
   --native-detail       Prioritize fine artwork at the raster export size
   --compact-paths       Remove optional SVG path spacing when compiling
   --dry-run             Validate and plan compilation or revision without writing output
@@ -66,8 +67,7 @@ interface ParsedSceneArgs {
   readonly palette?: string | undefined;
   readonly edits?: string | undefined;
   readonly compactPaths?: boolean;
-  readonly highDetail?: boolean;
-  readonly nativeDetail?: boolean;
+  readonly traceMode?: "regular" | "high-detail" | "native-detail";
   readonly dryRun: boolean;
   readonly json: boolean;
   readonly error?: string | undefined;
@@ -121,8 +121,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let edits: string | undefined;
   let dryRun = false;
   let compactPaths = false;
-  let highDetail = false;
-  let nativeDetail = false;
+  let traceMode: ParsedSceneArgs["traceMode"];
   const positionals: string[] = [];
   let i = 0;
 
@@ -150,12 +149,11 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       continue;
     }
 
-    if (arg === "--high-detail" || arg === "--native-detail") {
-      if (action !== "trace-png" || highDetail || nativeDetail) {
+    if (arg === "--regular" || arg === "--high-detail" || arg === "--native-detail") {
+      if (action !== "trace-png" || traceMode !== undefined) {
         return { action, dryRun, json, error: "Use one detail option with scene trace-png." };
       }
-      highDetail = arg === "--high-detail";
-      nativeDetail = arg === "--native-detail";
+      traceMode = arg === "--regular" ? "regular" : arg === "--high-detail" ? "high-detail" : "native-detail";
       i += 1;
       continue;
     }
@@ -292,8 +290,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     palette,
     edits,
     compactPaths,
-    highDetail,
-    nativeDetail,
+    ...(traceMode === undefined ? {} : { traceMode }),
     dryRun,
     json,
   };
@@ -377,7 +374,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, highDetail = false, nativeDetail = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, traceMode, dryRun, json: jsonMode } = parsed;
 
   try {
     const inputPath = resolve(cwd, positional!);
@@ -516,7 +513,9 @@ export async function runSceneCli(
       const bytes = await readSceneFileBytes(inputPath);
       let scene;
       try {
-        scene = traceRasterScene(decodeStrictPng(bytes), { highDetail, nativeDetail });
+        scene = traceRasterScene(decodeStrictPng(bytes), {
+          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail",
+        });
       } catch {
         throw new DiagnosticError(diagnostic(
           { operation: "import", domain: "scene" },
