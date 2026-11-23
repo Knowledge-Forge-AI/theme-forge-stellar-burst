@@ -8,16 +8,26 @@ const SHORT_CANONICAL_INTEGER = /^(?:0|-?[1-9][0-9]{0,5})$/u;
 // pass, not a second accepting path grammar. Arc flags are single digits even
 // when the source omits whitespace between flags and the following coordinate.
 export function canonicalPathData(validated: string): string {
+  const output: string[] = [];
+  measureCanonicalPath(validated, output);
+  return output.join(" ");
+}
+
+export function countCanonicalPathSegments(validated: string): number {
+  return measureCanonicalPath(validated);
+}
+
+function measureCanonicalPath(validated: string, output?: string[]): number {
   const number = /[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/y;
   let position = 0, argument = 0, command = "";
-  const output: string[] = [];
-  let bytes = 0;
+  let bytes = 0, segments = 0;
   while (position < validated.length) {
     const char = validated[position]!;
     if (/[\s,]/.test(char)) { position++; continue; }
     let token: string;
     if (/[AaCcHhLlMmQqSsTtVvZz]/.test(char)) {
       command = char.toUpperCase(); argument = 0; token = char; position++;
+      if (command === "Z") segments++;
     } else if (command === "A" && (argument === 3 || argument === 4)) {
       token = char; position++; argument = (argument + 1) % 7;
     } else {
@@ -29,12 +39,13 @@ export function canonicalPathData(validated: string): string {
       token = SHORT_CANONICAL_INTEGER.test(match[0]) ? match[0] : formatCanonicalNumber(Number(match[0]));
       position = number.lastIndex;
       argument = (argument + 1) % count;
+      if (argument === 0) segments++;
     }
-    bytes += token.length + (output.length === 0 ? 0 : 1);
+    bytes += token.length + (bytes === 0 ? 0 : 1);
     if (bytes > SCENE_LIMITS.maxCanonicalPathBytes) throw new RangeError("Canonical path exceeds the 1 MiB output ceiling.");
-    output.push(token);
+    output?.push(token);
   }
-  return output.join(" ");
+  return bytes === 0 ? 0 : Math.max(1, segments);
 }
 
 /** Remove optional spacing from canonical path data. */

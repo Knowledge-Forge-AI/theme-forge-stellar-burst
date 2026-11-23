@@ -3,7 +3,7 @@ import {
   fail,
   type DiagnosticContext,
 } from "../diagnostics.js";
-import { canonicalPathData } from "./path-canonical.js";
+import { countCanonicalPathSegments as countPathSegments } from "./path-canonical.js";
 import { isLocalId, LOCAL_ID_PATTERN, parseHexColor, parsePathData } from "../primitives.js";
 import type { HexColor } from "../types.js";
 import type { Result } from "./types.js";
@@ -81,45 +81,7 @@ function assertAllowedKeys(
   }
 }
 
-/**
- * Conservative path segment counter according to SVG command arities.
- */
-export function countPathSegments(d: string): number {
-  const normalized = canonicalPathData(d);
-  if (normalized === "") return 0;
-
-  const arity: Record<string, number> = {
-    A: 7, C: 6, H: 1, L: 2, M: 2, Q: 4, S: 4, T: 2, V: 1, Z: 0,
-  };
-
-  const numberPattern = /[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/g;
-  const cmdPattern = /[AaCcHhLlMmQqSsTtVvZz]/g;
-
-  let totalSegments = 0;
-  let match: RegExpExecArray | null;
-  const commands: { cmd: string; index: number }[] = [];
-
-  while ((match = cmdPattern.exec(normalized)) !== null) {
-    commands.push({ cmd: match[0].toUpperCase(), index: match.index });
-  }
-
-  for (let i = 0; i < commands.length; i += 1) {
-    const { cmd, index } = commands[i]!;
-    const nextIndex = i + 1 < commands.length ? commands[i + 1]!.index : normalized.length;
-    const argSlice = normalized.slice(index + 1, nextIndex);
-    const expected = arity[cmd] ?? 0;
-    if (expected === 0) {
-      totalSegments += 1;
-    } else {
-      const numbers = argSlice.match(numberPattern);
-      const numCount = numbers ? numbers.length : 0;
-      const count = Math.max(1, Math.floor(numCount / expected));
-      totalSegments += count;
-    }
-  }
-
-  return Math.max(1, totalSegments);
-}
+export { countPathSegments };
 
 // Precomputed table of catalog path command counts per ASCII glyph
 const GLYPH_COMMAND_COUNTS = new Array<number>(128).fill(0);
