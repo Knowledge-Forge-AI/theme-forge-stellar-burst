@@ -3,7 +3,7 @@ import {
   fail,
   type DiagnosticContext,
 } from "../diagnostics.js";
-import { canonicalPathData } from "./path-canonical.js";
+import { countCanonicalPathSegments as countPathSegments } from "./path-canonical.js";
 import { isLocalId, LOCAL_ID_PATTERN, parseHexColor, parsePathData } from "../primitives.js";
 import type { HexColor } from "../types.js";
 import type { Result } from "./types.js";
@@ -81,45 +81,7 @@ function assertAllowedKeys(
   }
 }
 
-/**
- * Conservative path segment counter according to SVG command arities.
- */
-export function countPathSegments(d: string): number {
-  const normalized = canonicalPathData(d);
-  if (normalized === "") return 0;
-
-  const arity: Record<string, number> = {
-    A: 7, C: 6, H: 1, L: 2, M: 2, Q: 4, S: 4, T: 2, V: 1, Z: 0,
-  };
-
-  const numberPattern = /[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/g;
-  const cmdPattern = /[AaCcHhLlMmQqSsTtVvZz]/g;
-
-  let totalSegments = 0;
-  let match: RegExpExecArray | null;
-  const commands: { cmd: string; index: number }[] = [];
-
-  while ((match = cmdPattern.exec(normalized)) !== null) {
-    commands.push({ cmd: match[0].toUpperCase(), index: match.index });
-  }
-
-  for (let i = 0; i < commands.length; i += 1) {
-    const { cmd, index } = commands[i]!;
-    const nextIndex = i + 1 < commands.length ? commands[i + 1]!.index : normalized.length;
-    const argSlice = normalized.slice(index + 1, nextIndex);
-    const expected = arity[cmd] ?? 0;
-    if (expected === 0) {
-      totalSegments += 1;
-    } else {
-      const numbers = argSlice.match(numberPattern);
-      const numCount = numbers ? numbers.length : 0;
-      const count = Math.max(1, Math.floor(numCount / expected));
-      totalSegments += count;
-    }
-  }
-
-  return Math.max(1, totalSegments);
-}
+export { countPathSegments };
 
 // Precomputed table of catalog path command counts per ASCII glyph
 const GLYPH_COMMAND_COUNTS = new Array<number>(128).fill(0);
@@ -700,6 +662,7 @@ function validateElement(
     seenIds: Set<string>;
     glyphCount: number;
     pathSegmentCount: number;
+    pathSegmentCounts: Map<string, number>;
     maxDepth: number;
     authoredElementCount: number;
   },
@@ -794,7 +757,11 @@ function validateElement(
         );
       }
       parsePathData(d, ctx, `${location}.d`);
-      const segs = countPathSegments(d);
+      let segs = state.pathSegmentCounts.get(d);
+      if (segs === undefined) {
+        segs = countPathSegments(d);
+        state.pathSegmentCounts.set(d, segs);
+      }
       state.pathSegmentCount += segs;
       return { type: "path", ...base, d };
     }
@@ -1631,6 +1598,7 @@ interface SymbolCost {
 function computeSymbolCosts(
   symbolDefs: readonly SymbolDef[],
   ctx: DiagnosticContext,
+  pathSegmentCounts: ReadonlyMap<string, number>,
 ): Map<string, SymbolCost> {
   const symbolsMap = new Map<string, SymbolDef>();
   for (const s of symbolDefs) {
@@ -1699,7 +1667,7 @@ function computeSymbolCosts(
 
       switch (el.type) {
         case "path":
-          pathSegments += countPathSegments(el.d);
+          pathSegments += pathSegmentCounts.get(el.d)!;
           break;
         case "rect":
         case "circle":
@@ -1884,6 +1852,7 @@ export function validateScene(input: unknown): Result<{
       seenIds: new Set<string>(),
       glyphCount: 0,
       pathSegmentCount: 0,
+      pathSegmentCounts: new Map<string, number>(),
       maxDepth: 1,
       authoredElementCount: 0,
     };
@@ -2015,7 +1984,7 @@ export function validateScene(input: unknown): Result<{
     );
 
     // 5. Post-expansion accounting, symbol cycle detection, and ceiling enforcement
-    const symbolCosts = computeSymbolCosts(symbolDefs, ctx);
+    const symbolCosts = computeSymbolCosts(symbolDefs, ctx, state.pathSegmentCounts);
 
     const symbolsById = new Map<string, SymbolDef>();
     for (const s of symbolDefs) {
@@ -2041,7 +2010,7 @@ export function validateScene(input: unknown): Result<{
 
       switch (el.type) {
         case "path":
-          totalPathSegments += countPathSegments(el.d);
+          totalPathSegments += state.pathSegmentCounts.get(el.d)!;
           break;
         case "rect":
         case "circle":

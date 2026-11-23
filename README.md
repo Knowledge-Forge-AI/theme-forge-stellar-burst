@@ -64,6 +64,61 @@ Related products are independently versioned:
 [Terminal Nova](https://github.com/Knowledge-Forge-AI/starlight-theme-terminal-nova).
 Each has its own artifacts, notices and qualification.
 
+## Illustration authoring from SVG
+
+The current source candidate supports this workflow. Check the installed
+`tfsb scene` usage before using it with a registry release.
+
+Keep the reviewed, full-artboard SVG as the illustration source. An
+editable scene JSON file lets you revise paths or append a named group
+and compile a new SVG. WebP is the delivery file. A raster reference
+can seed the SVG through tracing, which approximates the reference as
+editable paths.
+
+Start with a static, metadata-free WebP or a PNG at the intended artboard
+size. Use `--native-detail` for fine artwork and add `--preserve-alpha`
+for a transparent reference. WebP tracing uses the qualified `magick`
+executable. For a PNG reference, use `scene trace-png`.
+The default trace balances detail and size. The reviewed SVG import and
+WebP export accept at most 16,000,000 SVG bytes.
+
+```sh
+tfsb scene trace-webp reference.webp --native-detail --output artwork.scene.json
+tfsb scene compile artwork.scene.json --output artwork.svg --json > compile.json
+```
+
+Review the SVG. Export it with the digest from that compilation:
+
+```sh
+svg_digest=$(node -e 'const fs = require("node:fs"); const r = JSON.parse(fs.readFileSync("compile.json", "utf8")); process.stdout.write(r.data.receipt.svgDigest)')
+tfsb scene export-webp artwork.svg --expect-svg-digest "$svg_digest" \
+  --output artwork.webp --json > export.json
+```
+
+The export requires a separately qualified
+`@knowledge-forge-ai/tfsb-raster-resvg` companion and the
+qualified `magick` executable on the host. The export receipt binds the
+source SVG, renderer, PNG, recipe and WebP bytes. Output files must be
+new paths. Keep the SVG and export receipt alongside the delivery file.
+
+To reopen the reviewed SVG for editing, pass the matching digest to
+`scene import-svg`. Compile edits to a new SVG and export against its
+new digest. If the source was compiled with `--compact-paths`, pass that
+option when reopening and exporting it.
+
+```sh
+tfsb scene import-svg artwork.svg --svg-source --expect-svg-digest "$svg_digest" \
+  --output reopened.scene.json
+```
+
+For path edits, supply `edits.json` as an array of objects with an
+existing path `id` and its replacement SVG path data `d`.
+
+```sh
+tfsb scene revise reopened.scene.json --edits edits.json --output revised.scene.json
+tfsb scene compile revised.scene.json --output revised.svg --json > revised-compile.json
+```
+
 ## New-project quick start
 
 1. **Import** an archive of vector assets into your project:

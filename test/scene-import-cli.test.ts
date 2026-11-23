@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import { runSceneCli } from "../src/scene-cli.js";
 import { publishSceneJson, readSceneFileBytes } from "../src/scene-files.js";
-import { compileScene, sceneImportSvg, validateScene } from "../src/scene/index.js";
+import { compileScene, reopenCanonicalSceneSvg, sceneImportSvg, validateScene } from "../src/scene/index.js";
 import type { JsonResultEnvelope, SceneJsonData, SceneImportSvgJsonData } from "../src/json.js";
 
 const roots: string[] = [];
@@ -78,6 +78,107 @@ const unsupportedTextSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
 </svg>`;
 
 describe("tfsb scene import-svg CLI", () => {
+  describe("reviewed canonical sources", () => {
+    it.each([false, true])("returns the verified editable compilation only for exact SVG source bytes (compact %s)", (compactPaths) => {
+      const scene = sceneImportSvg(Buffer.from(validPathSvg)).scene;
+      const compiled = compileScene(scene, { compactPaths });
+      if (!compiled.ok) throw new Error("Fixture did not compile");
+      const { svg, receipt } = compiled.value;
+      const reopened = reopenCanonicalSceneSvg(Buffer.from(svg));
+      expect(reopened.classification).toBe("SUPPORTED_IMPORT");
+      expect(reopened.compactPaths).toBe(compactPaths);
+      expect(reopened.compiled?.svg).toBe(svg);
+      expect(reopened.compiled?.receipt.svgDigest).toBe(receipt.svgDigest);
+      const canonicalJson = reopened.compiled?.canonicalJson;
+      if (canonicalJson === undefined) throw new Error("Expected editable JSON");
+      expect(reopened.compiled?.receipt.sourceDigest).toBe("sha256:" + createHash("sha256").update(canonicalJson).digest("hex"));
+      expect(JSON.parse(canonicalJson).provenance.sourceDigest).toBe(receipt.svgDigest);
+      const altered = reopenCanonicalSceneSvg(Buffer.from(svg + "\n"));
+      expect(altered.classification).toBe("REJECTED_OUT_OF_SCOPE");
+      expect(altered.compiled).toBeUndefined();
+    });
+
+    it.each([false, true])("reopens exact compiler output with compact paths set to %s", async (compactPaths) => {
+      const dir = await makeTestDir();
+      const scene = sceneImportSvg(Buffer.from(validPathSvg)).scene;
+      const compiled = compileScene(scene, { compactPaths });
+      if (!compiled.ok) throw new Error("Fixture did not compile");
+      const { svg, receipt } = compiled.value;
+      await writeFile(join(dir, "reviewed.svg"), svg);
+      const args = [
+        "import-svg", "reviewed.svg", "--svg-source", "--expect-svg-digest", receipt.svgDigest,
+        ...(compactPaths ? ["--compact-paths"] : []),
+        "--output", "reopened.json", "--json",
+      ];
+      const cap = capture();
+      expect(await runSceneCli(args, dir, cap.io)).toBe(0);
+      expect(JSON.parse(cap.stdout()).data).toMatchObject({
+        classification: "SUPPORTED_IMPORT", sourceSha256: receipt.svgDigest, written: true,
+      });
+      const reopened = await readFile(join(dir, "reopened.json"), "utf8");
+      expect(JSON.parse(reopened).provenance.sourceDigest).toBe(receipt.svgDigest);
+      const roundtrip = compileScene(JSON.parse(reopened), { compactPaths });
+      if (!roundtrip.ok) throw new Error("Reopened fixture did not compile");
+      expect(roundtrip.value.svg).toBe(svg);
+      expect(await readFile(join(dir, "reviewed.svg"), "utf8")).toBe(svg);
+
+      const noClobber = capture();
+      expect(await runSceneCli(args, dir, noClobber.io)).toBe(1);
+      expect(JSON.parse(noClobber.stdout()).diagnostics[0].code).toBe("SCENE_PUBLISH_TARGET_EXISTS");
+      expect(await readFile(join(dir, "reopened.json"), "utf8")).toBe(reopened);
+    });
+
+    it("keeps anonymous geometry and artwork IDs near generated accessibility IDs", async () => {
+      const dir = await makeTestDir();
+      const base = sceneImportSvg(Buffer.from(validPathSvg)).scene!;
+      const compiled = compileScene({
+        ...base,
+        accessibility: { mode: "labelled", title: "Reviewed artwork" },
+        elements: [{ type: "path", d: "M 5 5 H 9 V 7 Z" }, { ...base.elements[0], id: "scene-title" }],
+      });
+      if (!compiled.ok) throw new Error("Fixture did not compile");
+      await writeFile(join(dir, "reviewed.svg"), compiled.value.svg);
+      const cap = capture();
+      const status = await runSceneCli([
+        "import-svg", "reviewed.svg", "--svg-source", "--expect-svg-digest", compiled.value.receipt.svgDigest,
+        "--output", "reopened.json", "--json",
+      ], dir, cap.io);
+      expect(status, cap.stdout()).toBe(0);
+      const reopened = JSON.parse(await readFile(join(dir, "reopened.json"), "utf8"));
+      expect(reopened.elements[0]).not.toHaveProperty("id");
+      expect(reopened.elements[1].id).toBe("scene-title");
+      const roundtrip = compileScene(reopened);
+      if (!roundtrip.ok) throw new Error("Reopened fixture did not compile");
+      expect(roundtrip.value.svg).toBe(compiled.value.svg);
+    });
+
+    it.each([
+      ["--svg-source", "USAGE_ERROR"],
+      ["--compact-paths", "USAGE_ERROR"],
+    ])("refuses incomplete review options %s before writing", async (flag, code) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "source.svg"), validPathSvg);
+      const cap = capture();
+      expect(await runSceneCli(["import-svg", "source.svg", flag, "--output", "out.json", "--json"], dir, cap.io)).toBe(1);
+      expect(JSON.parse(cap.stdout()).diagnostics[0].code).toBe(code);
+      await expect(access(join(dir, "out.json"))).rejects.toThrow();
+    });
+
+    it.each([
+      ["0".repeat(64), "SCENE_IMPORT_SVG_DIGEST_MISMATCH"],
+      [sha256(validPathSvg), "SVG_NOT_CANONICAL_COMPILER_OUTPUT"],
+    ])("refuses a mismatched digest or noncanonical SVG %#", async (digest, code) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "source.svg"), validPathSvg);
+      const cap = capture();
+      expect(await runSceneCli([
+        "import-svg", "source.svg", "--svg-source", "--expect-svg-digest", `sha256:${digest}`, "--output", "out.json", "--json",
+      ], dir, cap.io)).toBe(1);
+      expect(JSON.parse(cap.stdout()).diagnostics[0].code).toBe(code);
+      await expect(access(join(dir, "out.json"))).rejects.toThrow();
+    });
+  });
+
   describe("success and determinism", () => {
     it("imports a valid SVG to absent scene JSON in human mode", async () => {
       const dir = await makeTestDir();

@@ -1,5 +1,5 @@
 import { deflateSync } from "node:zlib";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { fakeDescriptor } from "./raster-test-helper.js";
 import { assertRasterSvgIsSelfContained, createRasterCapabilityFromModule, decodeStrictPng, RASTER_QUALIFIED_PLATFORM_CLAIMS } from "../../src/brand/raster-capability.js";
@@ -34,13 +34,27 @@ describe("strict raster capability boundary", () => {
   });
 
   it("reports an unqualified runtime tuple as unavailable instead of advertising a renderer that refuses it", () => {
-    expect(RASTER_QUALIFIED_PLATFORM_CLAIMS).toEqual(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"]);
+    expect(RASTER_QUALIFIED_PLATFORM_CLAIMS).toEqual(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "linux-arm64-gnu", "windows-x64"]);
     const platform = Object.getOwnPropertyDescriptor(process, "platform")!, arch = Object.getOwnPropertyDescriptor(process, "arch")!;
+    const report = vi.spyOn(process.report, "getReport").mockReturnValue({ header: {} });
     try {
       Object.defineProperty(process, "platform", { ...platform, value: "linux" }); Object.defineProperty(process, "arch", { ...arch, value: "arm64" });
       expect(createRasterCapabilityFromModule({ descriptor: { ...fakeDescriptor, platformClaim: "linux-arm64" }, renderSvg: async () => { throw new Error("Current runtime tuple is not qualified."); } }))
         .toEqual({ available: false, code: "EXPORT_CAPABILITY_UNAVAILABLE", reason: "Raster companion is not qualified for runtime tuple 'linux-arm64'." });
-    } finally { Object.defineProperty(process, "platform", platform); Object.defineProperty(process, "arch", arch); }
+      expect(createRasterCapabilityFromModule({
+        descriptor: { ...fakeDescriptor, platformClaim: "linux-arm64-gnu" },
+        renderSvg: async () => { throw new Error("an incompatible adapter cannot render"); },
+      }).available).toBe(false);
+      report.mockReturnValue({ header: { glibcVersionRuntime: "2.36" } });
+      expect(createRasterCapabilityFromModule({
+        descriptor: { ...fakeDescriptor, platformClaim: "linux-arm64-gnu" },
+        renderSvg: async () => { throw new Error("only inspect the descriptor"); },
+      }).available).toBe(true);
+    } finally {
+      report.mockRestore();
+      Object.defineProperty(process, "platform", platform);
+      Object.defineProperty(process, "arch", arch);
+    }
     expect(createRasterCapabilityFromModule({ descriptor: fakeDescriptor, renderSvg: async () => { throw new Error("unused"); } }).available).toBe(RASTER_QUALIFIED_PLATFORM_CLAIMS.includes(fakeDescriptor.platformClaim));
   });
 

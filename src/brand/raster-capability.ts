@@ -8,13 +8,18 @@ export const RASTER_ADAPTER_ID = "resvg-png-v1" as const;
 export const RASTER_MAX_SVG_BYTES = 16_000_000;
 export const RASTER_MAX_PNG_BYTES = 32 * 1_048_576;
 /** Runtime tuples the maintained companion qualifies; its renderer refuses every other tuple. */
-export const RASTER_QUALIFIED_PLATFORM_CLAIMS: readonly string[] = Object.freeze(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"]);
+export const RASTER_QUALIFIED_PLATFORM_CLAIMS: readonly string[] = Object.freeze(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "linux-arm64-gnu", "windows-x64"]);
 const PNG_SIGNATURE = Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10);
 
 function runtimePlatformClaim(): string {
   if (process.platform === "darwin" && process.arch === "arm64") return "darwin-arm64";
   if (process.platform === "darwin" && process.arch === "x64") return "darwin-x64";
   if (process.platform === "linux" && process.arch === "x64") return "linux-x64-gnu";
+  if (process.platform === "linux" && process.arch === "arm64") {
+    const report = process.report?.getReport() as { header?: { glibcVersionRuntime?: unknown } } | undefined;
+    const glibc = report?.header?.glibcVersionRuntime;
+    if (typeof glibc === "string" && glibc.length > 0) return "linux-arm64-gnu";
+  }
   if (process.platform === "win32" && process.arch === "x64") return "windows-x64";
   return `${process.platform}-${process.arch}`;
 }

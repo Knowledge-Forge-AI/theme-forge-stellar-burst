@@ -107,7 +107,7 @@ export interface ImportFindings {
 }
 
 /** Freeze the translator's closed semantics before any conversion may omit data. */
-export function inspectImportSemantics(root: Element, findings: ImportFindings): void {
+export function inspectImportSemantics(root: Element, findings: ImportFindings, maxPathBytes: number = SCENE_LIMITS.maxPathBytes): void {
   const ids = new Map<string, Element>();
   const elements = [root, ...Array.from(root.getElementsByTagName("*"))];
   for (const el of elements) {
@@ -169,7 +169,7 @@ export function inspectImportSemantics(root: Element, findings: ImportFindings):
         if (!number.test(numeric) || !Number.isFinite(Number(numeric))) findings.invalid.add("INVALID_GRADIENT_OFFSET");
       }
       if (tag === "stop" && name === "stop-color" && ["none", "transparent"].includes(value)) findings.unsupported.add("UNSUPPORTED_GRADIENT_STOP_PAINT");
-      if (name === "d" && Buffer.byteLength(value) > SCENE_LIMITS.maxPathBytes) findings.limits.add("LIMIT_PATH_BYTES_EXCEEDED");
+      if (name === "d" && Buffer.byteLength(value) > maxPathBytes) findings.limits.add("LIMIT_PATH_BYTES_EXCEEDED");
       if (name === "points") {
         const tokens = value.split(/[\s,]+/).filter(Boolean);
         if (tokens.length > SCENE_LIMITS.maxPoints * 2) findings.limits.add("LIMIT_POINTS_EXCEEDED");

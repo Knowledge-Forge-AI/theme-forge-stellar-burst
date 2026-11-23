@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const execute = promisify(execFile), worker = new URL("./raster-qualification-worker.mjs", import.meta.url);
 const args = process.argv.slice(2);
 if (Number(process.versions.node.split(".")[0]) !== 22) throw new Error("Raster execution requires Node major 22.");
-if (args.length !== 2 || args[0] !== "--expected-tuple" || !["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"].includes(args[1] ?? "")) throw new Error("An explicit closed --expected-tuple is required.");
+if (args.length !== 2 || args[0] !== "--expected-tuple" || !["darwin-arm64", "darwin-x64", "linux-x64-gnu", "linux-arm64-gnu", "windows-x64"].includes(args[1] ?? "")) throw new Error("An explicit closed --expected-tuple is required.");
 const corpusBytes = Buffer.from((await readFile(new URL("../test/fixtures/raster-golden/corpus.json", import.meta.url), "utf8")).replace(/\r\n/g, "\n"), "utf8");
 /** @param {Uint8Array} bytes */
 const sha = (bytes) => `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -33,7 +33,10 @@ const qualificationId = sha(Buffer.from(JSON.stringify(binding)));
 const manifest = { schema: "tfsb.raster-qualification", schemaVersion: 1, qualificationId, repetitions: runs.length, environments: runs.map(({ timezone, locale }) => ({ timezone, locale })), ...binding };
 const expected = JSON.parse(await readFile(new URL("../docs/evaluations/v0.4-tfsb47f-raster-qualification.json", import.meta.url), "utf8"));
 const straight = JSON.parse(await readFile(new URL("../test/fixtures/raster-golden/straight-alpha-digests.json", import.meta.url), "utf8"));
-if (straight.schema !== "tfsb.raster-straight-alpha-golden-v1" || straight.corpusDigest !== manifest.corpusDigest || straight.historicalQualificationId !== expected.qualificationId || descriptor.qualificationId !== expected.qualificationId) throw new Error("Raster reference identities disagree.");
+const expectedRuntimeQualification = descriptor.platformClaim === "linux-arm64-gnu"
+  ? "sha256:8231af648d19846c0c89eb07994e91a10abb27684058f906563412327699a305"
+  : expected.qualificationId;
+if (straight.schema !== "tfsb.raster-straight-alpha-golden-v1" || straight.corpusDigest !== manifest.corpusDigest || straight.historicalQualificationId !== expected.qualificationId || descriptor.qualificationId !== expectedRuntimeQualification) throw new Error("Raster reference identities disagree.");
 if (straight.cases.length !== expected.matrix.length || straight.cases.some((/** @type {any} */ item, /** @type {number} */ index) => item.id !== expected.matrix[index].id)) throw new Error("Straight-alpha reference cases disagree.");
 // The historical record used premultiplied RGBA. Keep that record and the
 // established runtime/protocol ID intact; qualify the accepted R2D straight

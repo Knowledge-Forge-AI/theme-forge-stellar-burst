@@ -207,7 +207,7 @@ describe("TFSB34 combined v0.3 qualification", () => {
     // negative corpus: 20 entries.
     // TFSB61A adds the scene domain, CLI/file wrappers and closed scene protocol.
     // TFSB62A adds three importer modules (JS + declarations) and one contract document.
-    // The public Stellar Burst membership contains 133 src modules (266 JS /
+    // The base public Stellar Burst membership contains 133 src modules (266 JS /
     // declaration entries), 77 protocol entries, and npm's five fixed root
     // entries: 266 + 77 + 5 = 348 before native prebuilds.  The canonical
     // private checkout additionally carries exactly eight DesignDirector
@@ -232,7 +232,41 @@ describe("TFSB34 combined v0.3 qualification", () => {
     for (const path of privateDesignDirectorEntries) {
       expect(paths.includes(path)).toBe(privateDesignDirectorSourcesPresent[0]);
     }
-    const expectedEntryCount = 348 + (privateDesignDirectorSourcesPresent[0] ? privateDesignDirectorEntries.length : 0) + nativePaths.length;
+    const sceneAuthoringEntries = ["scene/path-edits", "scene/trace-raster"].flatMap((module) => [
+      `dist/${module}.js`, `dist/${module}.d.ts`,
+    ]);
+    expect(paths).toEqual(expect.arrayContaining(sceneAuthoringEntries));
+
+    const illustrationModules = [
+      "illustration-cli",
+      "managed-output-transaction",
+      "illustration/carrier-source",
+      "illustration/carrier-v1",
+      "illustration/carrier-write",
+      "illustration/consumer-cli",
+      "illustration/consumer-plan",
+      "illustration/derivative-cli",
+      "illustration/derivative",
+      "illustration/index",
+      "illustration/install",
+      "illustration/native-agent",
+      "illustration/privacy",
+      "illustration/record-cli",
+      "illustration/retained-files",
+      "illustration/v1",
+    ];
+    const hasIllustrationSources = existsSync(repoPath("src/illustration-cli.ts"));
+    const illustrationEntries = illustrationModules.flatMap((module) => {
+      expect(existsSync(repoPath(`src/${module}.ts`))).toBe(hasIllustrationSources);
+      return [`dist/${module}.js`, `dist/${module}.d.ts`];
+    });
+    for (const path of illustrationEntries) {
+      expect(paths.includes(path)).toBe(hasIllustrationSources);
+    }
+
+    const expectedEntryCount = 348 + sceneAuthoringEntries.length + nativePaths.length
+      + (hasIllustrationSources ? illustrationEntries.length : 0)
+      + (privateDesignDirectorSourcesPresent[0] ? privateDesignDirectorEntries.length : 0);
     expect(packResult?.entryCount).toBe(expectedEntryCount);
     expect(paths.length).toBe(expectedEntryCount);
     expect(paths).toEqual(expect.arrayContaining([

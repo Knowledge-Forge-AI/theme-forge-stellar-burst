@@ -34,6 +34,21 @@ describe("scene production boundary challenges", () => {
   it("counts repeated symbol labels toward scene glyph ceiling before lowering", () => {
     expect(validateScene({ ...scene(), definitions: { symbols: [{ type: "symbol", id: "word", viewBox: [0, 0, 100, 10], elements: [{ type: "label", id: "label", text: "A".repeat(1024), x: 0, y: 0 }] }] }, elements: Array.from({ length: 9 }, (_, n) => ({ type: "use", id: `instance${n}`, href: "#word", width: 100, height: 10 })) }).ok).toBe(false);
   });
+  it("counts each occurrence of identical path data across the root and symbol uses", () => {
+    const path = { type: "path", d: "M0 0h1 2A4 5 0 0110 10z" };
+    const result = validateScene({
+      ...scene(),
+      definitions: { symbols: [{ type: "symbol", id: "sample", viewBox: [0, 0, 16, 16], elements: [path] }] },
+      elements: [
+        path,
+        { ...path },
+        { type: "use", href: "#sample", width: 16, height: 16 },
+        { type: "use", href: "#sample", width: 16, height: 16 },
+      ],
+    });
+    if (!result.ok) throw new Error("Expected repeated path data to be valid");
+    expect(result.value.metrics.pathSegmentCount).toBe(20);
+  });
   it("admits bounded illustration contours without extending the diagram budget", () => {
     const withInstances = (profile: string, count: number) => ({
       ...scene(), profile,

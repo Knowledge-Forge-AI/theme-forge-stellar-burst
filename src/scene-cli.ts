@@ -17,6 +17,8 @@ import {
   type SceneRasterizeJsonData,
   type SceneValidateJsonData,
   type SceneTracePngJsonData,
+  type SceneTraceWebpJsonData,
+  type SceneWebpJsonData,
 } from "./json.js";
 import {
   publishSceneBytes,
@@ -24,6 +26,7 @@ import {
   publishSceneSvg,
   readSceneFile,
   readSceneFileBytes,
+  readReviewedSceneSvgBytes,
 } from "./scene-files.js";
 import {
   compileScene,
@@ -33,25 +36,37 @@ import {
   validateScene,
   type SceneImportResult,
 } from "./scene/index.js";
-import { reviseScenePaths } from "./scene/path-edits.js";
+import { canonicalJsonStringify } from "./scene/canonical.js";
+import { validateCanonicalSceneSvg } from "./scene/import-svg.js";
+import { reviseScene } from "./scene/path-edits.js";
+import { MAX_TRACE_SOURCE_PIXELS } from "./scene/trace-raster.js";
 
 export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
-  tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--json]
+  tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
+  tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
+  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--json]
+  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--json]
+  tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
-  --output <file>       Publish destination for SVG, PNG or scene JSON (absent target only)
+  --output <file>       Publish destination for SVG, PNG, WebP or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
-  --edits <file>        Apply path replacements by element ID
+  --edits <file>        Apply path replacements by ID or append one named group
   --regular             Use the smaller regular trace for ordinary display sizes
   --high-detail         Trace sharp edges at finer resolution (default)
   --native-detail       Prioritize fine artwork at the raster export size
+  --preserve-alpha      Trace transparency as editable paths with fill opacity
+  --exclude-detail <file>  Omit native detail cells inside a convex source-pixel polygon
   --compact-paths       Remove optional SVG path spacing when compiling
+  --svg-source          Use exact reviewed canonical SVG bytes for render or import
+  --viewbox-size        Rasterize reviewed SVG at its whole-pixel viewBox size
+  --expect-svg-digest <sha256>  Require the SVG digest to match before rendering or importing
   --dry-run             Validate and plan compilation or revision without writing output
   --json                Emit one versioned machine-result envelope`;
 
@@ -67,6 +82,11 @@ interface ParsedSceneArgs {
   readonly palette?: string | undefined;
   readonly edits?: string | undefined;
   readonly compactPaths?: boolean;
+  readonly svgSource?: boolean;
+  readonly viewBoxSize?: boolean;
+  readonly expectedSvgDigest?: string;
+  readonly excludeDetail?: string;
+  readonly preserveAlpha?: boolean;
   readonly traceMode?: "regular" | "high-detail" | "native-detail";
   readonly dryRun: boolean;
   readonly json: boolean;
@@ -95,16 +115,19 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     action !== "inspect" &&
     action !== "compile" &&
     action !== "rasterize" &&
+    action !== "export-webp" &&
     action !== "revise" &&
     action !== "import-svg" &&
-    action !== "trace-png"
+    action !== "trace-png" &&
+    action !== "trace-webp"
   ) {
     return {
       dryRun: false,
       json,
-      error: `Unknown scene action '${action}'. Expected validate, inspect, compile, rasterize, revise, import-svg, or trace-png.`,
+      error: `Unknown scene action '${action}'. Expected validate, inspect, compile, rasterize, export-webp, revise, import-svg, trace-png, or trace-webp.`,
     };
   }
+  const trace = action === "trace-png" || action === "trace-webp";
 
   // Reject force flag explicitly
   if (rest.some((a) => a === "--force" || a === "-f" || a.startsWith("--force="))) {
@@ -118,9 +141,14 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
 
   let output: string | undefined;
   let palette: string | undefined;
+  let svgSource = false;
+  let viewBoxSize = false;
+  let expectedSvgDigest: string | undefined;
   let edits: string | undefined;
   let dryRun = false;
   let compactPaths = false;
+  let excludeDetail: string | undefined;
+  let preserveAlpha = false;
   let traceMode: ParsedSceneArgs["traceMode"];
   const positionals: string[] = [];
   let i = 0;
@@ -150,20 +178,57 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg === "--regular" || arg === "--high-detail" || arg === "--native-detail") {
-      if (action !== "trace-png" || traceMode !== undefined) {
-        return { action, dryRun, json, error: "Use one detail option with scene trace-png." };
+      if (!trace || traceMode !== undefined) {
+        return { action, dryRun, json, error: "Use one detail option with scene trace-png or trace-webp." };
       }
       traceMode = arg === "--regular" ? "regular" : arg === "--high-detail" ? "high-detail" : "native-detail";
       i += 1;
       continue;
     }
 
+    if (arg === "--preserve-alpha") {
+      if (!trace || preserveAlpha) {
+        return { action, dryRun, json, error: "Use --preserve-alpha once with scene trace-png or trace-webp." };
+      }
+      preserveAlpha = true;
+      i += 1;
+      continue;
+    }
+
     if (arg === "--compact-paths") {
-      if ((action !== "compile" && action !== "rasterize") || compactPaths) {
-        return { action, dryRun, json, error: "Use --compact-paths once with scene compile or rasterize." };
+      if ((action !== "compile" && action !== "rasterize" && action !== "import-svg" && action !== "export-webp") || compactPaths) {
+        return { action, dryRun, json, error: "Use --compact-paths once with scene compile, rasterize, export-webp, or reviewed import." };
       }
       compactPaths = true;
       i += 1;
+      continue;
+    }
+
+    if (arg === "--svg-source") {
+      if ((action !== "rasterize" && action !== "import-svg") || svgSource) {
+        return { action, dryRun, json, error: "Use --svg-source once with scene rasterize or import-svg." };
+      }
+      svgSource = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--viewbox-size") {
+      if ((action !== "rasterize" && action !== "export-webp") || viewBoxSize) {
+        return { action, dryRun, json, error: "Use --viewbox-size once with direct SVG rasterization." };
+      }
+      viewBoxSize = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--expect-svg-digest") {
+      const next = rest[i + 1];
+      if ((action !== "rasterize" && action !== "import-svg" && action !== "export-webp") || expectedSvgDigest !== undefined || next?.length !== 71 || !/^sha256:[0-9a-f]{64}$/.test(next)) {
+        return { action, dryRun, json, error: "Use --expect-svg-digest <sha256:hex> once with scene rasterize, export-webp, or reviewed import." };
+      }
+      expectedSvgDigest = next;
+      i += 2;
       continue;
     }
 
@@ -173,6 +238,16 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "Use --palette <json> once with scene compile or rasterize." };
       }
       palette = next;
+      i += 2;
+      continue;
+    }
+
+    if (arg === "--exclude-detail") {
+      const next = rest[i + 1];
+      if (!trace || excludeDetail !== undefined || !next || next.startsWith("-")) {
+        return { action, dryRun, json, error: "Use --exclude-detail <json> once with scene trace-png or trace-webp." };
+      }
+      excludeDetail = next;
       i += 2;
       continue;
     }
@@ -188,7 +263,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg === "--output") {
-      if (action !== "compile" && action !== "rasterize" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
+      if (action !== "compile" && action !== "rasterize" && action !== "export-webp" && action !== "import-svg" && action !== "revise" && !trace) {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -204,7 +279,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg.startsWith("--output=")) {
-      if (action !== "compile" && action !== "rasterize" && action !== "import-svg" && action !== "revise" && action !== "trace-png") {
+      if (action !== "compile" && action !== "rasterize" && action !== "export-webp" && action !== "import-svg" && action !== "revise" && !trace) {
         return { action, dryRun, json, error: `--output is not supported by scene ${action}.` };
       }
       if (output !== undefined) {
@@ -227,28 +302,16 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     i += 1;
   }
 
-  if (positionals.length === 0) {
+  if (positionals.length !== 1) {
     return {
       action,
       dryRun,
       json,
       error:
-        action === "import-svg"
-          ? "scene import-svg requires exactly one input SVG file."
+        action === "import-svg" || action === "export-webp"
+          ? `scene ${action} requires exactly one input SVG file.`
           : action === "trace-png" ? "scene trace-png requires exactly one input PNG file."
-          : `scene ${action} requires exactly one scene JSON file.`,
-    };
-  }
-
-  if (positionals.length > 1) {
-    return {
-      action,
-      dryRun,
-      json,
-      error:
-        action === "import-svg"
-          ? "scene import-svg requires exactly one input SVG file."
-          : action === "trace-png" ? "scene trace-png requires exactly one input PNG file."
+          : action === "trace-webp" ? "scene trace-webp requires exactly one input WebP file."
           : `scene ${action} requires exactly one scene JSON file.`,
     };
   }
@@ -266,6 +329,10 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     return { action, dryRun, json, error: "scene rasterize requires --output <absent.png>." };
   }
 
+  if (action === "export-webp" && (output === undefined || expectedSvgDigest === undefined)) {
+    return { action, dryRun, json, error: "scene export-webp requires --output <absent.webp> and --expect-svg-digest." };
+  }
+
   if (action === "import-svg" && (output === undefined || output.length === 0)) {
     return {
       action,
@@ -275,12 +342,30 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     };
   }
 
-  if (action === "trace-png" && output === undefined) {
-    return { action, dryRun, json, error: "scene trace-png requires --output <absent-scene.json>." };
+  if (trace && output === undefined) {
+    return { action, dryRun, json, error: `scene ${action} requires --output <absent-scene.json>.` };
   }
 
   if (action === "revise" && (edits === undefined || output === undefined)) {
     return { action, dryRun, json, error: "scene revise requires --edits <json> and --output <absent-scene.json>." };
+  }
+
+  if (action === "import-svg" && !svgSource && (compactPaths || expectedSvgDigest !== undefined)) {
+    return { action, dryRun, json, error: "Import requires --svg-source to use --compact-paths or --expect-svg-digest." };
+  }
+
+  if (svgSource && (expectedSvgDigest === undefined || palette !== undefined)) {
+    return { action, dryRun, json, error: "--svg-source requires --expect-svg-digest and cannot be used with --palette." };
+  }
+  if (viewBoxSize && !svgSource && action !== "export-webp") {
+    return { action, dryRun, json, error: "--viewbox-size requires --svg-source." };
+  }
+
+  if (excludeDetail !== undefined && traceMode !== "native-detail") {
+    return { action, dryRun, json, error: "--exclude-detail requires --native-detail." };
+  }
+  if (excludeDetail !== undefined && preserveAlpha) {
+    return { action, dryRun, json, error: "--exclude-detail cannot be combined with --preserve-alpha." };
   }
 
   return {
@@ -290,7 +375,12 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     palette,
     edits,
     compactPaths,
+    svgSource,
+    viewBoxSize,
+    ...(expectedSvgDigest === undefined ? {} : { expectedSvgDigest }),
+    ...(excludeDetail === undefined ? {} : { excludeDetail }),
     ...(traceMode === undefined ? {} : { traceMode }),
+    preserveAlpha,
     dryRun,
     json,
   };
@@ -374,14 +464,98 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, traceMode, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, svgSource, viewBoxSize, expectedSvgDigest, traceMode, excludeDetail, preserveAlpha = false, dryRun, json: jsonMode } = parsed;
+
+  const ctx = { operation: "build", domain: "scene" } as const;
+  function assertExpectedSvg(svgDigest: string): void {
+    if (expectedSvgDigest !== undefined && svgDigest !== expectedSvgDigest) {
+      const code = action === "import-svg" ? "SCENE_IMPORT_SVG_DIGEST_MISMATCH" : "SCENE_RASTER_SVG_DIGEST_MISMATCH";
+      throw new DiagnosticError(diagnostic(ctx, code, "The SVG does not match the expected digest."));
+    }
+  }
+
+  async function renderSvgPng(svgBytes: Uint8Array, width: number, height: number) {
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+        || width < 1 || height < 1 || width > 16_384 || height > 16_384
+        || width * height > 16_777_216) {
+      throw new DiagnosticError(diagnostic(ctx, "SCENE_RASTER_SIZE_INVALID", "Rasterization requires bounded whole-pixel artboard dimensions."));
+    }
+    const capability = await loadRasterCapability();
+    if (!capability.available) {
+      throw new DiagnosticError(diagnostic(ctx, capability.code, "Scene rasterization requires the qualified TFSB resvg companion."));
+    }
+    let pngBytes: Uint8Array;
+    try {
+      assertRasterSvgIsSelfContained(svgBytes);
+      ({ pngBytes } = await capability.adapter.renderSvg({
+        canonicalSvgBytes: svgBytes, width, height, backgroundRgba: null,
+        alpha: "straight", fit: "contain-pad", colorSpace: "srgb",
+      }));
+    } catch {
+      throw new DiagnosticError(diagnostic(ctx, "SCENE_RASTERIZE_FAILED", "The SVG could not be rasterized within the supported limits."));
+    }
+    return {
+      pngBytes,
+      pngDigest: `sha256:${createHash("sha256").update(pngBytes).digest("hex")}`,
+      rendererBuildDigest: capability.adapter.descriptor.rendererBuildDigest,
+    };
+  }
+
+  async function rasterizeSvg(svgBytes: Uint8Array, svgDigest: string, width: number, height: number): Promise<number> {
+    const { pngBytes, pngDigest, rendererBuildDigest } = await renderSvgPng(svgBytes, width, height);
+    const published = await publishSceneBytes(resolve(cwd, output!), pngBytes);
+    const data: SceneRasterizeJsonData = {
+      schema: "tfsb.scene-result-v1", action: "rasterize", valid: true, output: output!,
+      written: published.published, cleanupResidue: published.cleanupResidue,
+      width, height, svgDigest,
+      pngDigest, rendererBuildDigest,
+    };
+    if (jsonMode) return emitJson(io, "ok", 0, "Scene PNG published.", [], data);
+    io.stdout(`Rasterized scene: ${output} (${pngBytes.length} B)\n  SVG digest: ${data.svgDigest}\n  PNG digest: ${data.pngDigest}\n`);
+    return 0;
+  }
 
   try {
     const inputPath = resolve(cwd, positional!);
+    if ((svgSource && action === "rasterize") || action === "export-webp") {
+      const bytes = await readReviewedSceneSvgBytes(inputPath);
+      const digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+      assertExpectedSvg(digest);
+      const validation = validateCanonicalSceneSvg(bytes, compactPaths);
+      if (validation.classification !== "SUPPORTED_IMPORT" || validation.scene === undefined) {
+        throw new DiagnosticError(diagnostic(
+          ctx, "SCENE_RASTER_SVG_REJECTED", "Direct rasterization requires exact canonical SVG emitted by this compiler.",
+        ));
+      }
+      const { width, height, viewBox: [, , gridWidth, gridHeight] } = validation.scene.artboard;
+      if (viewBoxSize && gridWidth * height !== gridHeight * width) {
+        throw new DiagnosticError(diagnostic(
+          ctx, "SCENE_RASTER_SIZE_INVALID", "The viewBox aspect ratio must match the artboard for grid-sized rasterization.",
+        ));
+      }
+      const rasterWidth = viewBoxSize ? gridWidth : width;
+      const rasterHeight = viewBoxSize ? gridHeight : height;
+      if (action === "rasterize") return await rasterizeSvg(bytes, digest, rasterWidth, rasterHeight);
+      const { pngBytes, pngDigest, rendererBuildDigest } = await renderSvgPng(bytes, rasterWidth, rasterHeight);
+      const { exportSceneWebp } = await import("./illustration/derivative-cli.js");
+      const derivative = await exportSceneWebp(pngBytes, width, height, output!, cwd);
+      if (!derivative.ok) {
+        throw new DiagnosticError(diagnostic(ctx, `SCENE_WEBP_${derivative.code}`, "Scene WebP export refused."));
+      }
+      const result: SceneWebpJsonData = {
+        schema: "tfsb.scene-result-v1", action, valid: true, output: output!, written: true,
+        svgDigest: digest, pngDigest, rendererBuildDigest, rasterWidth, rasterHeight,
+        recipe: derivative.recipe, receipt: derivative.receipt,
+      };
+      if (jsonMode) return emitJson(io, "ok", 0, "Scene WebP published.", [], result);
+      io.stdout(`Exported WebP: ${output} (${result.receipt.byteLength} B)\n  SVG digest: ${digest}\n  WebP digest: ${result.receipt.outputSha256}\n`);
+      return 0;
+    }
 
     if (action === "import-svg") {
-      const rawBytes = await readSceneFileBytes(inputPath);
-      const result: SceneImportResult = sceneImportSvg(rawBytes);
+      const rawBytes = svgSource ? await readReviewedSceneSvgBytes(inputPath) : await readSceneFileBytes(inputPath);
+      if (svgSource) assertExpectedSvg(`sha256:${createHash("sha256").update(rawBytes).digest("hex")}`);
+      const result: SceneImportResult = svgSource ? validateCanonicalSceneSvg(rawBytes, compactPaths) : sceneImportSvg(rawBytes);
 
       if (result.classification !== "SUPPORTED_IMPORT") {
         const data: SceneImportSvgJsonData = {
@@ -432,7 +606,7 @@ export async function runSceneCli(
         return 1;
       }
 
-      if (!result.scene || result.canonicalScene === undefined) {
+      if (!result.scene || (!svgSource && result.canonicalScene === undefined)) {
         throw new DiagnosticError(
           diagnostic(
             { operation: "import", domain: "scene" },
@@ -474,7 +648,9 @@ export async function runSceneCli(
         return 1;
       }
 
-      const canonicalScene = result.canonicalScene;
+      // The reviewed projection already contains compact paths. Keep them
+      // compact so dense sources remain within the editable JSON limits.
+      const canonicalScene = result.canonicalScene ?? canonicalJsonStringify(validation.value.scene);
       const resolvedOutput = resolve(cwd, output!);
       const published = await publishSceneJson(
         resolvedOutput,
@@ -509,32 +685,60 @@ export async function runSceneCli(
       return 0;
     }
 
-    if (action === "trace-png") {
+    if (action === "trace-png" || action === "trace-webp") {
       const bytes = await readSceneFileBytes(inputPath);
+      const polygon = excludeDetail === undefined ? undefined : await readSceneFile(resolve(cwd, excludeDetail));
+      const format = action === "trace-png" ? "PNG" : "WebP";
+      const traceSource = action === "trace-png" ? "8-bit RGB or RGBA PNG" : "WebP";
+      let decodedWebp;
+      if (action === "trace-webp") {
+        const { decodeWebpForTrace, RasterDerivativeError } = await import("./illustration/derivative.js");
+        try {
+          decodedWebp = await decodeWebpForTrace(bytes, MAX_TRACE_SOURCE_PIXELS);
+        } catch (error) {
+          if (!(error instanceof RasterDerivativeError)) throw error;
+          throw new DiagnosticError(diagnostic(
+            { operation: "import", domain: "scene" },
+            `SCENE_TRACE_WEBP_${error.code}`,
+            "The bounded static WebP could not be decoded for tracing.",
+          ));
+        }
+      }
       let scene;
       try {
-        scene = traceRasterScene(decodeStrictPng(bytes), {
-          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail",
+        scene = traceRasterScene(decodeStrictPng(decodedWebp?.bytes ?? bytes), {
+          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha,
         });
       } catch {
         throw new DiagnosticError(diagnostic(
           { operation: "import", domain: "scene" },
           "SCENE_RASTER_TRACE_REJECTED",
-          "Trace requires a bounded opaque 8-bit RGB or RGBA PNG and contours within scene limits.",
+          excludeDetail !== undefined
+            ? `Detail exclusion requires a bounded opaque ${format}, a matching native grid, and a valid polygon within trace limits.`
+            : preserveAlpha
+              ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
+              : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
         ));
       }
       const validation = validateScene(scene);
       if (!validation.ok) throw new DiagnosticError(validation.diagnostics[0]!);
       const json = JSON.stringify(scene);
       const published = await publishSceneJson(resolve(cwd, output!), json, false);
-      const data: SceneTracePngJsonData = {
-        schema: "tfsb.scene-result-v1", action, valid: true, output: output!,
+      const common = {
+        schema: "tfsb.scene-result-v1", valid: true, output: output!,
         written: published.published, cleanupResidue: published.cleanupResidue,
         sourceSha256: createHash("sha256").update(bytes).digest("hex"),
         outputSha256: createHash("sha256").update(json).digest("hex"),
         metrics: validation.value.metrics,
-      };
-      if (jsonMode) return emitJson(io, "ok", 0, "PNG traced into an editable scene.", [], data);
+      } as const;
+      const data: SceneTracePngJsonData | SceneTraceWebpJsonData = decodedWebp === undefined
+        ? { ...common, action: "trace-png" }
+        : {
+          ...common, action: "trace-webp",
+          decodedPngSha256: decodedWebp.sha256,
+          decodeRecipeDigest: decodedWebp.recipeDigest,
+        };
+      if (jsonMode) return emitJson(io, "ok", 0, `${format} traced into an editable scene.`, [], data);
       io.stdout(`Traced scene: ${output}\n`);
       return 0;
     }
@@ -542,7 +746,7 @@ export async function runSceneCli(
     const raw = await readSceneFile(inputPath);
 
     if (action === "revise") {
-      const result = reviseScenePaths(raw, await readSceneFile(resolve(cwd, edits!)));
+      const result = reviseScene(raw, await readSceneFile(resolve(cwd, edits!)));
       if (!result.ok) {
         if (jsonMode) {
           return emitJson(io, "error", 1, "Scene revision failed.", result.diagnostics.map(mapMachineDiagnostic), null);
@@ -682,39 +886,8 @@ export async function runSceneCli(
       const resolvedOutput = resolve(cwd, output!);
       if (action === "rasterize") {
         const { receipt, svg } = result.value;
-        const { width, height } = receipt.artboard;
-        const ctx = { operation: "build", domain: "scene" } as const;
-        if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
-            || width < 1 || height < 1 || width > 16_384 || height > 16_384
-            || width * height > 16_777_216) {
-          throw new DiagnosticError(diagnostic(ctx, "SCENE_RASTER_SIZE_INVALID", "Rasterization requires bounded whole-pixel artboard dimensions."));
-        }
-        const capability = await loadRasterCapability();
-        if (!capability.available) {
-          throw new DiagnosticError(diagnostic(ctx, capability.code, "Scene rasterization requires the qualified TFSB resvg companion."));
-        }
-        const svgBytes = Buffer.from(svg, "utf8");
-        let pngBytes: Uint8Array;
-        try {
-          assertRasterSvgIsSelfContained(svgBytes);
-          ({ pngBytes } = await capability.adapter.renderSvg({
-            canonicalSvgBytes: svgBytes, width, height, backgroundRgba: null,
-            alpha: "straight", fit: "contain-pad", colorSpace: "srgb",
-          }));
-        } catch {
-          throw new DiagnosticError(diagnostic(ctx, "SCENE_RASTERIZE_FAILED", "The compiled SVG could not be rasterized within the supported limits."));
-        }
-        const published = await publishSceneBytes(resolvedOutput, pngBytes);
-        const data: SceneRasterizeJsonData = {
-          schema: "tfsb.scene-result-v1", action: "rasterize", valid: true, output: output!,
-          written: published.published, cleanupResidue: published.cleanupResidue,
-          width, height, svgDigest: receipt.svgDigest,
-          pngDigest: `sha256:${createHash("sha256").update(pngBytes).digest("hex")}`,
-          rendererBuildDigest: capability.adapter.descriptor.rendererBuildDigest,
-        };
-        if (jsonMode) return emitJson(io, "ok", 0, "Scene PNG published.", [], data);
-        io.stdout(`Rasterized scene: ${output} (${pngBytes.length} B)\n  SVG digest: ${data.svgDigest}\n  PNG digest: ${data.pngDigest}\n`);
-        return 0;
+        assertExpectedSvg(receipt.svgDigest);
+        return await rasterizeSvg(Buffer.from(svg, "utf8"), receipt.svgDigest, receipt.artboard.width, receipt.artboard.height);
       }
       const published = await publishSceneSvg(resolvedOutput, result.value.svg, dryRun);
 

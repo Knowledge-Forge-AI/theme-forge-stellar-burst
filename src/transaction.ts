@@ -170,7 +170,9 @@ export async function findRecoveryResidue(root: string): Promise<readonly string
       const isConsumerStage = /^\..+\.tfsb-consumer-(?:stage|backup)-[a-f0-9]{32}$/.test(entry.name);
       const isRasterJournal = directory.relative === "" && /^\.tfsb-raster-transaction-[a-f0-9]{32}\.json$/.test(entry.name);
       const isRasterStage = /^\..+\.tfsb-raster-(?:stage|backup)-[a-f0-9]{32}$/.test(entry.name);
-      if (isCanonicalResidue || isConsumerJournal || isConsumerStage || isRasterJournal || isRasterStage) residue.push(relative);
+      const isIllustrationJournal = directory.relative === "" && /^\.tfsb-illustration-transaction-[a-f0-9]{32}\.json$/.test(entry.name);
+      const isIllustrationStage = /^(?:[^/]+\/)*\.[^/]+\.tfsb-illustration-(?:stage|backup)-[a-f0-9]{32}$/.test(relative);
+      if (isCanonicalResidue || isConsumerJournal || isConsumerStage || isRasterJournal || isRasterStage || isIllustrationJournal || isIllustrationStage) residue.push(relative);
       if (entry.isDirectory() && !entry.isSymbolicLink() && entry.name !== ".git" && entry.name !== "node_modules") {
         pending.push({ absolute: join(directory.absolute, entry.name), relative });
       }

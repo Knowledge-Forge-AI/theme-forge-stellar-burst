@@ -8,11 +8,20 @@ const rendererBuildDigest = "sha256:22bf6e9f9a100d972da0411a69c5ba504367fc1fa87b
 const wasmUrl = import.meta.resolve("@resvg/resvg-wasm/index_bg.wasm");
 const wasmBytes = readFileSync(fileURLToPath(wasmUrl));
 if (`sha256:${createHash("sha256").update(wasmBytes).digest("hex")}` !== rendererBuildDigest || wasmBytes.length !== 2_478_606) throw new Error("Fixed resvg WASM artifact identity mismatch.");
-const runtimePlatformClaim = process.platform === "darwin" && process.arch === "arm64" ? "darwin-arm64"
-  : process.platform === "darwin" && process.arch === "x64" ? "darwin-x64"
-    : process.platform === "linux" && process.arch === "x64" ? "linux-x64-gnu"
-      : process.platform === "win32" && process.arch === "x64" ? "windows-x64"
-        : `${process.platform}-${process.arch}`;
+function currentPlatformClaim() {
+  if (process.platform === "darwin" && process.arch === "arm64") return "darwin-arm64";
+  if (process.platform === "darwin" && process.arch === "x64") return "darwin-x64";
+  if (process.platform === "linux" && process.arch === "x64") return "linux-x64-gnu";
+  if (process.platform === "linux" && process.arch === "arm64") {
+    /** @type {{ header?: { glibcVersionRuntime?: unknown } } | undefined} */
+    const report = process.report?.getReport();
+    const glibc = report?.header?.glibcVersionRuntime;
+    if (typeof glibc === "string" && glibc.length > 0) return "linux-arm64-gnu";
+  }
+  if (process.platform === "win32" && process.arch === "x64") return "windows-x64";
+  return `${process.platform}-${process.arch}`;
+}
+const runtimePlatformClaim = currentPlatformClaim();
 
 export const descriptor = Object.freeze({
   adapterId: "resvg-png-v1",
@@ -24,7 +33,9 @@ export const descriptor = Object.freeze({
   rendererBuildDigest,
   nodeMajor: 22,
   platformClaim: runtimePlatformClaim,
-  qualificationId: "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
+  qualificationId: runtimePlatformClaim === "linux-arm64-gnu"
+    ? "sha256:8231af648d19846c0c89eb07994e91a10abb27684058f906563412327699a305"
+    : "sha256:4bb08e677b87ef1ca74c35c5c22f547cebef4c22a1f98a08a9246fd9397d0f11",
 });
 
 let initialization;
@@ -69,9 +80,11 @@ function normalizeStraightAlpha(rgba8) {
       rgba8[index + 1] = 0;
       rgba8[index + 2] = 0;
     } else if (alpha !== 255) {
-      rgba8[index] = Math.min(255, Math.round(rgba8[index] * 255 / alpha));
-      rgba8[index + 1] = Math.min(255, Math.round(rgba8[index + 1] * 255 / alpha));
-      rgba8[index + 2] = Math.min(255, Math.round(rgba8[index + 2] * 255 / alpha));
+      // Match tiny-skia's PNG encoder operation order at rounding boundaries.
+      const normalizedAlpha = alpha / 255;
+      for (let channel = index; channel < index + 3; channel += 1) {
+        rgba8[channel] = Math.min(255, Math.trunc(rgba8[channel] / normalizedAlpha + 0.5));
+      }
     }
   }
   return rgba8;
@@ -82,7 +95,7 @@ function normalizeStraightAlpha(rgba8) {
  */
 export async function renderSvg(request) {
   if (typeof request !== "object" || request === null || Object.keys(request).sort().join(",") !== "alpha,backgroundRgba,canonicalSvgBytes,colorSpace,fit,height,width") throw new Error("Raster request shape is invalid.");
-  if (process.versions.node.split(".")[0] !== "22" || !["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"].includes(runtimePlatformClaim)) throw new Error("Current runtime tuple is not qualified.");
+  if (process.versions.node.split(".")[0] !== "22" || !["darwin-arm64", "darwin-x64", "linux-x64-gnu", "linux-arm64-gnu", "windows-x64"].includes(runtimePlatformClaim)) throw new Error("Current runtime tuple is not qualified.");
   await initialize();
   const svg = exactCanvasSvg(decodeSvg(request.canonicalSvgBytes), request.width, request.height);
   /** @type {import("@resvg/resvg-wasm").ResvgRenderOptions} */

@@ -329,6 +329,8 @@ export interface SceneReceipt {
 export interface SceneCompileOptions {
   readonly dryRun?: boolean;
   readonly compactPaths?: boolean;
+  /** Return canonicalJson within the editable input budget and bind the receipt to those bytes. */
+  readonly fitInput?: boolean;
 }
 
 export type SceneDiagnostic = import("../diagnostics.js").Diagnostic;
@@ -353,4 +355,6 @@ export type SceneCompileResult = Result<{
   readonly svg: string;
   readonly receipt: SceneReceipt;
   readonly metrics: SceneMetrics;
+  /** Present when fitInput is enabled. The receipt's sourceDigest binds these bytes. */
+  readonly canonicalJson?: string;
 }>;

@@ -311,15 +311,13 @@ export function parsePathData(
     V: 1,
     Z: 0,
   };
-  const numberAtStart = new RegExp(`^${NUMBER_SOURCE}`);
+  const numberAtPosition = new RegExp(NUMBER_SOURCE, "y");
   let position = 0;
   let command: string | undefined;
 
-  const skipWhitespace = (): boolean => {
-    const match = /^[\t\n\r ]+/.exec(normalized.slice(position));
-    if (match === null) return false;
-    position += match[0].length;
-    return true;
+  const skipWhitespace = (): void => {
+    // The parser already normalized SVG whitespace to an ASCII space.
+    while (normalized[position] === " ") position += 1;
   };
 
   const consumeSeparator = (firstArgument: boolean): void => {
@@ -360,20 +358,19 @@ export function parsePathData(
       const next = normalized[position];
       if (next !== undefined && PATH_COMMAND_PATTERN.test(next)) break;
 
-      const values: number[] = [];
+      let invalidArcRadius = false;
       for (let argument = 0; argument < expected; argument += 1) {
         consumeSeparator(setCount === 0 && argument === 0);
-        const rest = normalized.slice(position);
         if (command === "A" && (argument === 3 || argument === 4)) {
-          const flag = rest[0];
+          const flag = normalized[position];
           if (flag !== "0" && flag !== "1") {
             fail(context, invalidPathCode, "Arc flags must be 0 or 1.", location);
           }
-          values.push(Number(flag));
           position += 1;
           continue;
         }
-        const number = numberAtStart.exec(rest);
+        numberAtPosition.lastIndex = position;
+        const number = numberAtPosition.exec(normalized);
         if (number === null) {
           fail(context, invalidPathCode, "Path command has the wrong number of arguments.", location);
         }
@@ -381,11 +378,11 @@ export function parsePathData(
         if (!Number.isFinite(parsed)) {
           fail(context, invalidPathCode, "Path data contains a non-finite number.", location);
         }
-        values.push(parsed);
-        position += number[0].length;
+        if (command === "A" && argument < 2 && parsed < 0) invalidArcRadius = true;
+        position = numberAtPosition.lastIndex;
       }
 
-      if (command === "A" && ((values[0] ?? -1) < 0 || (values[1] ?? -1) < 0)) {
+      if (invalidArcRadius) {
         fail(context, invalidPathCode, "Arc radii must be non-negative.", location);
       }
       setCount += 1;
@@ -396,7 +393,8 @@ export function parsePathData(
       if (following === ",") {
         continue;
       }
-      if (numberAtStart.test(normalized.slice(position))) continue;
+      numberAtPosition.lastIndex = position;
+      if (numberAtPosition.test(normalized)) continue;
       fail(context, invalidPathCode, "Path data contains invalid SVG syntax.", location);
     }
     if (setCount === 0) {

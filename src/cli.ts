@@ -44,12 +44,14 @@ import { checkWorkspace } from "./workspace-check.js";
 import { listWorkspace } from "./workspace-list.js";
 import { previewWorkspace } from "./workspace-preview.js";
 import { runSceneCli } from "./scene-cli.js";
+import { runIllustrationCli } from "./illustration-cli.js";
 
 export const HUMAN_DISPLAY_THRESHOLD = 50;
 const JSON_COMMANDS = new Set<JsonCommand>(["import", "check", "list", "reconcile", "diff", "bundle", "fmt", "preview", "analyze", "migrate", "shard", "derive", "qa", "consumer", "export", "scene"]);
-const COMMANDS = ["import", "bundle", "reconcile", "build", "install", "check", "list", "diff", "fmt", "preview", "analyze", "migrate", "shard", "derive", "qa", "consumer", "export", "evidence", "scene"] as const;
+const COMMANDS = ["import", "bundle", "reconcile", "build", "install", "check", "list", "diff", "fmt", "preview", "analyze", "migrate", "shard", "derive", "qa", "consumer", "export", "evidence", "scene", "illustration"] as const;
 
 const USAGE = `Usage:
+  tfsb illustration --help
   tfsb import <directory-or-archive> --root <project-root> [--brand-package] [--source-map <file> --collection <id> ...] [--shard-manifest <file> | --select <path> ...] [--schema 1|2] [--manifest] [--companion <path> ...] [--record-provenance] [--normalize exact-common] [--normalization-map <file>] [--dry-run] [--json]
   tfsb shard <directory> --source-map <file> --collection <id> --paths-file <utf8-lf-file> [--manifest-output <absent-file>] [--json]
   tfsb bundle [--root <path>] --output <project-relative.zip> [--brand-package] [--asset <asset-id> ...] [--companion <file> ...] [--force] [--dry-run] [--json]
@@ -201,6 +203,9 @@ export async function runCli(argv: readonly string[], cwd = process.cwd(), io: C
   if (!(COMMANDS as readonly string[]).includes(command)) { io.stderr(`USAGE_ERROR: Unknown command '${command}'.\n${USAGE}\n`); return 1; }
   if (command === "scene") {
     return await runSceneCli(rest, cwd, io);
+  }
+  if (command === "illustration") {
+    return await runIllustrationCli(rest, cwd, io);
   }
   let jsonMode = false;
   try {

@@ -7,6 +7,8 @@ const box = (id: string, x: number) => ({ type: "rect", id, x, y: 0, width: 10, 
 describe("scene lowering acceptance challenges", () => {
   it("spells validated arc flags and exponent operands without ambiguity", () => {
     expect(canonicalPathData("M-0 1e-7 A2 2 0 011 2")).toBe("M 0 0.0000001 A 2 2 0 0 1 1 2");
+    const result = compileScene(base([{ type: "path", d: "M-0 1e-7 A2 2 0 011 2 3 3 0 104 5z" }]));
+    expect(result).toMatchObject({ ok: true, value: { metrics: { pathSegmentCount: 4 } } });
   });
   it("keeps node labels within the transformed opacity group and labels their geometry", () => {
     const result = compileScene(base([{ type: "diagramNode", id: "node", x: 0, y: 0, width: 40, height: 20, label: "A < B", transform: [{ type: "translate", x: 10 }], presentation: { opacity: 0.5 } }]));
