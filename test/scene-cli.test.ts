@@ -146,6 +146,38 @@ const sampleInvalidScene = {
 };
 
 describe("tfsb scene CLI integration", () => {
+  it.each([
+    ["rasterize", "--output-width", "512"],
+    ["export-webp", "--output-width", "0"],
+    ["export-webp", "--output-width", "12.5"],
+    ["export-webp", "--output-width", "9007199254740992"],
+    ["export-webp", "--output-width", "512", "--output-width", "256"],
+  ])("refuses invalid or misplaced WebP width (%s %s)", async (action, ...options) => {
+    const run = capture();
+    expect(await runSceneCli([
+      action, "missing.svg", "--expect-svg-digest", "sha256:" + "0".repeat(64),
+      "--output", "output.webp", ...options, "--json",
+    ], "/tmp", run.io)).toBe(1);
+    expect(JSON.parse(run.stdout())).toMatchObject({ diagnostics: [{ code: "USAGE_ERROR" }] });
+  });
+
+  it("refuses WebP widths that enlarge the artboard or require a fractional height", async () => {
+    const dir = await makeTestDir();
+    await writeFile(join(dir, "scene.json"), JSON.stringify(sampleValidScene));
+    const compile = capture();
+    expect(await runSceneCli(["compile", "scene.json", "--output", "source.svg", "--json"], dir, compile.io)).toBe(0);
+    const { svgDigest } = JSON.parse(compile.stdout()).data.receipt;
+    for (const width of ["701", "1442"]) {
+      const run = capture();
+      expect(await runSceneCli([
+        "export-webp", "source.svg", "--expect-svg-digest", svgDigest, "--output-width", width,
+        "--output", "output.webp", "--json",
+      ], dir, run.io)).toBe(1);
+      expect(JSON.parse(run.stdout())).toMatchObject({ data: null, diagnostics: [{ code: "SCENE_WEBP_SIZE_INVALID" }] });
+      await expect(access(join(dir, "output.webp"))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+  });
+
   it("requires an exact reviewed SVG digest before exporting WebP", async () => {
     const dir = await makeTestDir();
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"><path d="M 0 0 L 4 4" /></svg>';

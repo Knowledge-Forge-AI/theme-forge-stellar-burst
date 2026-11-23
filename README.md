@@ -102,6 +102,10 @@ qualified `magick` executable on the host. The export receipt binds the
 source SVG, renderer, PNG, recipe and WebP bytes. Output files must be
 new paths. Keep the SVG and export receipt alongside the delivery file.
 
+Use `--output-width 512` with a new output path to export a narrower
+WebP. Its height must be a whole number of pixels at the source ratio.
+The option retains the same SVG and PNG digests in the export receipt.
+
 To reopen the reviewed SVG for editing, pass the matching digest to
 `scene import-svg`. Compile edits to a new SVG and export against its
 new digest. If the source was compiled with `--compact-paths`, pass that

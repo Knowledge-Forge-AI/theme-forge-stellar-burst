@@ -258,7 +258,13 @@ test("adds a finer underpaint inside the shared opacity group for large native t
   const group = scene.elements.find(element => element.id === "trace-near-opaque");
   if (group?.type !== "group") throw new Error("Expected a near-opaque group");
   expect(group.presentation).toEqual({ opacity: 253 / 255 });
-  expect(group.children.some(element => element.id?.startsWith("trace-alpha-underpaint-"))).toBe(true);
+  const nearLeftPaint = group.children.find(element => element.id?.startsWith("trace-alpha-underpaint-")
+    && element.presentation?.fill?.type === "solid" && element.presentation.fill.color === "#dc2814");
+  // The fill starts at x = 4 and the bevel reaches x = 3, the first near-opaque column.
+  expect(nearLeftPaint).toMatchObject({
+    type: "path", d: "M1 1H4V149H1Z", transform: [{ type: "scale", x: 4 }],
+    presentation: { strokeWidth: 0.5, strokeLinejoin: "bevel" },
+  });
   expect(group.children.some(element => element.id?.startsWith("trace-alpha-fine-underpaint-"))).toBe(true);
   expect(group.children.every(element => element.presentation?.fillOpacity === undefined)).toBe(true);
   const highDetail = traceRasterScene(source, { preserveAlpha: true });
