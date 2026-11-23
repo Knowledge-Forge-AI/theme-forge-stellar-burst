@@ -56,14 +56,11 @@ export async function retainIllustrationDirectories(pathInput: string): Promise<
   try {
     for (const part of ["", ...parts]) {
       if (part) cursor = join(cursor, part);
-      const before = await lstat(cursor);
-      if (!before.isDirectory() || before.isSymbolicLink()) unsafe();
       const handle = await open(cursor, constants.O_RDONLY | DIRECTORY | NOFOLLOW | NONBLOCK);
       try {
         const opened = await handle.stat();
         const named = await lstat(cursor);
         if (!opened.isDirectory() || named.isSymbolicLink() || !named.isDirectory()
-            || !sameIllustrationDirectory(identity(before), identity(opened))
             || !sameIllustrationDirectory(identity(opened), identity(named))) unsafe();
         result.push({ path: cursor, handle, identity: identity(opened) });
       } catch (error) { await handle.close().catch(() => undefined); throw error; }
@@ -101,12 +98,12 @@ export async function retainIllustrationFile(pathInput: string, maximum: number)
   if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 32 * 1048576) throw new IllustrationCustodyError("ILLUSTRATION_RESOURCE_LIMIT");
   let handle: FileHandle | undefined;
   try {
-    const before = await lstat(path);
-    if (!before.isFile() || before.isSymbolicLink()) unsafe();
-    if (before.size > maximum) throw new IllustrationCustodyError("ILLUSTRATION_RESOURCE_LIMIT");
     handle = await open(path, constants.O_RDONLY | NOFOLLOW | NONBLOCK);
     const openedBefore = await handle.stat();
-    if (!openedBefore.isFile() || !sameFileIdentity(identity(before), identity(openedBefore))) changed();
+    const namedBefore = await lstat(path);
+    if (!openedBefore.isFile() || !namedBefore.isFile() || namedBefore.isSymbolicLink()) unsafe();
+    if (!sameFileIdentity(identity(namedBefore), identity(openedBefore))) changed();
+    if (openedBefore.size > maximum) throw new IllustrationCustodyError("ILLUSTRATION_RESOURCE_LIMIT");
     const bytes = await readExactBuffer(handle, openedBefore.size, 0, CTX, maximum, "ILLUSTRATION_FILE_CHANGED", "Illustration file changed while reading.");
     const openedAfter = await handle.stat();
     const namedAfter = await lstat(path);

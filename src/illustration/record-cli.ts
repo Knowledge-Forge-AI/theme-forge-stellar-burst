@@ -321,9 +321,12 @@ async function publishOutput(path: string, bytes: Uint8Array): Promise<void> {
     directories = await retainIllustrationDirectories(dirname(path));
     const parent = directories.at(-1);
     if (parent === undefined) fail("OUTPUT_TARGET_INVALID");
-    const existing = await lstat(path).catch(() => undefined);
-    if (existing !== undefined) fail("OUTPUT_TARGET_EXISTS");
-    handle = await open(path, fsConstants.O_RDWR | fsConstants.O_CREAT | fsConstants.O_EXCL | NOFOLLOW, PRIVATE_MODE);
+    try {
+      handle = await open(path, fsConstants.O_RDWR | fsConstants.O_CREAT | fsConstants.O_EXCL | NOFOLLOW, PRIVATE_MODE);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") fail("OUTPUT_TARGET_EXISTS");
+      throw error;
+    }
     await handle.chmod(PRIVATE_MODE);
     const created = await handle.stat();
     createdIdentity = nodeIdentity(created);

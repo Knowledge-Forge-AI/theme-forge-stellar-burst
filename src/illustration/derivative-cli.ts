@@ -20,6 +20,7 @@ import {
 } from "./derivative.js";
 
 const NOFOLLOW = constants.O_NOFOLLOW ?? 0;
+const NONBLOCK = constants.O_NONBLOCK ?? 0;
 const DIRECTORY = constants.O_DIRECTORY ?? 0;
 const PRIVATE_MODE = 0o600;
 const READ_CHUNK_BYTES = 64 * 1024;
@@ -241,13 +242,13 @@ async function validateDirectoryComponents(path: string, code: "RECIPE_INPUT_INV
 
 async function readBoundedNoFollow(path: string, maximum: number, code: "RECIPE_INPUT_INVALID" | "SOURCE_INPUT_INVALID"): Promise<Uint8Array> {
   await validateDirectoryComponents(dirname(path), code);
-  const before = await lstat(path).catch(() => undefined);
-  if (before === undefined || before.isSymbolicLink() || !before.isFile() || before.size > maximum) fail(code);
   let handle: FileHandle | undefined;
   try {
-    handle = await open(path, constants.O_RDONLY | NOFOLLOW);
+    handle = await open(path, constants.O_RDONLY | NOFOLLOW | NONBLOCK);
     const openedBefore = await handle.stat();
-    if (!openedBefore.isFile() || openedBefore.isSymbolicLink() || !sameSnapshot(snapshotIdentity(before), snapshotIdentity(openedBefore))) fail(code);
+    const namedBefore = await lstat(path);
+    if (!openedBefore.isFile() || !namedBefore.isFile() || namedBefore.isSymbolicLink() || openedBefore.size > maximum
+      || !sameSnapshot(snapshotIdentity(namedBefore), snapshotIdentity(openedBefore))) fail(code);
     const chunks: Buffer[] = [];
     let total = 0;
     while (true) {
@@ -319,14 +320,13 @@ async function readRecipe(path: string): Promise<RasterDerivativeRecipeV1> {
 }
 
 async function openOutputParent(path: string): Promise<OutputParent> {
-  await validateDirectoryComponents(path, "OUTPUT_TARGET_INVALID");
-  const before = await lstat(path).catch(() => undefined);
-  if (before === undefined || before.isSymbolicLink() || !before.isDirectory()) fail("OUTPUT_TARGET_INVALID");
+  await validateDirectoryComponents(dirname(path), "OUTPUT_TARGET_INVALID");
   let handle: FileHandle | undefined;
   try {
-    handle = await open(path, constants.O_RDONLY | DIRECTORY | NOFOLLOW);
+    handle = await open(path, constants.O_RDONLY | DIRECTORY | NOFOLLOW | NONBLOCK);
     const opened = await handle.stat();
-    if (!opened.isDirectory() || opened.isSymbolicLink() || !sameNode(identity(before), identity(opened))) fail("OUTPUT_TARGET_INVALID");
+    const named = await lstat(path);
+    if (!opened.isDirectory() || !named.isDirectory() || named.isSymbolicLink() || !sameNode(identity(named), identity(opened))) fail("OUTPUT_TARGET_INVALID");
     return { path, handle, identity: identity(opened) };
   } catch (error) {
     await handle?.close().catch(() => undefined);
@@ -374,7 +374,6 @@ async function publishOutput(path: string, bytes: Uint8Array): Promise<void> {
   let handle: FileHandle | undefined;
   let outputIdentity: NodeIdentity | undefined;
   try {
-    if (await lstat(path).catch(() => undefined) !== undefined) fail("OUTPUT_TARGET_EXISTS");
     try {
       handle = await open(path, constants.O_RDWR | constants.O_CREAT | constants.O_EXCL | NOFOLLOW, PRIVATE_MODE);
     } catch (error) {

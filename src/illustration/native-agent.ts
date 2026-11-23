@@ -483,8 +483,6 @@ interface ReadFileOptions {
 async function readRegularFile(path: string, maximum: number, options: ReadFileOptions): Promise<Buffer> {
   let handle: Awaited<ReturnType<typeof open>> | undefined;
   try {
-    const preOpen = await lstat(path).catch(() => undefined);
-    if (preOpen === undefined || preOpen.isSymbolicLink() || !preOpen.isFile()) throw new NativeIllustrationAgentError(options.code, "Native illustration file is not regular.");
     handle = await open(path, fsConstants.O_RDONLY | NOFOLLOW | NONBLOCK);
     const before = await handle.stat();
     const namedBefore = await lstat(path).catch(() => undefined);
@@ -497,7 +495,9 @@ async function readRegularFile(path: string, maximum: number, options: ReadFileO
     const bytes = await readHandleBounded(handle, maximum, options.code);
     const after = await handle.stat();
     const namedAfter = await lstat(path).catch(() => undefined);
-    if (namedAfter === undefined || namedAfter.isSymbolicLink() || !namedAfter.isFile() || !sameFileIdentity(namedAfter, after) || after.size !== before.size) throw new NativeIllustrationAgentError(options.code, "Native illustration file changed while it was being read.");
+    if (namedAfter === undefined || namedAfter.isSymbolicLink() || !namedAfter.isFile()
+        || !sameFileIdentity(namedAfter, after) || after.size !== before.size
+        || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs) throw new NativeIllustrationAgentError(options.code, "Native illustration file changed while it was being read.");
     if (options.requirePrivateMode && (namedAfter.mode & 0o777) !== PRIVATE_FILE_MODE) throw new NativeIllustrationAgentError(options.code, "Native illustration file mode is not private.");
     if (options.requireOwnedSingleLink && (after.nlink !== 1 || (uid !== undefined && after.uid !== uid))) throw new NativeIllustrationAgentError(options.code, "Native illustration file is not a single-link file owned by this process user.");
     if (options.protectPrivateMode) await handle.chmod(PRIVATE_FILE_MODE);

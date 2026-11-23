@@ -1,4 +1,4 @@
-import { chmod, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
@@ -80,10 +80,18 @@ describe("managed saved-raster consumer", () => {
     expect(await readFile(join(f.site, "public/hero.png"))).toEqual(f.art.bytes);
     expect(await readFile(join(f.site, "index.html"))).toEqual(before);
     const lockPath = join(f.site, ILLUSTRATION_LOCK_FILENAME);
-    const lock = await readFile(lockPath); const inode = (await lstat(lockPath)).ino;
+    async function lockSnapshot() {
+      const handle = await open(lockPath, "r");
+      try {
+        return { bytes: await handle.readFile(), inode: (await handle.stat()).ino };
+      } finally {
+        await handle.close();
+      }
+    }
+    const lockBefore = await lockSnapshot();
     const again = await planIllustrationInstall({ root: f.site, sourceDirectory: f.carrier });
     expect((await executeIllustrationInstallPlan(again)).writtenOutputs).toBe(0);
-    expect(await readFile(lockPath)).toEqual(lock); expect((await lstat(lockPath)).ino).toBe(inode);
+    expect(await lockSnapshot()).toEqual(lockBefore);
     expect((await readdir(f.site)).some(name => name === ".tfsb.lock" || name.includes("transaction-"))).toBe(false);
     await expect(executeIllustrationInstallPlan(first)).rejects.toMatchObject({ code: "ILLUSTRATION_INVALID_PLAN" });
   });
