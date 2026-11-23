@@ -546,15 +546,15 @@ function sampleAlphaCell(source: PixelSource, cols: number, rows: number, x: num
   };
 }
 
-function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number) {
+function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number, inset: number) {
   const width = Math.ceil(cols / cell), height = Math.ceil(rows / cell);
   const samples = makeSamples(width, height, 6);
   const keep = new Uint8Array(width * height);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // Keep a two-cell margin from lower-alpha pixels and the artboard boundary.
-      const left = Math.floor(x * cols / width) - 2, right = Math.ceil((x + 1) * cols / width) + 2;
-      const top = Math.floor(y * rows / height) - 2, bottom = Math.ceil((y + 1) * rows / height) + 2;
+      // Keep at least the stroke radius between the fill and any lower-alpha pixels or artboard edge.
+      const left = Math.floor(x * cols / width) - inset, right = Math.ceil((x + 1) * cols / width) + inset;
+      const top = Math.floor(y * rows / height) - inset, bottom = Math.ceil((y + 1) * rows / height) + inset;
       if (left < 0 || top < 0 || right > cols || bottom > rows) continue;
       let eligible = true;
       for (let row = top; row < bottom && eligible; row++) {
@@ -655,7 +655,10 @@ function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBud
     return scene;
   }
   const detail = contoursForLayer("alpha", pixels, cols, rows, palette);
-  const paint = interiorUnderpaint(source, alphas, cols, rows, 4);
+  const nativeLarge = maxEdge === NATIVE_TRANSPARENT_EDGE && Math.max(cols, rows) > MAX_TRACE_EDGE;
+  // Both bevel strokes extend at most one trace cell after scaling.
+  const inset = nativeLarge ? 1 : 2;
+  const paint = interiorUnderpaint(source, alphas, cols, rows, 4, inset);
   const nearOpaque = mappings[16];
   if (paint && nearOpaque) {
     try {
@@ -681,9 +684,9 @@ function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBud
         ]);
       }
 
-      if (maxEdge === NATIVE_TRANSPARENT_EDGE && Math.max(cols, rows) > MAX_TRACE_EDGE) {
+      if (nativeLarge) {
         try {
-          const fine = interiorUnderpaint(source, alphas, cols, rows, 3);
+          const fine = interiorUnderpaint(source, alphas, cols, rows, 3, inset);
           if (fine) {
             const sx = cols / fine.width, sy = rows / fine.height;
             const fineLayer = contoursForLayer("alpha-fine-underpaint", fine.pixels, fine.width, fine.height, fine.palette,

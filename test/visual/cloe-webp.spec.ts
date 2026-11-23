@@ -131,7 +131,7 @@ for (const detail of [null, "--high-detail", "--native-detail"] as const) {
         });
         traceReceipt = traced;
       }
-      const { data: compiled } = await scene(["compile", "cloe.scene.json", "--output", "cloe.svg"]);
+      const { data: compiled } = await scene(["compile", "cloe.scene.json", "--illustration-source", "--output", "cloe.svg"]);
       const svg = await readFile(info.outputPath("cloe.svg"));
       expect(svg.byteLength).toBeLessThan(16_000_000);
       expect(svg.toString()).toContain(nativeDetail ? 'viewBox="0 0 1024 1536"' : 'viewBox="0 0 768 1152"');
@@ -166,6 +166,19 @@ for (const detail of [null, "--high-detail", "--native-detail"] as const) {
           receipt: { sourceSha256: rasterized.pngDigest, outputSha256: sha256(directWebp), mime: "image/webp" },
         });
         expect(direct.receipt.recipeDigest).toBe(direct.recipe.recipeDigest);
+        const { data: narrow } = await scene([
+          "export-webp", "cloe.svg", "--output", "responsive.webp", "--expect-svg-digest", sha256(svg),
+          "--output-width", "512",
+        ]);
+        const narrowWebp = await readFile(info.outputPath("responsive.webp"));
+        expect(narrow).toMatchObject({
+          svgDigest: direct.svgDigest, pngDigest: direct.pngDigest,
+          rendererBuildDigest: direct.rendererBuildDigest, rasterWidth: width, rasterHeight: height,
+          recipe: { sourceSha256: direct.pngDigest, output: { width: 512, height: 768, quality: 94 } },
+          receipt: { width: 512, height: 768, outputSha256: sha256(narrowWebp), mime: "image/webp" },
+        });
+        expect(narrow.receipt.recipeDigest).toBe(narrow.recipe.recipeDigest);
+        expect(narrow.recipe.recipeDigest).not.toBe(direct.recipe.recipeDigest);
         const clobber = await scene([
           "export-webp", "cloe.svg", "--output", "direct.webp", "--expect-svg-digest", sha256(svg),
         ], 1);

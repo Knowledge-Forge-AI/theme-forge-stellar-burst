@@ -3,10 +3,9 @@ import {
   fail,
   type DiagnosticContext,
 } from "../diagnostics.js";
-import { countCanonicalPathSegments as countPathSegments } from "./path-canonical.js";
+import { canonicalPathData, canonicalPathWithCount, countCanonicalPathSegments as countPathSegments } from "./path-canonical.js";
 import { isLocalId, LOCAL_ID_PATTERN, parseHexColor, parsePathData } from "../primitives.js";
 import type { HexColor } from "../types.js";
-import type { Result } from "./types.js";
 import {
   FORGE_GRID_CELL_WIDTH,
   getGlyph,
@@ -53,6 +52,7 @@ import type {
   SceneMetrics,
   SceneProfile,
   SceneProvenance,
+  SceneValidationResult,
   SymbolDef,
   TransformOperation,
   UseElement,
@@ -663,6 +663,7 @@ function validateElement(
     glyphCount: number;
     pathSegmentCount: number;
     pathSegmentCounts: Map<string, number>;
+    countPath: (d: string) => number;
     maxDepth: number;
     authoredElementCount: number;
   },
@@ -756,10 +757,10 @@ function validateElement(
           `${location}.d`,
         );
       }
-      parsePathData(d, ctx, `${location}.d`);
       let segs = state.pathSegmentCounts.get(d);
       if (segs === undefined) {
-        segs = countPathSegments(d);
+        parsePathData(d, ctx, `${location}.d`);
+        segs = state.countPath(d);
         state.pathSegmentCounts.set(d, segs);
       }
       state.pathSegmentCount += segs;
@@ -1758,10 +1759,41 @@ function computeSymbolCosts(
 /**
  * Validates a complete VectorScene. Accepts `unknown`.
  */
-export function validateScene(input: unknown): Result<{
-  readonly scene: VectorScene;
-  readonly metrics: SceneMetrics;
-}> {
+export function validateScene(input: unknown): SceneValidationResult {
+  return validateScenePaths(input, new Map());
+}
+
+/** Validate complete scenes and retain bounded canonical spelling for their output pass. */
+export function validateSceneForOutput(
+  input: unknown,
+  revise?: (scene: VectorScene, metrics: SceneMetrics) => unknown,
+): { readonly result: SceneValidationResult; readonly formatPath: (d: string) => string } {
+  const pathSegmentCounts = new Map<string, number>();
+  const canonicalPaths = new Map<string, string>();
+  const cacheLimit = 16 * 1024 * 1024;
+  let cachedBytes = 0;
+  const countPath = (d: string): number => {
+    if (cachedBytes >= cacheLimit) return countPathSegments(d);
+    const { data, segments } = canonicalPathWithCount(d);
+    if (cachedBytes + data.length <= cacheLimit) {
+      // Canonical path spelling is ASCII. Only unique validated strings are kept.
+      canonicalPaths.set(d, data);
+      cachedBytes += data.length;
+    }
+    return segments;
+  };
+  const original = validateScenePaths(input, pathSegmentCounts, countPath);
+  const result = original.ok && revise
+    ? validateScenePaths(revise(original.value.scene, original.value.metrics), pathSegmentCounts, countPath)
+    : original;
+  return { result, formatPath: (d) => canonicalPaths.get(d) ?? canonicalPathData(d) };
+}
+
+function validateScenePaths(
+  input: unknown,
+  pathSegmentCounts: Map<string, number>,
+  countPath = countPathSegments,
+): SceneValidationResult {
   const ctx: DiagnosticContext = {
     operation: "validate",
     domain: "scene" as any,
@@ -1852,7 +1884,8 @@ export function validateScene(input: unknown): Result<{
       seenIds: new Set<string>(),
       glyphCount: 0,
       pathSegmentCount: 0,
-      pathSegmentCounts: new Map<string, number>(),
+      pathSegmentCounts,
+      countPath,
       maxDepth: 1,
       authoredElementCount: 0,
     };
