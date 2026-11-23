@@ -131,7 +131,7 @@ for (const detail of [null, "--high-detail", "--native-detail"] as const) {
         });
         traceReceipt = traced;
       }
-      const { data: compiled } = await scene(["compile", "cloe.scene.json", "--output", "cloe.svg"]);
+      const { data: compiled } = await scene(["compile", "cloe.scene.json", "--illustration-source", "--output", "cloe.svg"]);
       const svg = await readFile(info.outputPath("cloe.svg"));
       expect(svg.byteLength).toBeLessThan(16_000_000);
       expect(svg.toString()).toContain(nativeDetail ? 'viewBox="0 0 1024 1536"' : 'viewBox="0 0 768 1152"');

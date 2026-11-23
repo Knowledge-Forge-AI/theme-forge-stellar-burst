@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 
-import { assertRasterSvgIsSelfContained, decodeStrictPng, loadRasterCapability } from "./brand/raster-capability.js";
+import { assertRasterSvgIsSelfContained, decodeStrictPng, loadRasterCapability, RASTER_MAX_SVG_BYTES } from "./brand/raster-capability.js";
 import { DiagnosticError, diagnostic, type Diagnostic } from "./diagnostics.js";
 import {
   createJsonEnvelope,
@@ -44,7 +44,7 @@ import { MAX_TRACE_SOURCE_PIXELS } from "./scene/trace-raster.js";
 export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
-  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
+  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]
   tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
   tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--compact-paths] [--viewbox-size] [--json]
@@ -64,6 +64,7 @@ Options:
   --preserve-alpha      Trace transparency as editable paths with fill opacity
   --exclude-detail <file>  Omit native detail cells inside a convex source-pixel polygon
   --compact-paths       Remove optional SVG path spacing when compiling
+  --illustration-source  Limit compiled SVG for illustration export to 16,000,000 bytes
   --svg-source          Use exact reviewed canonical SVG bytes for render or import
   --viewbox-size        Rasterize reviewed SVG at its whole-pixel viewBox size
   --expect-svg-digest <sha256>  Require the SVG digest to match before rendering or importing
@@ -82,6 +83,7 @@ interface ParsedSceneArgs {
   readonly palette?: string | undefined;
   readonly edits?: string | undefined;
   readonly compactPaths?: boolean;
+  readonly illustrationSource?: boolean;
   readonly svgSource?: boolean;
   readonly viewBoxSize?: boolean;
   readonly expectedSvgDigest?: string;
@@ -147,6 +149,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let edits: string | undefined;
   let dryRun = false;
   let compactPaths = false;
+  let illustrationSource = false;
   let excludeDetail: string | undefined;
   let preserveAlpha = false;
   let traceMode: ParsedSceneArgs["traceMode"];
@@ -173,6 +176,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "--dry-run cannot be repeated." };
       }
       dryRun = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--illustration-source") {
+      if (action !== "compile" || illustrationSource) {
+        return { action, dryRun, json, error: "Use --illustration-source once with scene compile." };
+      }
+      illustrationSource = true;
       i += 1;
       continue;
     }
@@ -375,6 +387,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     palette,
     edits,
     compactPaths,
+    illustrationSource,
     svgSource,
     viewBoxSize,
     ...(expectedSvgDigest === undefined ? {} : { expectedSvgDigest }),
@@ -464,7 +477,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, svgSource, viewBoxSize, expectedSvgDigest, traceMode, excludeDetail, preserveAlpha = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, expectedSvgDigest, traceMode, excludeDetail, preserveAlpha = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -888,6 +901,13 @@ export async function runSceneCli(
         const { receipt, svg } = result.value;
         assertExpectedSvg(receipt.svgDigest);
         return await rasterizeSvg(Buffer.from(svg, "utf8"), receipt.svgDigest, receipt.artboard.width, receipt.artboard.height);
+      }
+      if (illustrationSource && Buffer.byteLength(result.value.svg, "utf8") > RASTER_MAX_SVG_BYTES) {
+        throw new DiagnosticError(diagnostic(
+          ctx,
+          "SCENE_ILLUSTRATION_SVG_LIMIT",
+          "Illustration SVG exceeds the 16,000,000-byte source limit.",
+        ));
       }
       const published = await publishSceneSvg(resolvedOutput, result.value.svg, dryRun);
 

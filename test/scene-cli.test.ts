@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli.js";
 import { runSceneCli } from "../src/scene-cli.js";
+import { resolvePreset } from "../src/scene/constants.js";
 import type { JsonResultEnvelope, SceneJsonData, SceneValidateJsonData } from "../src/json.js";
 
 const roots: string[] = [];
@@ -68,6 +69,56 @@ const sampleValidScene = {
     },
   ],
 };
+
+it("enforces the exact UTF-8 byte cap on illustration compilations before publishing", async () => {
+  const dir = await makeTestDir();
+  const source = join(dir, "scene.json");
+  const scene = {
+    ...sampleValidScene,
+    artboard: resolvePreset("hero"),
+    accessibility: { mode: "labelled", title: `${"x".repeat(80)}é` },
+    // Exponent notation keeps the JSON small while producing real SVG path data.
+    elements: [
+      ...Array.from({ length: 317 }, (_, i) => ({
+        type: "path", id: `p${i}`, d: "M0 0" + "l1e-80 1e-80".repeat(300),
+      })),
+      { type: "path", id: "tail", d: "M0 0" + "l1e-80 1e-80".repeat(80) },
+    ],
+  };
+  await writeFile(source, JSON.stringify(scene), "utf8");
+  const accepted = capture();
+  expect(await runSceneCli(
+    ["compile", "scene.json", "--illustration-source", "--output", "exact.svg", "--json"], dir, accepted.io,
+  )).toBe(0);
+  expect((await readFile(join(dir, "exact.svg"))).byteLength).toBe(16_000_000);
+
+  scene.accessibility.title += "x";
+  await writeFile(source, JSON.stringify(scene), "utf8");
+  for (const dryRun of [[], ["--dry-run"]]) {
+    const rejected = capture();
+    expect(await runSceneCli(
+      ["compile", "scene.json", "--illustration-source", "--output", "over.svg", "--json", ...dryRun], dir, rejected.io,
+    )).toBe(1);
+    expect(JSON.parse(rejected.stdout())).toMatchObject({
+      data: null, diagnostics: [{ code: "SCENE_ILLUSTRATION_SVG_LIMIT" }],
+    });
+    await expect(access(join(dir, "over.svg"))).rejects.toMatchObject({ code: "ENOENT" });
+  }
+
+  const generic = capture();
+  expect(await runSceneCli(["compile", "scene.json", "--output", "generic.svg"], dir, generic.io)).toBe(0);
+  expect((await readFile(join(dir, "generic.svg"))).byteLength).toBe(16_000_001);
+});
+
+it.each([
+  ["compile", "--illustration-source", "--illustration-source"],
+  ["compile", "--illustration-source=true"],
+  ["validate", "--illustration-source"],
+])("rejects invalid illustration-source arguments (%s %s)", async (action, ...flags) => {
+  const cap = capture();
+  expect(await runSceneCli([action, ...flags, "missing.json", "--json"], "/tmp", cap.io)).toBe(1);
+  expect(JSON.parse(cap.stdout()).diagnostics[0].code).toBe("USAGE_ERROR");
+});
 
 const sampleInvalidScene = {
   schema: "tfsb.vector-scene-v1",
@@ -860,7 +911,7 @@ describe("tfsb scene CLI integration", () => {
       expect(await runCli(["--help"], "/tmp", cap.io)).toBe(0);
       expect(cap.stdout()).toContain("tfsb scene validate <json> [--json]");
       expect(cap.stdout()).toContain("tfsb scene inspect <json> [--json]");
-      expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]");
+      expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]");
     });
   });
 });

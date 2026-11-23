@@ -80,7 +80,7 @@ const USAGE = `Usage:
   tfsb evidence inspect <packet> [--json]
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--json]
-  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--dry-run] [--json]
+  tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--json]
 
 Options:

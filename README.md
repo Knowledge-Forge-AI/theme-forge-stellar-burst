@@ -79,12 +79,13 @@ Start with a static, metadata-free WebP or a PNG at the intended artboard
 size. Use `--native-detail` for fine artwork and add `--preserve-alpha`
 for a transparent reference. WebP tracing uses the qualified `magick`
 executable. For a PNG reference, use `scene trace-png`.
-The default trace balances detail and size. The reviewed SVG import and
-WebP export accept at most 16,000,000 SVG bytes.
+The default trace balances detail and size. Use `--illustration-source`
+to enforce the 16,000,000-byte cap when compiling. Reviewed SVG import and
+WebP export apply the same cap.
 
 ```sh
 tfsb scene trace-webp reference.webp --native-detail --output artwork.scene.json
-tfsb scene compile artwork.scene.json --output artwork.svg --json > compile.json
+tfsb scene compile artwork.scene.json --illustration-source --output artwork.svg --json > compile.json
 ```
 
 Review the SVG. Export it with the digest from that compilation:
@@ -116,7 +117,7 @@ existing path `id` and its replacement SVG path data `d`.
 
 ```sh
 tfsb scene revise reopened.scene.json --edits edits.json --output revised.scene.json
-tfsb scene compile revised.scene.json --output revised.svg --json > revised-compile.json
+tfsb scene compile revised.scene.json --illustration-source --output revised.svg --json > revised-compile.json
 ```
 
 ## New-project quick start
