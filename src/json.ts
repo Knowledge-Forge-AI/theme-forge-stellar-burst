@@ -190,6 +190,7 @@ export interface SceneReviseJsonData {
 }
 
 export interface SceneTracePngJsonData {
+  readonly colorFit?: "source-pixel-median-v1";
   readonly schema: "tfsb.scene-result-v1";
   readonly action: "trace-png";
   readonly valid: true;

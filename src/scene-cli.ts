@@ -49,8 +49,8 @@ export const SCENE_USAGE = `Usage:
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
   tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--output-width <pixels>] [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--json]
-  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--fit-source-colors] [--json]
+  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--fit-source-colors] [--json]
   tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
@@ -61,6 +61,7 @@ Options:
   --regular             Use the smaller regular trace for ordinary display sizes
   --high-detail         Trace sharp edges at finer resolution (default)
   --native-detail       Prioritize fine artwork at the raster export size
+  --fit-source-colors  Fit fills to source pixels on a matching opaque native grid
   --preserve-alpha      Trace transparency as editable paths with fill opacity
   --exclude-detail <file>  Omit native detail cells inside a convex source-pixel polygon
   --compact-paths       Remove optional SVG path spacing when compiling
@@ -91,6 +92,7 @@ interface ParsedSceneArgs {
   readonly expectedSvgDigest?: string;
   readonly excludeDetail?: string;
   readonly preserveAlpha?: boolean;
+  readonly fitSourceColors?: boolean;
   readonly traceMode?: "regular" | "high-detail" | "native-detail";
   readonly dryRun: boolean;
   readonly json: boolean;
@@ -155,6 +157,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let illustrationSource = false;
   let excludeDetail: string | undefined;
   let preserveAlpha = false;
+  let fitSourceColors = false;
   let traceMode: ParsedSceneArgs["traceMode"];
   const positionals: string[] = [];
   let i = 0;
@@ -197,6 +200,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "Use one detail option with scene trace-png or trace-webp." };
       }
       traceMode = arg === "--regular" ? "regular" : arg === "--high-detail" ? "high-detail" : "native-detail";
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--fit-source-colors") {
+      if (!trace || fitSourceColors) {
+        return { action, dryRun, json, error: "Use --fit-source-colors once with scene trace-png or trace-webp." };
+      }
+      fitSourceColors = true;
       i += 1;
       continue;
     }
@@ -387,6 +399,9 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     return { action, dryRun, json, error: "--viewbox-size requires --svg-source." };
   }
 
+  if (fitSourceColors && (traceMode !== "native-detail" || preserveAlpha)) {
+    return { action, dryRun, json, error: "--fit-source-colors requires --native-detail and an opaque raster." };
+  }
   if (excludeDetail !== undefined && traceMode !== "native-detail") {
     return { action, dryRun, json, error: "--exclude-detail requires --native-detail." };
   }
@@ -409,6 +424,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     ...(excludeDetail === undefined ? {} : { excludeDetail }),
     ...(traceMode === undefined ? {} : { traceMode }),
     preserveAlpha,
+    fitSourceColors,
     dryRun,
     json,
   };
@@ -492,7 +508,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, expectedSvgDigest, traceMode, excludeDetail, preserveAlpha = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, expectedSvgDigest, traceMode, excludeDetail, preserveAlpha = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -742,17 +758,19 @@ export async function runSceneCli(
       let scene;
       try {
         scene = traceRasterScene(decodeStrictPng(decodedWebp?.bytes ?? bytes), {
-          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha,
+          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, fitSourceColors,
         });
       } catch {
         throw new DiagnosticError(diagnostic(
           { operation: "import", domain: "scene" },
           "SCENE_RASTER_TRACE_REJECTED",
-          excludeDetail !== undefined
-            ? `Detail exclusion requires a bounded opaque ${format}, a matching native grid, and a valid polygon within trace limits.`
-            : preserveAlpha
-              ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
-              : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
+          fitSourceColors
+            ? "Source color fitting requires an opaque native trace at the source grid within scene limits."
+            : excludeDetail !== undefined
+              ? `Detail exclusion requires a bounded opaque ${format}, a matching native grid, and a valid polygon within trace limits.`
+              : preserveAlpha
+                ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
+                : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
         ));
       }
       const validation = validateScene(scene);
@@ -764,6 +782,7 @@ export async function runSceneCli(
         written: published.published, cleanupResidue: published.cleanupResidue,
         sourceSha256: createHash("sha256").update(bytes).digest("hex"),
         outputSha256: createHash("sha256").update(json).digest("hex"),
+        ...(fitSourceColors ? { colorFit: "source-pixel-median-v1" as const } : {}),
         metrics: validation.value.metrics,
       } as const;
       const data: SceneTracePngJsonData | SceneTraceWebpJsonData = decodedWebp === undefined

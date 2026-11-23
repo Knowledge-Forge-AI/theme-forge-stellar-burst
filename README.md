@@ -79,6 +79,10 @@ Start with a static, metadata-free WebP or a PNG at the intended artboard
 size. Use `--native-detail` for fine artwork and add `--preserve-alpha`
 for a transparent reference. WebP tracing uses the qualified `magick`
 executable. For a PNG reference, use `scene trace-png`.
+Add `--fit-source-colors` to fit the existing opaque native contours'
+fill colors to their source pixels. It requires the directional trace
+at the exact source grid and fails if that trace exceeds the existing
+limits. Reuse the option when retracing a region with `--exclude-detail`.
 The default trace balances detail and size. Use `--illustration-source`
 to enforce the 16,000,000-byte cap when compiling. Reviewed SVG import and
 WebP export apply the same cap.

@@ -365,3 +365,50 @@ test("traces a supported PNG through the CLI, refuses overwrites and rejects non
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("fits opaque native fills without changing the editable geometry", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tfsb-source-color-fit-"));
+  try {
+    const cwd = await realpath(directory);
+    const width = 32, height = 1536;
+    const rgba = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const band = ((x >> 1) + (y >> 1)) % 16;
+        const accent = (x & 1) && (y & 1) ? 3 : 0;
+        rgba.set([16 * band + accent, 40 + band, 70, 255], (y * width + x) * 4);
+      }
+    }
+    await writeFile(join(cwd, "source.png"), rgbaPng(width, height, rgba));
+    await writeFile(join(cwd, "small.png"), rgbaPng(4, 4, new Uint8Array(4 * 4 * 4).fill(255)));
+    let stdout = "";
+    const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
+    async function trace(file: string, output: string, ...flags: string[]) {
+      return runSceneCli(["trace-png", file, "--output", output, "--json", ...flags], cwd, io);
+    }
+    for (const flags of [
+      ["--fit-source-colors"],
+      ["--native-detail", "--fit-source-colors", "--fit-source-colors"],
+      ["--native-detail", "--fit-source-colors", "--preserve-alpha"],
+    ]) {
+      expect(await trace("source.png", "refused.json", ...flags)).toBe(1);
+      expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
+    }
+    expect(await trace("small.png", "refused.json", "--native-detail", "--fit-source-colors")).toBe(1);
+    expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    await expect(readFile(join(cwd, "refused.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await trace("source.png", "normal.json", "--native-detail"), stdout).toBe(0);
+    expect(JSON.parse(stdout).data.colorFit).toBeUndefined();
+    expect(await trace("source.png", "fitted.json", "--native-detail", "--fit-source-colors"), stdout).toBe(0);
+    expect(JSON.parse(stdout).data.colorFit).toBe("source-pixel-median-v1");
+
+    const before = await readFile(join(cwd, "normal.json"), "utf8");
+    const after = await readFile(join(cwd, "fitted.json"), "utf8");
+    expect(after).not.toBe(before);
+    const fills = /"type":"solid","color":"#[0-9a-fA-F]{6}"/gu;
+    expect(after.replace(fills, "")).toBe(before.replace(fills, ""));
+    expect(compileScene(JSON.parse(after)).ok).toBe(true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
