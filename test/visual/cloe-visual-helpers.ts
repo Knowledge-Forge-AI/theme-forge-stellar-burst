@@ -44,9 +44,17 @@ export function alphaMeanError(reference: Uint8Array, candidate: Uint8Array) {
 
 export async function render(page: Page, path: string, width: number, height: number, background: string | null = "#ffffff") {
   const encoded = await page.evaluate(async ({ path, width, height, background }) => {
-    const image = new Image();
-    image.src = path;
-    await image.decode();
+    // Each fixture URL serves one immutable image for the life of this page.
+    // Reuse the decoded image while still painting a new canvas for each size.
+    const host = window as Window & { illustrationFixtureImages?: Map<string, HTMLImageElement> };
+    const images = host.illustrationFixtureImages ??= new Map();
+    let image = images.get(path);
+    if (image === undefined) {
+      image = new Image();
+      image.src = path;
+      await image.decode();
+      images.set(path, image);
+    }
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;

@@ -35,7 +35,6 @@ import {
   type ImportFindings,
 } from "./import-svg-guard.js";
 import { compactCanonicalPathData } from "./path-canonical.js";
-import { validateScene } from "./validate.js";
 import type { DiagnosticContext } from "../diagnostics.js";
 import type { HexColor } from "../types.js";
 import type {
@@ -1780,19 +1779,7 @@ function inspectSceneSvg(input: Uint8Array, reviewed?: { readonly compactPaths?:
       },
     };
 
-    // 9. Validation and Compilation Acceptance Gate
-    const valResult = validateScene(scene);
-    if (!valResult.ok) {
-      const diagCodes = valResult.diagnostics.map((d) => d.code);
-      return {
-        classification: "REJECTED_OUT_OF_SCOPE",
-        reasonCodes: diagCodes,
-        features,
-        normalizations: Array.from(normalizations).sort(),
-        sourceSha256,
-      };
-    }
-
+    // 9. Compilation validates the scene and enforces its budgets.
     const compactPaths = reviewed?.compactPaths ?? sawCompactPath;
     const compileResult = compileScene(scene, reviewed && { ...reviewed, compactPaths });
     if (!compileResult.ok) {

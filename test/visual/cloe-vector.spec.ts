@@ -92,7 +92,10 @@ test("Cloe native-detail SVG preserves line work at raster delivery sizes", asyn
   ], info.outputDir, io), messages).toBe(0);
   expect(await runSceneCli(["compile", "cut.json", "--output", "cut.svg"], info.outputDir, io), messages).toBe(0);
   const cutSvg = await readFile(info.outputPath("cut.svg"), "utf8");
-  expect(cutSvg === svg).toBe(false);
+  const patchStart = cutSvg.indexOf('  <path id="trace-edit-underpaint-');
+  expect(patchStart).toBeGreaterThan(0);
+  // The retouch patch comes after all original paint, without modifying it.
+  expect(cutSvg.slice(0, patchStart) + "</svg>\n" === svg).toBe(true);
   await page.route("http://cloe.test/cut.svg", route =>
     route.fulfill({ contentType: "image/svg+xml", body: cutSvg }));
   const overlay = await readFile(new URL("./fixtures/cloe-tablet-edit.json", import.meta.url));

@@ -70,7 +70,7 @@ test.each([
   expect(detailColors.sort()).toEqual([...colors, "#ffffff"].sort());
 });
 
-test("omits detail cells inside a native polygon while keeping the underpaint", () => {
+test("covers the native retouch polygon with an editable patch and preserves every original path", () => {
   const width = 32, height = 1536;
   const rgba8 = new Uint8Array(width * height * 4).fill(255);
   for (const x of [12, 25]) rgba8.set([208, 16, 16, 255], (10 * width + x) * 4);
@@ -79,11 +79,11 @@ test("omits detail cells inside a native polygon while keeping the underpaint", 
   const after = traceRasterScene(source, {
     nativeDetail: true, excludeDetail: [[11, 9], [15, 9], [15, 12], [11, 12]],
   });
-  const underpaint = (scene: typeof before) => scene.elements.filter(e => !e.id?.startsWith("trace-detail-"));
-  expect(underpaint(after)).toEqual(underpaint(before));
-  const red = after.elements.find(e => e.id?.startsWith("trace-detail-") &&
-    e.presentation?.fill?.type === "solid" && e.presentation.fill.color === "#d01010");
-  expect(red).toMatchObject({ type: "path", d: "M25 10h1v1H25" });
+  expect(after.elements.slice(0, before.elements.length)).toEqual(before.elements);
+  expect(after.elements.slice(before.elements.length)).toEqual([
+    { type: "path", id: "trace-edit-underpaint-0", d: "M12 9h3v3H12", presentation: { fill: { type: "solid", color: "#fcf0f0" } } },
+    { type: "path", id: "trace-edit-underpaint-1", d: "M11 9h1v3H11", presentation: { fill: { type: "solid", color: "#ffffff" } } },
+  ]);
 });
 
 test.each([

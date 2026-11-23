@@ -173,12 +173,13 @@ detail and the regular trace. Use high detail for intermediate display widths
 where its grid better matches the intended scale.
 
 For local retouching, `trace-png --native-detail --exclude-detail polygon.json`
-omits detail cells inside a strictly convex clockwise polygon of three to eight
+covers detail cells inside a strictly convex clockwise polygon of three to eight
 whole-pixel vertices, in source coordinates with Y increasing down. The native
 grid must match the source dimensions. The tracer selects its preset on the
-original image and keeps its palette, base, and underpaint. The cut reveals
-that underpaint and leaves editable vector contours. Add a named foreground
-group with `scene revise` to replace the removed detail. Keep the source PNG,
+original image and preserves every original path. It lays editable paths in
+underpaint colors over the selected cells. Hiding or removing those paths
+reveals the original detail. Add a named foreground group with `scene revise`
+to draw the replacement detail above the patch. Keep the source PNG,
 polygon, scene JSON, and reviewed SVG together to reproduce the edit.
 
 The Cloe visual test uses the released WebP as its fixed reference, traces

@@ -381,13 +381,13 @@ function readDetailExclusion(input: unknown, width: number, height: number): rea
   return vertices;
 }
 
-function omitDetailCells(pixels: Uint16Array, cols: number, outsideIndex: number, vertices: readonly TracePoint[]): void {
+function visitDetailExclusion(vertices: readonly TracePoint[], visit: (x: number, y: number) => void): void {
   const xs = vertices.map(([x]) => x), ys = vertices.map(([, y]) => y);
   let omitted = 0;
   for (let y = Math.min(...ys); y < Math.max(...ys); y++) {
     for (let x = Math.min(...xs); x < Math.max(...xs); x++) {
       if (vertices.every((vertex, i) => polygonCross(vertex, vertices[(i + 1) % vertices.length]!, [x + 0.5, y + 0.5]) >= 0)) {
-        pixels[y * cols + x] = outsideIndex;
+        visit(x, y);
         omitted++;
       }
     }
@@ -401,7 +401,7 @@ interface TraceSettings {
   segmentLimit?: number;
   maxSvgBytes?: number;
   implicitClose?: boolean;
-  excludeDetail?: readonly TracePoint[];
+  excludeDetail?: readonly TracePoint[] | undefined;
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
 }
@@ -426,13 +426,15 @@ function traceSampledRaster(
   const { indices, colors, centers } = palette;
   const pixels = Uint16Array.from(keys, (key) => indices[key]!);
   const elements: PathElement[] = [];
+  let coarsePaint: { grid: SampledRaster; data: Uint16Array; palette: readonly HexColor[] } | undefined;
   let totalSegments = 0;
   let svgBytes = 1024; // Reserve the SVG header, accessibility title and base path.
+  let svgLimit = maxSvgBytes;
 
   const base = { type: "solid", color: colors[0]! } as const;
 
   function addLayer(
-    data: Uint16Array, width: number, height: number, name: string, scale: number, palette = colors, scaleY = scale,
+    data: Uint16Array, width: number, height: number, name: string, scale: number, palette: readonly HexColor[] = colors, scaleY = scale,
   ) {
     const transform = scale === 1 && scaleY === 1 ? undefined : [
       { type: "scale" as const, x: scale, ...(scaleY === scale ? {} : { y: scaleY }) },
@@ -450,7 +452,7 @@ function traceSampledRaster(
         // non-close command in the spaced SVG. The remaining reserve covers the
         // short generated ID, tag, indentation and fixed paint syntax.
         svgBytes += d.length + 2 * segments - (implicitClose ? 0 : contours.length) + pathOverhead;
-        if (svgBytes > maxSvgBytes) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
+        if (svgBytes > svgLimit) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
         elements.push({
           type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
           ...(transform === undefined ? {} : { transform }),
@@ -466,6 +468,7 @@ function traceSampledRaster(
       const paintGrid = underpaintSource;
       const underpaint = quantize([...paintGrid.histogram.values()], underpaintColors, paintGrid.bits);
       const paint = Uint16Array.from(paintGrid.keys, (key) => underpaint.indices[key]!);
+      coarsePaint = { grid: paintGrid, data: paint, palette: underpaint.colors };
       addLayer(paint, paintGrid.cols, paintGrid.rows, "undercoat",
         cols / paintGrid.cols, underpaint.colors, rows / paintGrid.rows);
     } else {
@@ -492,9 +495,32 @@ function traceSampledRaster(
       addLayer(undercoat, underCols, underRows, "undercoat", block);
     }
   }
-  if (excludeDetail) omitDetailCells(pixels, cols, colors.length, excludeDetail);
   addLayer(pixels, cols, rows, "detail", 1);
-  return illustrationScene(source, cols, rows, elements);
+  const scene = illustrationScene(source, cols, rows, elements);
+  if (excludeDetail) {
+    if (coarsePaint === undefined) throw new RangeError("Detail exclusion requires an underpaint.");
+    if (Buffer.byteLength(JSON.stringify(scene), "utf8") > SCENE_LIMITS.maxInputBytes) {
+      throw new TraceContourLimitError("Native trace exceeds the editable scene size limit.");
+    }
+    const { grid, data, palette } = coarsePaint;
+    const patch = new Uint16Array(cols * rows).fill(palette.length);
+    visitDetailExclusion(excludeDetail, (x, y) => {
+      const paintX = Math.floor((x + 0.5) * grid.cols / cols);
+      const paintY = Math.floor((y + 0.5) * grid.rows / rows);
+      patch[y * cols + x] = data[paintY * grid.cols + paintX]!;
+    });
+    // Keeping the original compound paths intact confines browser paint to
+    // the selected region, even when an affected detail color spans the page.
+    svgLimit = RASTER_MAX_SVG_BYTES;
+    try {
+      addLayer(patch, cols, rows, "edit-underpaint", 1, palette);
+      if (Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
+    } catch (error) {
+      if (!(error instanceof TraceContourLimitError)) throw error;
+    }
+    throw new RangeError("Detail exclusion exceeds the selected native trace's limits.");
+  }
+  return scene;
 }
 
 function sampleAlphaCell(source: PixelSource, cols: number, rows: number, x: number, y: number) {
@@ -731,19 +757,8 @@ export function traceRasterScene(
           // Keep palette search within the six-bit pass's maximum occupied-bin count.
           if (subdivision === "directional" && sampled.histogram.size > 2 ** 18) continue;
           const palette = quantize([...sampled.histogram.values()], traceSettings.paletteSize, sampled.bits, subdivision === "directional");
-          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource }, palette);
-          if (Buffer.byteLength(JSON.stringify(scene), "utf8") > SCENE_LIMITS.maxInputBytes) continue;
-          if (!excludeDetail) return scene;
-
-          // Select the preset using the original artwork before applying a cut.
-          // Refuse instead of falling back to a different preset for the edit.
-          try {
-            const edited = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource, excludeDetail, maxSvgBytes: RASTER_MAX_SVG_BYTES }, palette);
-            if (Buffer.byteLength(JSON.stringify(edited), "utf8") <= SCENE_LIMITS.maxInputBytes) return edited;
-          } catch (error) {
-            if (!(error instanceof TraceContourLimitError)) throw error;
-          }
-          throw new RangeError("Detail exclusion exceeds the selected native trace's limits.");
+          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource, excludeDetail }, palette);
+          if (excludeDetail || Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
         }
