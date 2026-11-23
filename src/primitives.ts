@@ -16,7 +16,10 @@ export const LOCAL_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
 const ASSET_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SVG_FILENAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*\.svg$/;
 const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-const PATH_COMMAND_PATTERN = /^[AaCcHhLlMmQqSsTtVvZz]$/;
+const PATH_COMMANDS = "AaCcHhLlMmQqSsTtVvZz";
+const PATH_ARITY: Readonly<Record<string, number>> = {
+  A: 7, C: 6, H: 1, L: 2, M: 2, Q: 4, S: 4, T: 2, V: 1, Z: 0,
+};
 
 function inputCode(
   context: DiagnosticContext,
@@ -299,18 +302,6 @@ export function parsePathData(
     fail(context, invalidPathCode, "Path data must begin with moveto.", location);
   }
 
-  const arity: Readonly<Record<string, number>> = {
-    A: 7,
-    C: 6,
-    H: 1,
-    L: 2,
-    M: 2,
-    Q: 4,
-    S: 4,
-    T: 2,
-    V: 1,
-    Z: 0,
-  };
   const numberAtPosition = new RegExp(NUMBER_SOURCE, "y");
   let position = 0;
   let command: string | undefined;
@@ -336,14 +327,14 @@ export function parsePathData(
   while (position < normalized.length) {
     skipWhitespace();
     const possibleCommand = normalized[position];
-    if (possibleCommand !== undefined && PATH_COMMAND_PATTERN.test(possibleCommand)) {
+    if (possibleCommand !== undefined && PATH_COMMANDS.includes(possibleCommand)) {
       command = possibleCommand.toUpperCase();
       position += 1;
     } else if (command === undefined) {
       fail(context, invalidPathCode, "Expected an SVG path command.", location);
     }
 
-    const expected = command === undefined ? undefined : arity[command];
+    const expected = command === undefined ? undefined : PATH_ARITY[command];
     if (expected === undefined) {
       fail(context, invalidPathCode, "Unsupported SVG path command.", location);
     }
@@ -356,7 +347,7 @@ export function parsePathData(
     while (position < normalized.length) {
       skipWhitespace();
       const next = normalized[position];
-      if (next !== undefined && PATH_COMMAND_PATTERN.test(next)) break;
+      if (next !== undefined && PATH_COMMANDS.includes(next)) break;
 
       let invalidArcRadius = false;
       for (let argument = 0; argument < expected; argument += 1) {
@@ -388,7 +379,7 @@ export function parsePathData(
       setCount += 1;
       skipWhitespace();
       const following = normalized[position];
-      if (following !== undefined && PATH_COMMAND_PATTERN.test(following)) break;
+      if (following !== undefined && PATH_COMMANDS.includes(following)) break;
       if (position >= normalized.length) break;
       if (following === ",") {
         continue;

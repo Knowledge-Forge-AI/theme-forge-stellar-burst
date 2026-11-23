@@ -2,15 +2,20 @@ import { formatCanonicalNumber } from "./canonical.js";
 import { SCENE_LIMITS } from "./constants.js";
 
 const PATH_ARITY: Readonly<Record<string, number>> = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, T: 2, A: 7, Z: 0 };
+const PATH_COMMANDS = "AaCcHhLlMmQqSsTtVvZz";
 const SHORT_CANONICAL_INTEGER = /^(?:0|-?[1-9][0-9]{0,5})$/u;
 
 // Input has already passed the existing SVG parser. This is an operand spelling
 // pass, not a second accepting path grammar. Arc flags are single digits even
 // when the source omits whitespace between flags and the following coordinate.
 export function canonicalPathData(validated: string): string {
+  return canonicalPathWithCount(validated).data;
+}
+
+export function canonicalPathWithCount(validated: string): { readonly data: string; readonly segments: number } {
   const output: string[] = [];
-  measureCanonicalPath(validated, output);
-  return output.join(" ");
+  const segments = measureCanonicalPath(validated, output);
+  return { data: output.join(" "), segments };
 }
 
 export function countCanonicalPathSegments(validated: string): number {
@@ -23,9 +28,12 @@ function measureCanonicalPath(validated: string, output?: string[]): number {
   let bytes = 0, segments = 0;
   while (position < validated.length) {
     const char = validated[position]!;
-    if (/[\s,]/.test(char)) { position++; continue; }
+    if (char === " " || char === "," || (char < " " || char > "~") && /\s/.test(char)) {
+      position++;
+      continue;
+    }
     let token: string;
-    if (/[AaCcHhLlMmQqSsTtVvZz]/.test(char)) {
+    if (PATH_COMMANDS.includes(char)) {
       command = char.toUpperCase(); argument = 0; token = char; position++;
       if (command === "Z") segments++;
     } else if (command === "A" && (argument === 3 || argument === 4)) {

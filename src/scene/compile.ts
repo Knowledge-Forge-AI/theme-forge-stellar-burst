@@ -40,13 +40,15 @@ import type {
   SceneCompileOptions,
   SceneCompileResult,
   SceneInspectionResult,
+  SceneMetrics,
   SceneReceipt,
   SceneElement,
+  SceneValidationResult,
   SymbolDef,
   VectorScene,
 } from "./types.js";
-import { countTextPathSegments, validateScene } from "./validate.js";
-import { canonicalPathData, compactCanonicalPathData } from "./path-canonical.js";
+import { countTextPathSegments, validateScene, validateSceneForOutput } from "./validate.js";
+import { compactCanonicalPathData } from "./path-canonical.js";
 
 function mapScenePaths(scene: VectorScene, formatPath: (data: string) => string): VectorScene {
   let bytes = 0;
@@ -107,10 +109,26 @@ function sceneWarnings(scene: VectorScene): string[] {
 }
 
 export function canonicalizeScene(input: unknown, options?: { readonly fitInput?: boolean }): Result<string> {
-  const result = validateScene(input);
+  const { result, formatPath } = validateSceneForOutput(input);
+  return serializeValidatedScene(result, formatPath, options?.fitInput);
+}
+
+export function canonicalizeSceneRevision(
+  input: unknown,
+  revise: (scene: VectorScene, metrics: SceneMetrics) => unknown,
+): Result<string> {
+  const { result, formatPath } = validateSceneForOutput(input, revise);
+  return serializeValidatedScene(result, formatPath, true);
+}
+
+function serializeValidatedScene(
+  result: SceneValidationResult,
+  formatPath: (d: string) => string,
+  fitInput?: boolean,
+): Result<string> {
   if (!result.ok) return result;
   try {
-    return { ok: true, value: serializeScene(mapScenePaths(result.value.scene, canonicalPathData), options?.fitInput) };
+    return { ok: true, value: serializeScene(mapScenePaths(result.value.scene, formatPath), fitInput) };
   } catch { return { ok: false, diagnostics: [diagnostic({ operation: "validate", domain: "scene" }, "SCENE_CANONICAL_LIMIT", "Scene cannot be represented within canonical output limits.")] }; }
 }
 
@@ -310,13 +328,13 @@ export function compileScene(
   };
 
   try {
-    const valResult = validateScene(input);
+    const { result: valResult, formatPath } = validateSceneForOutput(input);
     if (!valResult.ok) {
       return { ok: false, diagnostics: valResult.diagnostics };
     }
 
     const { metrics } = valResult.value;
-    const scene = mapScenePaths(valResult.value.scene, canonicalPathData);
+    const scene = mapScenePaths(valResult.value.scene, formatPath);
     checkEmissionBudget(scene, ctx);
     const source = serializeScene(scene, options?.fitInput);
     if (options?.fitInput && Buffer.byteLength(source, "utf8") > SCENE_LIMITS.maxInputBytes) {

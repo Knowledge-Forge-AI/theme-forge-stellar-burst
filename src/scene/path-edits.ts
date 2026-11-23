@@ -1,16 +1,16 @@
 import { DiagnosticError, diagnostic } from "../diagnostics.js";
-import { canonicalizeScene } from "./compile.js";
-import type { Result, SceneElement } from "./types.js";
-import { validateScene } from "./validate.js";
+import { canonicalizeSceneRevision } from "./compile.js";
+import type { Result, SceneElement, VectorScene } from "./types.js";
 
 function invalidEdits(message: string): never {
   throw new DiagnosticError(diagnostic({ operation: "build", domain: "scene" }, "SCENE_INVALID_PATH_EDITS", message));
 }
 
 export function reviseScene(source: unknown, edits: unknown): Result<string> {
-  const validated = validateScene(source);
-  if (!validated.ok) return validated;
+  return canonicalizeSceneRevision(source, (scene, metrics) => applyEdits(scene, edits, metrics.authoredElementCount));
+}
 
+function applyEdits(scene: VectorScene, edits: unknown, authoredElementCount: number): unknown {
   if (edits !== null && typeof edits === "object" && !Array.isArray(edits) && Object.hasOwn(edits, "appendGroup")) {
     const request = edits as Record<string, unknown>;
     const group = request["appendGroup"];
@@ -22,11 +22,10 @@ export function reviseScene(source: unknown, edits: unknown): Result<string> {
         !Array.isArray(record["children"]) || record["children"].length === 0) {
       invalidEdits("An appended group must have an id and nonempty children.");
     }
-    const scene = validated.value.scene;
-    return canonicalizeScene({ ...scene, elements: [...scene.elements, group] }, { fitInput: true });
+    return { ...scene, elements: [...scene.elements, group] };
   }
 
-  if (!Array.isArray(edits) || edits.length === 0 || edits.length > validated.value.metrics.authoredElementCount) {
+  if (!Array.isArray(edits) || edits.length === 0 || edits.length > authoredElementCount) {
     invalidEdits("Provide a nonempty array of path edits for this scene.");
   }
   const remaining = new Map<string, string>();
@@ -55,7 +54,6 @@ export function reviseScene(source: unknown, edits: unknown): Result<string> {
     });
   }
 
-  const scene = validated.value.scene;
   const elements = revise(scene.elements);
   const definitions = scene.definitions?.symbols === undefined
     ? scene.definitions
@@ -64,5 +62,5 @@ export function reviseScene(source: unknown, edits: unknown): Result<string> {
         symbols: scene.definitions.symbols.map((symbol) => ({ ...symbol, elements: revise(symbol.elements) })),
       };
   if (remaining.size !== 0) invalidEdits("Every edit must name an existing path element.");
-  return canonicalizeScene({ ...scene, elements, ...(definitions === undefined ? {} : { definitions }) }, { fitInput: true });
+  return { ...scene, elements, ...(definitions === undefined ? {} : { definitions }) };
 }
