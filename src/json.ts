@@ -15,6 +15,8 @@ import type { NormalizationLedgerV1 } from "./normalization-ledger.js";
 import type { NormalizationPolicyIdentityV1 } from "./normalization-policy.js";
 import type { Diagnostic } from "./types.js";
 import type { SceneMetrics, SceneReceipt, VectorScene } from "./scene/types.js";
+import type { IllustrationDerivativeCliReceiptV1 } from "./illustration/derivative-cli.js";
+import type { RasterDerivativeRecipeV1 } from "./illustration/derivative.js";
 
 export const JSON_RESULT_SCHEMA_VERSION = 1 as const;
 export type JsonCommand = "import" | "check" | "list" | "reconcile" | "diff" | "bundle" | "fmt" | "preview" | "analyze" | "migrate" | "shard" | "derive" | "qa" | "consumer" | "export" | "scene";
@@ -199,6 +201,12 @@ export interface SceneTracePngJsonData {
   readonly metrics: SceneMetrics;
 }
 
+export interface SceneTraceWebpJsonData extends Omit<SceneTracePngJsonData, "action"> {
+  readonly action: "trace-webp";
+  readonly decodedPngSha256: string;
+  readonly decodeRecipeDigest: string;
+}
+
 export interface SceneRasterizeJsonData {
   readonly schema: "tfsb.scene-result-v1";
   readonly action: "rasterize";
@@ -213,6 +221,21 @@ export interface SceneRasterizeJsonData {
   readonly rendererBuildDigest: string;
 }
 
+export interface SceneWebpJsonData {
+  readonly schema: "tfsb.scene-result-v1";
+  readonly action: "export-webp";
+  readonly valid: true;
+  readonly output: string;
+  readonly written: true;
+  readonly svgDigest: string;
+  readonly pngDigest: string;
+  readonly rendererBuildDigest: string;
+  readonly rasterWidth: number;
+  readonly rasterHeight: number;
+  readonly recipe: RasterDerivativeRecipeV1;
+  readonly receipt: IllustrationDerivativeCliReceiptV1;
+}
+
 export type SceneJsonData =
   | SceneValidateJsonData
   | SceneInspectJsonData
@@ -220,7 +243,9 @@ export type SceneJsonData =
   | SceneImportSvgJsonData
   | SceneReviseJsonData
   | SceneTracePngJsonData
-  | SceneRasterizeJsonData;
+  | SceneTraceWebpJsonData
+  | SceneRasterizeJsonData
+  | SceneWebpJsonData;
 
 function safeRelative(value: string): boolean {
   return value !== "" && !value.includes("\0") && !isAbsolute(value) && !/^[A-Za-z]:[\\/]/.test(value) &&

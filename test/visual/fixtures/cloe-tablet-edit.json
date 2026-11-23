@@ -1,0 +1,36 @@
+{
+  "appendGroup": {
+    "type": "group",
+    "id": "cloe-tablet-display",
+    "children": [
+      {
+        "type": "path",
+        "id": "cloe-tablet-display-panel",
+        "d": "M697 354L806 341L774 442L695 447L683 427Z",
+        "presentation": {
+          "fill": { "type": "solid", "color": "#3c4d50" },
+          "stroke": { "type": "solid", "color": "#6c817d" },
+          "strokeWidth": 1.5,
+          "strokeLinejoin": "round"
+        }
+      },
+      {
+        "type": "path",
+        "id": "cloe-tablet-display-graph",
+        "d": "M710 419L735 401L760 414L779 368M735 401L721 372M735 401L769 392",
+        "presentation": {
+          "fill": { "type": "none" },
+          "stroke": { "type": "solid", "color": "#abc4ac" },
+          "strokeWidth": 2,
+          "strokeLinecap": "round"
+        }
+      },
+      { "type": "circle", "id": "cloe-tablet-node-a", "cx": 710, "cy": 419, "r": 4.5, "presentation": { "fill": { "type": "solid", "color": "#d6be80" } } },
+      { "type": "circle", "id": "cloe-tablet-node-b", "cx": 735, "cy": 401, "r": 7, "presentation": { "fill": { "type": "solid", "color": "#9fc0a3" } } },
+      { "type": "circle", "id": "cloe-tablet-node-c", "cx": 760, "cy": 414, "r": 4, "presentation": { "fill": { "type": "solid", "color": "#a8c9aa" } } },
+      { "type": "circle", "id": "cloe-tablet-node-d", "cx": 779, "cy": 368, "r": 4.5, "presentation": { "fill": { "type": "solid", "color": "#d6be80" } } },
+      { "type": "circle", "id": "cloe-tablet-node-e", "cx": 721, "cy": 372, "r": 4, "presentation": { "fill": { "type": "solid", "color": "#a8c9aa" } } },
+      { "type": "circle", "id": "cloe-tablet-node-f", "cx": 769, "cy": 392, "r": 4, "presentation": { "fill": { "type": "solid", "color": "#a8c9aa" } } }
+    ]
+  }
+}

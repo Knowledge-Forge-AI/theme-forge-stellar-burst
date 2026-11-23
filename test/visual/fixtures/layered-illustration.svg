@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300">
+  <title>Cel-shaded observatory apprentice</title>
+  <desc>A silver-haired apprentice carries a violet star chart.</desc>
+  <g id="hair-back" fill="#303b66" stroke="#202444" stroke-width="2" stroke-linejoin="round">
+    <path d="M65 146C51 110 50 67 74 44C97 20 138 23 157 49C180 78 168 121 183 160C158 155 152 178 128 176C105 160 78 181 65 146Z"/>
+  </g>
+  <g id="garment" stroke="#202444" stroke-width="2" stroke-linejoin="round">
+    <path fill="#425484" d="M42 265C45 229 46 198 74 179L94 165L132 166L159 179C174 191 178 223 188 265Z"/>
+    <path fill="#768ec0" d="M52 259C60 226 60 206 81 192L100 176L110 198L92 244Z"/>
+    <path fill="#b4bee6" d="M86 178L100 165H127L144 179L116 215Z"/>
+    <path fill="#cc9457" d="M112 205L121 222L113 231L105 222Z"/>
+    <path fill="none" stroke="#9cb3d6" d="M78 239L70 259M142 187L153 211"/>
+  </g>
+  <g id="face" stroke="#202444" stroke-width="2" stroke-linejoin="round">
+    <path fill="#bd8793" d="M96 146L94 172L111 184L132 170L126 143Z"/>
+    <path fill="#f5cbb8" d="M75 76C88 54 134 49 149 81L146 120C140 140 123 155 110 154C95 152 80 139 75 119C66 121 62 110 67 104L74 104Z"/>
+    <path fill="#dea6a2" stroke="none" d="M129 75L149 81L146 120C140 140 123 155 110 154L119 142C133 124 136 104 129 75Z"/>
+    <path fill="#fff3eb" d="M84 107Q94 99 103 107Q94 117 84 107ZM117 106Q128 97 137 106Q125 116 117 106Z"/>
+    <path fill="#537a92" stroke="none" d="M92 104Q97 102 99 105V109Q96 114 92 109ZM124 103Q129 101 132 104L131 109Q126 113 124 108Z"/>
+    <path fill="none" stroke="#7d5368" stroke-linecap="round" d="M107 121L104 126L108 127M101 136Q109 140 116 134"/>
+  </g>
+  <g id="hair-front" stroke="#202444" stroke-width="2" stroke-linejoin="round">
+    <path fill="#9baad0" d="M67 116C51 93 61 58 74 44C99 18 143 27 157 52C170 74 166 113 151 135L153 93Q137 86 128 68Q110 88 79 94L76 119Z"/>
+    <path fill="#d5e0f5" stroke="none" d="M75 62Q96 37 129 43L142 51Q105 47 79 75Z"/>
+    <path fill="none" stroke="#5b6a9a" d="M74 81Q102 72 117 57M138 62Q149 74 151 84"/>
+    <path fill="#e5b777" d="M143 81L147 74L150 81L147 87Z"/>
+  </g>
+  <g id="tablet" stroke="#202444" stroke-width="2" stroke-linejoin="round">
+    <path id="tablet-bezel" fill="#45446a" d="M146 211H195L191 255H141Z"/>
+    <path id="tablet-screen" fill="#a99dea" stroke="none" d="M151 216H189L185 249H146Z"/>
+    <path fill="none" stroke="#ffffff" stroke-linecap="round" d="M154 241L164 225L173 239L181 224"/>
+  </g>
+</svg>

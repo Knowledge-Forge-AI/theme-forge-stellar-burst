@@ -7,9 +7,24 @@ function invalidEdits(message: string): never {
   throw new DiagnosticError(diagnostic({ operation: "build", domain: "scene" }, "SCENE_INVALID_PATH_EDITS", message));
 }
 
-export function reviseScenePaths(source: unknown, edits: unknown): Result<string> {
+export function reviseScene(source: unknown, edits: unknown): Result<string> {
   const validated = validateScene(source);
   if (!validated.ok) return validated;
+
+  if (edits !== null && typeof edits === "object" && !Array.isArray(edits) && Object.hasOwn(edits, "appendGroup")) {
+    const request = edits as Record<string, unknown>;
+    const group = request["appendGroup"];
+    if (Object.keys(request).length !== 1 || group === null || typeof group !== "object" || Array.isArray(group)) {
+      invalidEdits("Provide exactly one appendGroup object.");
+    }
+    const record = group as Record<string, unknown>;
+    if (record["type"] !== "group" || typeof record["id"] !== "string" ||
+        !Array.isArray(record["children"]) || record["children"].length === 0) {
+      invalidEdits("An appended group must have an id and nonempty children.");
+    }
+    const scene = validated.value.scene;
+    return canonicalizeScene({ ...scene, elements: [...scene.elements, group] }, { fitInput: true });
+  }
 
   if (!Array.isArray(edits) || edits.length === 0 || edits.length > validated.value.metrics.authoredElementCount) {
     invalidEdits("Provide a nonempty array of path edits for this scene.");

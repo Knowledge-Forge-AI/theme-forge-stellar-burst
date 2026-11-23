@@ -9,6 +9,7 @@ import type { Result } from "./types.js";
 import {
   canonicalJsonStringify,
   computeCanonicalDigest,
+  computeTextDigest,
 } from "./canonical.js";
 import {
   HIGH_DETAIL_SCENE_LIMITS,
@@ -47,17 +48,25 @@ import type {
 import { countTextPathSegments, validateScene } from "./validate.js";
 import { canonicalPathData, compactCanonicalPathData } from "./path-canonical.js";
 
-function canonicalScenePaths(scene: VectorScene, compact = false): VectorScene {
+function mapScenePaths(scene: VectorScene, formatPath: (data: string) => string): VectorScene {
   let bytes = 0;
   const visit = (items: readonly SceneElement[]): SceneElement[] => items.map((item) => {
     if (item.type === "group") return { ...item, children: visit(item.children) };
     if (item.type !== "path") return item;
-    const d = canonicalPathData(item.d);
+    const d = formatPath(item.d);
     bytes += d.length;
     if (bytes > 16_777_216) throw new RangeError("Canonical scene paths exceed 16 MiB.");
-    return { ...item, d: compact ? compactCanonicalPathData(d) : d };
+    return { ...item, d };
   });
   return { ...scene, elements: visit(scene.elements), ...(scene.definitions ? { definitions: { ...scene.definitions, ...(scene.definitions.symbols ? { symbols: scene.definitions.symbols.map((symbol) => ({ ...symbol, elements: visit(symbol.elements) })) } : {}) } } : {}) };
+}
+
+function serializeScene(scene: VectorScene, fitInput = false): string {
+  const expanded = canonicalJsonStringify(scene);
+  if (fitInput && Buffer.byteLength(expanded, "utf8") > SCENE_LIMITS.maxInputBytes) {
+    return canonicalJsonStringify(mapScenePaths(scene, compactCanonicalPathData));
+  }
+  return expanded;
 }
 
 function checkEmissionBudget(scene: VectorScene, ctx: DiagnosticContext): void {
@@ -101,11 +110,7 @@ export function canonicalizeScene(input: unknown, options?: { readonly fitInput?
   const result = validateScene(input);
   if (!result.ok) return result;
   try {
-    const canonical = canonicalJsonStringify(canonicalScenePaths(result.value.scene));
-    if (options?.fitInput && Buffer.byteLength(canonical, "utf8") > SCENE_LIMITS.maxInputBytes) {
-      return { ok: true, value: canonicalJsonStringify(canonicalScenePaths(result.value.scene, true)) };
-    }
-    return { ok: true, value: canonical };
+    return { ok: true, value: serializeScene(mapScenePaths(result.value.scene, canonicalPathData), options?.fitInput) };
   } catch { return { ok: false, diagnostics: [diagnostic({ operation: "validate", domain: "scene" }, "SCENE_CANONICAL_LIMIT", "Scene cannot be represented within canonical output limits.")] }; }
 }
 
@@ -311,9 +316,13 @@ export function compileScene(
     }
 
     const { metrics } = valResult.value;
-    const scene = canonicalScenePaths(valResult.value.scene);
+    const scene = mapScenePaths(valResult.value.scene, canonicalPathData);
     checkEmissionBudget(scene, ctx);
-    const sourceDigest = computeCanonicalDigest(scene);
+    const source = serializeScene(scene, options?.fitInput);
+    if (options?.fitInput && Buffer.byteLength(source, "utf8") > SCENE_LIMITS.maxInputBytes) {
+      fail(ctx, "SCENE_INPUT_LIMIT", "Canonical scene exceeds the editable scene size limit.");
+    }
+    const sourceDigest = computeTextDigest(source);
 
     const lowered = lowerScene(scene, ctx);
     const svg = emitSvg(lowered, ctx, options?.compactPaths);
@@ -345,23 +354,13 @@ export function compileScene(
       metrics,
     };
 
-    if (options?.dryRun) {
-      return {
-        ok: true,
-        value: {
-          svg: "",
-          receipt,
-          metrics,
-        },
-      };
-    }
-
     return {
       ok: true,
       value: {
-        svg,
+        svg: options?.dryRun ? "" : svg,
         receipt,
         metrics,
+        ...(options?.fitInput ? { canonicalJson: source } : {}),
       },
     };
   } catch (error) {

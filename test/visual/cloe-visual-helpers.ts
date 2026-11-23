@@ -11,10 +11,39 @@ export async function loadCloeReference(page: Page) {
   await page.route("http://cloe.test/reference.webp", (route) =>
     route.fulfill({ contentType: "image/webp", body: reference }));
   await page.goto("http://cloe.test/");
+  return reference;
 }
 
-export async function render(page: Page, path: string, width: number, height: number) {
-  const encoded = await page.evaluate(async ({ path, width, height }) => {
+export async function loadOrihimeReference(page: Page) {
+  const reference = await readFile(new URL("../../website/orihime.webp", import.meta.url));
+  expect(createHash("sha256").update(reference).digest("hex"))
+    .toBe("7fa33afd77cd87ddc0240a25eea2ff1464911fe7ac4ff5068b49ca9bea11fc66");
+  await page.route("http://orihime.test/", route => route.fulfill({
+    contentType: "text/html", body: "<!doctype html><title>Orihime illustration fixture</title>",
+  }));
+  await page.route("http://orihime.test/reference.webp", route => route.fulfill({
+    contentType: "image/webp", body: reference,
+  }));
+  await page.goto("http://orihime.test/");
+}
+
+export const orihimeRegions = {
+  full: [0, 0, 1, 1],
+  face: [0.432, 0.106, 0.575, 0.226],
+  prop: [0.196, 0.194, 0.385, 0.278],
+} as const;
+
+export function alphaMeanError(reference: Uint8Array, candidate: Uint8Array) {
+  expect(candidate.byteLength).toBe(reference.byteLength);
+  let total = 0;
+  for (let index = 3; index < reference.length; index += 4) {
+    total += Math.abs(reference[index]! - candidate[index]!);
+  }
+  return total * 4 / reference.byteLength;
+}
+
+export async function render(page: Page, path: string, width: number, height: number, background: string | null = "#ffffff") {
+  const encoded = await page.evaluate(async ({ path, width, height, background }) => {
     const image = new Image();
     image.src = path;
     await image.decode();
@@ -22,8 +51,10 @@ export async function render(page: Page, path: string, width: number, height: nu
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
+    if (background !== null) {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, width, height);
+    }
     ctx.drawImage(image, 0, 0, width, height);
     const pixels = ctx.getImageData(0, 0, width, height).data;
     let binary = "";
@@ -31,7 +62,7 @@ export async function render(page: Page, path: string, width: number, height: nu
       binary += String.fromCharCode(...pixels.subarray(offset, offset + 8192));
     }
     return btoa(binary);
-  }, { path, width, height });
+  }, { path, width, height, background });
   return Buffer.from(encoded, "base64");
 }
 

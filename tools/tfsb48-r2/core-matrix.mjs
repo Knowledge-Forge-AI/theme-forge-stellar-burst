@@ -25,7 +25,7 @@ const REPO_ROOT = resolve(fileURLToPath(new URL("../../", import.meta.url)));
  * tools/qualify-raster-resvg.mjs (drift-guarded by the core matrix test).
  * Other native tuples classify raster export as unavailable, never pass.
  */
-export const QUALIFIED_RASTER_TUPLES = Object.freeze(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "windows-x64"]);
+export const QUALIFIED_RASTER_TUPLES = Object.freeze(["darwin-arm64", "darwin-x64", "linux-x64-gnu", "linux-arm64-gnu", "windows-x64"]);
 const CORPUS_COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 
 /**

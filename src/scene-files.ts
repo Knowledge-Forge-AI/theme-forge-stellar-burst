@@ -11,6 +11,7 @@ import {
   sameFileIdentity,
   syncPath,
 } from "./filesystem.js";
+import { RASTER_MAX_SVG_BYTES } from "./brand/raster-capability.js";
 import { validateScene } from "./scene/validate.js";
 
 export const MAX_SCENE_FILE_BYTES = 8 * 1024 * 1024; // 8 MiB
@@ -98,7 +99,15 @@ async function validateSceneInputComponents(absolutePath: string): Promise<void>
   }
 }
 
-export async function readSceneFileBytes(path: string, hooks: ReadSceneFileHooks = {}): Promise<Uint8Array> {
+export function readSceneFileBytes(path: string, hooks: ReadSceneFileHooks = {}): Promise<Uint8Array> {
+  return readSceneSnapshot(path, hooks, MAX_SCENE_FILE_BYTES, "Scene file exceeds 8 MiB limit.");
+}
+
+export function readReviewedSceneSvgBytes(path: string): Promise<Uint8Array> {
+  return readSceneSnapshot(path, {}, RASTER_MAX_SVG_BYTES, "SVG file exceeds the 16,000,000-byte raster limit.");
+}
+
+async function readSceneSnapshot(path: string, hooks: ReadSceneFileHooks, maxBytes: number, limitMessage: string): Promise<Uint8Array> {
   if (typeof path !== "string" || path.length === 0 || path.includes("\0")) {
     throw sceneFileError(SCENE_FILE_INVALID, "A non-empty scene file path is required.");
   }
@@ -115,8 +124,8 @@ export async function readSceneFileBytes(path: string, hooks: ReadSceneFileHooks
   if (!before.isFile()) {
     throw sceneFileError(SCENE_FILE_INVALID, "Scene file must be a regular file.");
   }
-  if (before.size > MAX_SCENE_FILE_BYTES) {
-    throw sceneFileError(SCENE_FILE_LIMIT_EXCEEDED, "Scene file exceeds 8 MiB limit.");
+  if (before.size > maxBytes) {
+    throw sceneFileError(SCENE_FILE_LIMIT_EXCEEDED, limitMessage);
   }
 
   await hooks.beforeOpen?.();
@@ -130,12 +139,12 @@ export async function readSceneFileBytes(path: string, hooks: ReadSceneFileHooks
     if (!openedBefore.isFile() || !sameFileIdentity(identity(before), identity(openedBefore))) {
       throw sceneFileError(SCENE_FILE_INVALID, "Scene file changed or is not a regular file.");
     }
-    if (openedBefore.size > MAX_SCENE_FILE_BYTES) {
-      throw sceneFileError(SCENE_FILE_LIMIT_EXCEEDED, "Scene file exceeds 8 MiB limit.");
+    if (openedBefore.size > maxBytes) {
+      throw sceneFileError(SCENE_FILE_LIMIT_EXCEEDED, limitMessage);
     }
 
     await hooks.beforeRead?.();
-    bytes = await readOpenedFile(handle, openedBefore.size, MAX_SCENE_FILE_BYTES);
+    bytes = await readOpenedFile(handle, openedBefore.size, maxBytes);
     await hooks.afterRead?.();
 
     const openedAfter = await handle.stat();

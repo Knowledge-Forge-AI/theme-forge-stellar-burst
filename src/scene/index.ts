@@ -34,6 +34,7 @@ export {
 } from "./compile.js";
 
 export {
+  reopenCanonicalSceneSvg,
   sceneImportSvg,
 } from "./import-svg.js";
 

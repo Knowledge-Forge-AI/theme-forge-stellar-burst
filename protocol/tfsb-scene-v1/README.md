@@ -101,17 +101,7 @@ The optional palette overrides declared color tokens during compilation. It
 accepts a JSON object of existing token names and six-digit `#RRGGBB` colors.
 The source must validate before overrides are applied. The compilation receipt
 binds the effective scene and resolved colors after applying the palette.
-To recolor the [illustration example](examples/scene-illustration.json), save
-`{"burst-cyan":"#83e5cf","hull-primary":"#59466f"}` in `palette.json` and
-compile with that palette.
-
-```sh
-tfsb scene compile protocol/tfsb-scene-v1/examples/scene-illustration.json \
-  --palette palette.json --output illustration.svg
-```
-
-Only paints that use those tokens change. To recolor a gradient stop, give the
-stop a token reference in the scene.
+See the [editable character example](../../docs/art/vector/README.md).
 
 To change a path's shape while keeping the editable scene, use
 `tfsb scene revise <scene.json> --edits <edits.json> --output <absent-scene.json>`.
@@ -129,13 +119,30 @@ canonical scene JSON to a new file. If expanded path spacing exceeds the scene
 file size limit, revision uses compact path spacing. The JSON result reports the output SHA-256
 in both `--dry-run` and write mode. Compile the revised scene to export its SVG.
 
+To add a foreground layer, supply an edits file containing
+`{"appendGroup":{"type":"group","id":"tablet","children":[...]}}` to the same
+revision command. It appends exactly one nonempty named group above the scene's
+existing elements. Use unique IDs for the group and any paths you want to revise.
+The complete result must pass the existing scene validation and file limits.
+This operation does not extract regions from the existing paths.
+
 Use `tfsb scene trace-png source.png --output traced.scene.json` to trace an
 existing opaque illustration. Supply a metadata-free, noninterlaced 8-bit
 RGB or RGBA PNG of at most 4,194,304 pixels. For a WebP reference, decode it
 to PNG before invoking the tracer. Then run
 `tfsb scene compile traced.scene.json --output traced.svg --compact-paths`.
 
-High-detail tracing is the default for `trace-png`. On sufficiently large
+To start from a static sRGB WebP, use
+`tfsb scene trace-webp source.webp --native-detail --output traced.scene.json`.
+It uses the existing optional ImageMagick capability to decode a WebP with
+the source dimensions and no resize. The source must meet the closed WebP
+header policy and the tracing limits. Animated, metadata-bearing and
+oversized files are refused. Use `--preserve-alpha` for transparent artwork.
+The JSON result binds the input WebP hash, decoded PNG digest, decode recipe,
+and written scene hash. The editor scene can then be compiled to SVG and
+exported with `scene export-webp`.
+
+High-detail tracing is the default for both input commands. On sufficiently large
 inputs, it subdivides cells at color transitions on a finer grid to retain
 thin strokes. It uses up to 1,152 detail colors with a separate 96-color
 underpaint. The default trace uses a 12 MB SVG budget, with earlier
@@ -165,6 +172,15 @@ contour limits, the tracer tries earlier native-detail settings before high
 detail and the regular trace. Use high detail for intermediate display widths
 where its grid better matches the intended scale.
 
+For local retouching, `trace-png --native-detail --exclude-detail polygon.json`
+omits detail cells inside a strictly convex clockwise polygon of three to eight
+whole-pixel vertices, in source coordinates with Y increasing down. The native
+grid must match the source dimensions. The tracer selects its preset on the
+original image and keeps its palette, base, and underpaint. The cut reveals
+that underpaint and leaves editable vector contours. Add a named foreground
+group with `scene revise` to replace the removed detail. Keep the source PNG,
+polygon, scene JSON, and reviewed SVG together to reproduce the edit.
+
 The Cloe visual test uses the released WebP as its fixed reference, traces
 a PNG decoded from those bytes, and renders the compiled SVG in Chromium
 and WebKit. The regular trace is checked at 256, 336, 384 and 512 CSS pixels.
@@ -178,9 +194,32 @@ must stay below 16,000,000 bytes.
 Use `tfsb scene rasterize traced.scene.json --output traced.png --json`
 with the qualified resvg companion to produce PNG from the same compiled SVG
 at the scene's artboard dimensions. The renderer accepts up to 16,000,000 SVG
-bytes. Use the same palette and path options as `scene compile` when matching an existing SVG's digest. The raster receipt
-binds that SVG digest to the PNG digest. The maintained illustration exporter
+bytes. Use the same palette and path options as `scene compile` when matching
+an existing SVG's digest. Pass `--expect-svg-digest sha256:<64 lowercase hex digits>`
+using the compile receipt's `svgDigest`. A mismatch stops before rendering
+or writing a PNG. The raster receipt binds the SVG digest to the PNG digest.
+
+Use `scene rasterize reviewed.svg --svg-source --expect-svg-digest <digest>
+--output reviewed.png --json` to render a reviewed SVG file without a scene JSON
+input. The reader admits at most 16,000,000 bytes. It verifies a bounded file
+snapshot, checks the expected digest, and admits only exact canonical output of
+the current compiler. Pass `--compact-paths` if the reviewed SVG was compiled
+with that option. The validation compiler runs against an internal scene
+projection. The renderer receives the original file bytes. Palette overrides
+apply only when compiling a scene JSON input. To prepare an authored external
+SVG, use the existing import and compile workflow, then review the emitted
+canonical SVG and record its digest. The maintained illustration exporter
 can encode the PNG as WebP with a source-bound recipe.
+
+To reopen the same reviewed SVG as an editable scene, use
+`scene import-svg reviewed.svg --svg-source --expect-svg-digest <digest>
+--output reopened.scene.json --json`. Supply `--compact-paths` for a compact
+reviewed SVG. The command preserves named paths and groups, records the exact
+input digest, and keeps dense path data compact in the 8 MiB editable scene.
+Compiling that scene with the same path option reproduces the reviewed SVG
+byte-for-byte until an edit changes its geometry. The review option admits
+only canonical compiler output. Other authored SVG goes through the normal
+import route.
 
 Input is a bounded regular-file snapshot. Dry-run writes nothing. Output must be
 absent; there is no overwrite option. Existing symlink parents and final-component

@@ -2,7 +2,7 @@ import { RASTER_MAX_SVG_BYTES } from "../brand/raster-capability.js";
 import type { HexColor } from "../types.js";
 import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, PREVIOUS_NATIVE_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
 import { serializeTransforms } from "./transforms.js";
-import type { PathElement, VectorScene } from "./types.js";
+import type { PathElement, SceneElement, VectorScene } from "./types.js";
 
 interface PixelSource {
   readonly width: number;
@@ -14,14 +14,15 @@ type ChannelBits = 5 | 6 | 7;
 type Color = [number, number, number];
 type Sample = { key: number; count: number; sum: Color };
 type Bucket = { samples: Sample[]; axis: number; score: number };
-const MAX_SOURCE_PIXELS = 4_194_304;
+export const MAX_TRACE_SOURCE_PIXELS = 4_194_304;
 const MAX_TRACE_EDGE = 576;
+const NATIVE_TRANSPARENT_EDGE = 1536;
 class TraceContourLimitError extends RangeError {}
 
 function traceGrid(source: PixelSource, maxEdge = MAX_TRACE_EDGE) {
   const { width, height, rgba8 } = source;
   if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1
-      || width * height > MAX_SOURCE_PIXELS || rgba8.length !== width * height * 4) {
+      || width * height > MAX_TRACE_SOURCE_PIXELS || rgba8.length !== width * height * 4) {
     throw new RangeError("Raster tracing requires a bounded RGBA8 image.");
   }
   const scale = Math.min(1, maxEdge / Math.max(width, height));
@@ -61,7 +62,7 @@ function sampleCell(source: PixelSource, cols: number, rows: number, x: number, 
   return sum.map((value) => Math.round(value / (width * height))) as Color;
 }
 
-function recordColor({ bits, keys, histogram }: SampledRaster, i: number, rgb: Color) {
+function recordColor({ bits, keys, histogram }: Pick<SampledRaster, "bits" | "keys" | "histogram">, i: number, rgb: Color) {
   const shift = 8 - bits;
   const key = ((rgb[0] >> shift) << (2 * bits)) | ((rgb[1] >> shift) << bits) | (rgb[2] >> shift);
   keys[i] = key;
@@ -190,7 +191,53 @@ function nearestColor(rgb: Color, centers: readonly Color[]): number {
   return best;
 }
 
-function quantize(samples: readonly Sample[], paletteSize: number, bits: ChannelBits) {
+type IndexedColor = { index: number; color: Color };
+
+function nearestIndexedColor(rgb: Color, byRed: readonly IndexedColor[]): number {
+  let left = 0, right = byRed.length;
+  while (left < right) {
+    const middle = (left + right) >>> 1;
+    if (byRed[middle]!.color[0] < rgb[0]) left = middle + 1;
+    else right = middle;
+  }
+
+  let best = 0, distance = Infinity;
+  for (const step of [-1, 1]) {
+    for (let i = step < 0 ? left - 1 : left; i >= 0 && i < byRed.length; i += step) {
+      const { index, color } = byRed[i]!;
+      const redError = (rgb[0] - color[0]) ** 2;
+      // Later centers in this direction cannot beat the current error on red alone.
+      if (redError > distance) break;
+      const error = redError + (rgb[1] - color[1]) ** 2 + (rgb[2] - color[2]) ** 2;
+      // Keep the original scan's first-center tie rule.
+      if (error < distance || (error === distance && index < best)) {
+        distance = error;
+        best = index;
+      }
+    }
+  }
+  return best;
+}
+
+function medianColor(items: readonly Sample[], fallback: Color): Color {
+  if (items.length === 0) return fallback;
+  const total = items.reduce((sum, item) => sum + item.count, 0);
+  const cutoff = Math.ceil(total / 2);
+  return [0, 1, 2].map((axis) => {
+    const bins = new Uint32Array(256);
+    for (const item of items) {
+      bins[Math.round(item.sum[axis]! / item.count)]! += item.count;
+    }
+    let cumulative = 0;
+    for (let i = 0; i < bins.length; i += 1) {
+      cumulative += bins[i]!;
+      if (cumulative >= cutoff) return i;
+    }
+    return fallback[axis]!;
+  }) as Color;
+}
+
+function quantize(samples: readonly Sample[], paletteSize: number, bits: ChannelBits, indexColors = false) {
   const buckets = [partition([...samples], bits)];
   while (buckets.length < paletteSize) {
     buckets.sort((a, b) => b.score - a.score);
@@ -204,19 +251,28 @@ function quantize(samples: readonly Sample[], paletteSize: number, bits: Channel
   }
   const indices = new Uint16Array(1 << (3 * bits));
   const centers = buckets.map(({ samples: items }) => average(items));
+  const baseIndex = 0;
   const points = samples.map((sample) => ({ sample, rgb: average([sample]) }));
   // Use median-cut for deterministic initialization, then assign each
   // occupied bin to its closest color and refine the palette in place.
   for (let pass = 0; pass < 4; pass += 1) {
     const assigned = centers.map((): Sample[] => []);
+    const byRed = indexColors
+      ? centers.map((color, index) => ({ index, color })).sort((a, b) => a.color[0] - b.color[0])
+      : undefined;
     for (const { sample, rgb } of points) {
-      const best = nearestColor(rgb, centers);
+      const best = byRed === undefined ? nearestColor(rgb, centers) : nearestIndexedColor(rgb, byRed);
       indices[sample.key] = best;
       assigned[best]!.push(sample);
     }
     if (pass < 3) {
       assigned.forEach((items, i) => {
         if (items.length) centers[i] = average(items);
+      });
+    } else if (indexColors) {
+      // Keep the native contour assignments and seam base paint fixed.
+      assigned.forEach((items, i) => {
+        if (i !== baseIndex) centers[i] = medianColor(items, centers[i]!);
       });
     }
   }
@@ -235,6 +291,7 @@ function traceContours(
     for (let x = 0; x < width; x += 1) {
       const i = y * width + x;
       const color = pixels[i]!;
+      if (color === count) continue; // Reserved index for omitted cells.
       const corner = y * stride + x;
       const boundary = edges[color]!;
       if (y === 0 || pixels[i - width] !== color) boundary.add(4 * corner);
@@ -266,9 +323,13 @@ function traceContours(
         if (vertex === start) break;
         // Clockwise edges keep the filled region on their right. Prefer a
         // right turn at a diagonal contact so point-touching loops stay apart.
-        const next = [1, 0, 3].map((offset) => (direction + offset) % 4)
-          .find((candidate) => boundary.has(vertex * 4 + candidate));
-        if (next === undefined) throw new Error("Raster contour did not close.");
+        const right = (direction + 1) % 4, left = (direction + 3) % 4;
+        const corner = vertex * 4;
+        let next: number;
+        if (boundary.has(corner + right)) next = right;
+        else if (boundary.has(corner + direction)) next = direction;
+        else if (boundary.has(corner + left)) next = left;
+        else throw new Error("Raster contour did not close.");
         if (direction !== next) {
           const horizontal = direction % 2 === 0;
           const target = horizontal ? vertex % stride : Math.floor(vertex / stride);
@@ -284,13 +345,54 @@ function traceContours(
         }
         direction = next;
       } while (true);
-      // SVG fill closes subpaths. These contours have no stroke, so the final
-      // edge can be implicit without changing the fill or the winding of holes.
+      // SVG fill closes subpaths implicitly. Stroked contours need an explicit
+      // close so the final edge and join are painted too.
       contours.push(implicitClose ? path : path + "Z");
       previousPosition = implicitClose ? lastCorner : start;
     }
     return { contours, segments };
   });
+}
+
+type TracePoint = readonly [number, number];
+
+function polygonCross([ax, ay]: TracePoint, [bx, by]: TracePoint, [x, y]: TracePoint): number {
+  return (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+}
+
+function readDetailExclusion(input: unknown, width: number, height: number): readonly TracePoint[] {
+  if (!Array.isArray(input) || input.length < 3 || input.length > 8) {
+    throw new RangeError("Detail exclusion requires three to eight vertices.");
+  }
+  const vertices = input.map((point): TracePoint => {
+    if (!Array.isArray(point) || point.length !== 2 ||
+        !Number.isSafeInteger(point[0]) || !Number.isSafeInteger(point[1]) ||
+        point[0] < 0 || point[0] > width || point[1] < 0 || point[1] > height) {
+      throw new RangeError("Detail exclusion coordinates must be whole source pixels within the artboard.");
+    }
+    return [point[0], point[1]];
+  });
+  for (const [index, vertex] of vertices.entries()) {
+    const next = (index + 1) % vertices.length;
+    if (vertices.some((point, i) => i !== index && i !== next && polygonCross(vertex, vertices[next]!, point) <= 0)) {
+      throw new RangeError("Detail exclusion must be a strictly convex clockwise polygon.");
+    }
+  }
+  return vertices;
+}
+
+function omitDetailCells(pixels: Uint16Array, cols: number, outsideIndex: number, vertices: readonly TracePoint[]): void {
+  const xs = vertices.map(([x]) => x), ys = vertices.map(([, y]) => y);
+  let omitted = 0;
+  for (let y = Math.min(...ys); y < Math.max(...ys); y++) {
+    for (let x = Math.min(...xs); x < Math.max(...xs); x++) {
+      if (vertices.every((vertex, i) => polygonCross(vertex, vertices[(i + 1) % vertices.length]!, [x + 0.5, y + 0.5]) >= 0)) {
+        pixels[y * cols + x] = outsideIndex;
+        omitted++;
+      }
+    }
+  }
+  if (omitted === 0) throw new RangeError("Detail exclusion does not cover a cell.");
 }
 
 interface TraceSettings {
@@ -299,18 +401,29 @@ interface TraceSettings {
   segmentLimit?: number;
   maxSvgBytes?: number;
   implicitClose?: boolean;
+  excludeDetail?: readonly TracePoint[];
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
+}
+
+function illustrationScene(source: PixelSource, cols: number, rows: number, elements: SceneElement[]): VectorScene {
+  return {
+    schema: SCENE_SCHEMA, compatibility: SCENE_COMPATIBILITY, compilerLevel: SCENE_COMPILER_LEVEL,
+    profile: "illustration",
+    artboard: { width: source.width, height: source.height, viewBox: [0, 0, cols, rows] },
+    accessibility: { mode: "labelled", title: "Traced illustration" },
+    elements,
+  };
 }
 
 function traceSampledRaster(
   source: PixelSource,
   sampled: SampledRaster,
-  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled, implicitClose = false }: TraceSettings,
+  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled, implicitClose = false, excludeDetail }: TraceSettings,
+  palette = quantize([...sampled.histogram.values()], paletteSize, sampled.bits),
 ): VectorScene {
-  const { cols, rows, keys, histogram, bits } = sampled;
-  const samples = [...histogram.values()];
-  const { indices, colors, centers } = quantize(samples, paletteSize, bits);
+  const { cols, rows, keys } = sampled;
+  const { indices, colors, centers } = palette;
   const pixels = Uint16Array.from(keys, (key) => indices[key]!);
   const elements: PathElement[] = [];
   let totalSegments = 0;
@@ -379,30 +492,223 @@ function traceSampledRaster(
       addLayer(undercoat, underCols, underRows, "undercoat", block);
     }
   }
+  if (excludeDetail) omitDetailCells(pixels, cols, colors.length, excludeDetail);
   addLayer(pixels, cols, rows, "detail", 1);
+  return illustrationScene(source, cols, rows, elements);
+}
+
+function sampleAlphaCell(source: PixelSource, cols: number, rows: number, x: number, y: number) {
+  const { width, height, rgba8 } = source;
+  const left = x * width, right = (x + 1) * width;
+  const top = y * height, bottom = (y + 1) * height;
+  const sum: Color = [0, 0, 0];
+  let coverage = 0;
+  // Accumulate premultiplied color so hidden RGB never bleeds into downsampled edges.
+  for (let sy = Math.floor(top / rows); sy < Math.ceil(bottom / rows); sy += 1) {
+    const overlapY = Math.min(bottom, (sy + 1) * rows) - Math.max(top, sy * rows);
+    for (let sx = Math.floor(left / cols); sx < Math.ceil(right / cols); sx += 1) {
+      const overlapX = Math.min(right, (sx + 1) * cols) - Math.max(left, sx * cols);
+      const offset = (sy * width + sx) * 4;
+      const weight = overlapX * overlapY * rgba8[offset + 3]!;
+      coverage += weight;
+      for (let c = 0; c < 3; c++) sum[c]! += rgba8[offset + c]! * weight;
+    }
+  }
   return {
-    schema: SCENE_SCHEMA, compatibility: SCENE_COMPATIBILITY, compilerLevel: SCENE_COMPILER_LEVEL,
-    profile: "illustration",
-    artboard: { width: source.width, height: source.height, viewBox: [0, 0, cols, rows] },
-    accessibility: { mode: "labelled", title: "Traced illustration" },
-    elements,
+    alpha: Math.round(coverage / (width * height)),
+    rgb: sum.map(value => coverage === 0 ? 0 : Math.round(value / coverage)) as Color,
   };
+}
+
+function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number) {
+  const width = Math.ceil(cols / cell), height = Math.ceil(rows / cell);
+  const samples = makeSamples(width, height, 6);
+  const keep = new Uint8Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // Keep a two-cell margin from lower-alpha pixels and the artboard boundary.
+      const left = Math.floor(x * cols / width) - 2, right = Math.ceil((x + 1) * cols / width) + 2;
+      const top = Math.floor(y * rows / height) - 2, bottom = Math.ceil((y + 1) * rows / height) + 2;
+      if (left < 0 || top < 0 || right > cols || bottom > rows) continue;
+      let eligible = true;
+      for (let row = top; row < bottom && eligible; row++) {
+        for (let col = left; col < right; col++) {
+          if (coverage[row * cols + col] !== 16) {
+            eligible = false;
+            break;
+          }
+        }
+      }
+      if (!eligible) continue;
+      const i = y * width + x;
+      keep[i] = 1;
+      recordColor(samples, i, sampleAlphaCell(source, width, height, x, y).rgb);
+    }
+  }
+  if (samples.histogram.size === 0) return undefined;
+  const { colors, indices } = quantize([...samples.histogram.values()], 64, samples.bits);
+  const pixels = Uint16Array.from(samples.keys, (key, i) => keep[i] ? indices[key]! : colors.length);
+  return { width, height, pixels, palette: colors.map(color => ({ color, fillOpacity: 1 })) };
+}
+
+function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBudget: number): VectorScene {
+  const { cols, rows } = traceGrid(source, maxEdge);
+  const alphas = new Uint8Array(cols * rows);
+  const colorKeys = new Uint32Array(cols * rows);
+  const bits = 6 as const;
+  const bands = Array.from({ length: 17 }, () => ({
+    bits, keys: colorKeys, histogram: new Map<number, Sample>(), count: 0, alphaSum: 0,
+  }));
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const index = y * cols + x;
+      const { alpha, rgb } = sampleAlphaCell(source, cols, rows, x, y);
+      const band = Math.round(alpha / 16);
+      if (band === 0) continue;
+      const bucket = bands[band]!;
+      alphas[index] = band;
+      bucket.count++;
+      bucket.alphaSum += alpha;
+      recordColor(bucket, index, rgb);
+    }
+  }
+  const palette: { color: HexColor; fillOpacity: number }[] = [];
+  const mappings = bands.map(({ count, alphaSum, histogram }, band) => {
+    if (count === 0) return undefined;
+    const { colors, indices } = quantize([...histogram.values()], band === 16 ? paletteBudget : 32, bits);
+    const offset = palette.length;
+    palette.push(...colors.map(color => ({ color, fillOpacity: alphaSum / count / 255 })));
+    return { indices, offset };
+  });
+  const pixels = Uint16Array.from(alphas, (band, i) => {
+    const mapping = mappings[band];
+    return mapping === undefined ? palette.length : mapping.offset + mapping.indices[colorKeys[i]!]!;
+  });
+  function contoursForLayer(
+    name: string, data: Uint16Array, width: number, height: number,
+    paints: typeof palette, transform?: PathElement["transform"], underpaintStroke?: number,
+  ) {
+    const elements: PathElement[] = [];
+    let bytes = 0, segments = 0;
+    const overhead = 192 + (serializeTransforms(transform)?.length ?? 0);
+    const shapes = traceContours(data, width, height, paints.length, true, underpaintStroke === undefined);
+    for (const [index, shape] of shapes.entries()) {
+      if (shape.contours.length === 0) continue;
+      const d = shape.contours.join("");
+      if (d.length > SCENE_LIMITS.maxPathBytes) {
+        throw new TraceContourLimitError("Transparent trace exceeds the per-color path limit.");
+      }
+      bytes += d.length + 2 * shape.segments + overhead;
+      segments += shape.segments;
+      const { color, fillOpacity } = paints[index]!;
+      const fill = { type: "solid" as const, color };
+      elements.push({ type: "path", id: `trace-${name}-${index}`, d, presentation: {
+        fill, ...(fillOpacity === 1 ? {} : { fillOpacity }),
+        ...(underpaintStroke === undefined ? {} : { stroke: fill, strokeWidth: underpaintStroke, strokeLinejoin: "bevel" as const }),
+      }, ...(transform === undefined ? {} : { transform }) });
+    }
+    return { bytes, segments, elements };
+  }
+  function sceneWithinBudget(
+    layers: ReturnType<typeof contoursForLayer>[], groupedElements?: SceneElement[],
+  ) {
+    const groupOverhead = groupedElements === undefined ? 0 : 192;
+    const bytes = 1024 + groupOverhead + layers.reduce((total, layer) => total + layer.bytes, 0);
+    const segments = layers.reduce((total, layer) => total + layer.segments, 0);
+    const authoredCount = layers.reduce((total, layer) => total + layer.elements.length, 0) +
+      (groupedElements === undefined ? 0 : 1);
+    if (bytes > RASTER_MAX_SVG_BYTES || segments > ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments ||
+        authoredCount > SCENE_LIMITS.maxAuthoredElements) {
+      throw new TraceContourLimitError("Transparent trace exceeds the SVG contour budget.");
+    }
+    const elements = groupedElements ?? layers.flatMap(layer => layer.elements);
+    const scene = illustrationScene(source, cols, rows, elements);
+    if (Buffer.byteLength(JSON.stringify(scene)) > SCENE_LIMITS.maxInputBytes) {
+      throw new TraceContourLimitError("Transparent trace exceeds the editable scene budget.");
+    }
+    return scene;
+  }
+  const detail = contoursForLayer("alpha", pixels, cols, rows, palette);
+  const paint = interiorUnderpaint(source, alphas, cols, rows, 4);
+  const nearOpaque = mappings[16];
+  if (paint && nearOpaque) {
+    try {
+      const x = cols / paint.width, y = rows / paint.height;
+      const undercoat = contoursForLayer("alpha-underpaint", paint.pixels, paint.width, paint.height, paint.palette,
+        [{ type: "scale", x, ...(x === y ? {} : { y }) }], 0.5);
+      const { fillOpacity } = palette[nearOpaque.offset]!;
+      const lowerBands: PathElement[] = [];
+      const nearOpaquePaths: PathElement[] = [];
+      for (const path of detail.elements) {
+        const { fillOpacity: opacity, ...presentation } = path.presentation ?? {};
+        if (opacity === fillOpacity) nearOpaquePaths.push({ ...path, presentation });
+        else lowerBands.push(path);
+      }
+      function compose(paints: ReturnType<typeof contoursForLayer>[]) {
+        if (fillOpacity === 1) return sceneWithinBudget([...paints, detail]);
+        // The detail and both paint grids share one opacity application.
+        return sceneWithinBudget([...paints, detail], [
+          ...lowerBands, {
+            type: "group", id: "trace-near-opaque", presentation: { opacity: fillOpacity },
+            children: [...paints.flatMap(layer => layer.elements), ...nearOpaquePaths],
+          },
+        ]);
+      }
+
+      if (maxEdge === NATIVE_TRANSPARENT_EDGE && Math.max(cols, rows) > MAX_TRACE_EDGE) {
+        try {
+          const fine = interiorUnderpaint(source, alphas, cols, rows, 3);
+          if (fine) {
+            const sx = cols / fine.width, sy = rows / fine.height;
+            const fineLayer = contoursForLayer("alpha-fine-underpaint", fine.pixels, fine.width, fine.height, fine.palette,
+              [{ type: "scale", x: sx, ...(sx === sy ? {} : { y: sy }) }], 2 / 3);
+            return compose([undercoat, fineLayer]);
+          }
+        } catch (error) {
+          if (!(error instanceof TraceContourLimitError)) throw error;
+        }
+      }
+      return compose([undercoat]);
+    } catch (error) {
+      if (!(error instanceof TraceContourLimitError)) throw error;
+    }
+  }
+  return sceneWithinBudget([detail]);
 }
 
 const HIGH_DETAIL_SVG_BUDGET = 12_000_000;
 
-/** Trace opaque sRGB photos or illustrations as editable, palette-colored contours. */
+/** Trace sRGB illustrations as editable contours. Alpha preservation is opt-in. */
 export function traceRasterScene(
   source: PixelSource,
-  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean } = {},
+  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean; readonly excludeDetail?: unknown; readonly preserveAlpha?: boolean } = {},
 ): VectorScene {
   const grid = traceGrid(source);
+  if (options.preserveAlpha && options.excludeDetail !== undefined) {
+    throw new RangeError("Transparent tracing does not support detail exclusion.");
+  }
+  if (options.preserveAlpha && source.rgba8.some((value, i) => (i & 3) === 3 && value !== 255)) {
+    const presets = options.nativeDetail ? [NATIVE_TRANSPARENT_EDGE, 1152, 768, 576] : options.highDetail === false ? [576] : [1152, 768, 576];
+    for (const edge of presets) {
+      try {
+        return traceTransparentRaster(source, edge, 1152);
+      } catch (error) {
+        if (!(error instanceof TraceContourLimitError)) throw error;
+      }
+    }
+    throw new RangeError("Transparent raster contours exceed the scene limits.");
+  }
   const segmentLimit = SCENE_LIMITS.maxAggregatePathSegments;
+  const excludeDetail = options.excludeDetail === undefined ? undefined : readDetailExclusion(options.excludeDetail, source.width, source.height);
+  if (excludeDetail && !options.nativeDetail) throw new RangeError("Detail exclusion requires native detail.");
   if (options.nativeDetail) {
     const nativeGrid = traceGrid(source, 768);
     if ((nativeGrid.cols > grid.cols || nativeGrid.rows > grid.rows)
         && nativeGrid.cols * 2 <= source.width && nativeGrid.rows * 2 <= source.height
         && nativeGrid.cols > 4 && nativeGrid.rows > 4) {
+      if (excludeDetail && (nativeGrid.cols * 2 !== source.width || nativeGrid.rows * 2 !== source.height)) {
+        throw new RangeError("Detail exclusion requires a native grid matching the source pixels.");
+      }
       const underpaintSource = sampleRaster(source, 6, {
         cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
       });
@@ -424,14 +730,27 @@ export function traceRasterScene(
           const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold, subdivision);
           // Keep palette search within the six-bit pass's maximum occupied-bin count.
           if (subdivision === "directional" && sampled.histogram.size > 2 ** 18) continue;
-          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource });
-          if (Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
+          const palette = quantize([...sampled.histogram.values()], traceSettings.paletteSize, sampled.bits, subdivision === "directional");
+          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource }, palette);
+          if (Buffer.byteLength(JSON.stringify(scene), "utf8") > SCENE_LIMITS.maxInputBytes) continue;
+          if (!excludeDetail) return scene;
+
+          // Select the preset using the original artwork before applying a cut.
+          // Refuse instead of falling back to a different preset for the edit.
+          try {
+            const edited = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource, excludeDetail, maxSvgBytes: RASTER_MAX_SVG_BYTES }, palette);
+            if (Buffer.byteLength(JSON.stringify(edited), "utf8") <= SCENE_LIMITS.maxInputBytes) return edited;
+          } catch (error) {
+            if (!(error instanceof TraceContourLimitError)) throw error;
+          }
+          throw new RangeError("Detail exclusion exceeds the selected native trace's limits.");
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
         }
       }
     }
   }
+  if (excludeDetail) throw new RangeError("Detail exclusion requires a supported native trace.");
   if ((options.highDetail !== false || options.nativeDetail) && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
       && grid.cols > 4 && grid.rows > 4) {
     try {

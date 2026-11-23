@@ -7,6 +7,7 @@ import {
   type Node,
 } from "@xmldom/xmldom";
 
+import { RASTER_MAX_SVG_BYTES } from "../brand/raster-capability.js";
 import { computeSha256 } from "../digests.js";
 import {
   isLocalId,
@@ -33,6 +34,7 @@ import {
   inspectImportSemantics,
   type ImportFindings,
 } from "./import-svg-guard.js";
+import { compactCanonicalPathData } from "./path-canonical.js";
 import { validateScene } from "./validate.js";
 import type { DiagnosticContext } from "../diagnostics.js";
 import type { HexColor } from "../types.js";
@@ -662,6 +664,27 @@ function extractPresentation(
  * Public API to import an SVG byte buffer into the safe vector scene domain.
  */
 export function sceneImportSvg(input: Uint8Array): SceneImportResult {
+  return inspectSceneSvg(input);
+}
+
+/** Admit only exact compiler output when reopening a reviewed SVG. */
+export function validateCanonicalSceneSvg(input: Uint8Array, compactPaths: boolean): SceneImportResult {
+  return inspectSceneSvg(input, { compactPaths });
+}
+
+type ReviewedSceneImport = SceneImportResult & {
+  readonly compiled?: Extract<ReturnType<typeof compileScene>, { ok: true }>["value"];
+  readonly compactPaths?: boolean;
+};
+
+/** Reopen exact canonical SVG and return the matching editable compilation. */
+export function reopenCanonicalSceneSvg(input: Uint8Array): ReviewedSceneImport {
+  return inspectSceneSvg(input, { fitInput: true });
+}
+
+function inspectSceneSvg(input: Uint8Array, reviewed?: { readonly compactPaths?: boolean; readonly fitInput?: boolean }): ReviewedSceneImport {
+  const maxPathBytes = reviewed ? SCENE_LIMITS.maxCanonicalPathBytes : SCENE_LIMITS.maxPathBytes;
+  let sawCompactPath = false;
   const sourceSha256 = computeSha256(input);
   const normalizations = new Set<string>();
   const observedTags = new Set<string>();
@@ -675,7 +698,7 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
   const invalidReasons = new Set<string>();
 
   // 1. Check size limit before decoding
-  if (input.byteLength > MAX_INPUT_BYTES) {
+  if (input.byteLength > (reviewed ? RASTER_MAX_SVG_BYTES : MAX_INPUT_BYTES)) {
     return {
       classification: "REJECTED_OUT_OF_SCOPE",
       reasonCodes: ["LIMIT_INPUT_SIZE_EXCEEDED"],
@@ -760,7 +783,7 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
     limits: new Set<string>(),
     patterns: new Set<string>(),
   };
-  inspectImportSemantics(root, semanticFindings);
+  inspectImportSemantics(root, semanticFindings, maxPathBytes);
 
   for (const code of semanticFindings.unsafe) unsafeReasons.add(code);
   for (const code of semanticFindings.invalid) invalidReasons.add(code);
@@ -1115,12 +1138,17 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
       if (localName === "path") {
         const d = el.getAttribute("d");
         if (d !== null) {
-          if (Buffer.byteLength(d) > SCENE_LIMITS.maxPathBytes) {
+          if (reviewed?.fitInput && /^[Mm][-+.0-9]/.test(d)) sawCompactPath = true;
+          if (Buffer.byteLength(d) > maxPathBytes) {
+            outOfScopeReasons.add("LIMIT_PATH_BYTES_EXCEEDED");
+          }
+          const parsedPath = reviewed ? compactCanonicalPathData(d) : d;
+          if (reviewed && Buffer.byteLength(parsedPath) > SCENE_LIMITS.maxPathBytes) {
             outOfScopeReasons.add("LIMIT_PATH_BYTES_EXCEEDED");
           }
           const diagCtx: DiagnosticContext = { operation: "parse", domain: "svg" };
           try {
-            parsePathData(d, diagCtx, "d");
+            if (!reviewed || Buffer.byteLength(parsedPath) <= SCENE_LIMITS.maxPathBytes) parsePathData(parsedPath, diagCtx, "d");
           } catch {
             if (hasPackedArcFlags(d)) {
               analyzeOnlyReasons.add("PARSER_LIMIT_PACKED_ARC_FLAGS");
@@ -1318,7 +1346,7 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
     for (const rawId of rawIds) {
       let targetId = rawId;
       // Avoid collision with generated scene-title and scene-desc
-      if (targetId === "scene-title" || targetId === "scene-desc") {
+      if (!reviewed && (targetId === "scene-title" || targetId === "scene-desc")) {
         targetId = `elem-${targetId}`;
         normalizations.add("rename_colliding_ids");
       }
@@ -1485,7 +1513,7 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
     // Convert Element to SceneElement
     function convertElement(el: Element): SceneElement | null {
       const tag = el.localName ?? el.tagName;
-      const elId = remapId(el.getAttribute("id")) ?? allocateGeneratedId();
+      const elId = remapId(el.getAttribute("id")) ?? (reviewed ? undefined : allocateGeneratedId());
       const rawPres = extractPresentation(el, normalizations, observedPatterns, outOfScopeReasons);
       const transformAttr = el.getAttribute("transform");
       const transform = transformAttr
@@ -1513,7 +1541,7 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
       switch (tag) {
         case "path": {
           const d = el.getAttribute("d") ?? "";
-          return { type: "path", ...base, d };
+          return { type: "path", ...base, d: reviewed ? compactCanonicalPathData(d) : d };
         }
         case "rect": {
           const x = parseLength(el.getAttribute("x") ?? "0", normalizations, outOfScopeReasons) ?? 0;
@@ -1668,8 +1696,10 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
 
     // Root presentation promotion
     const rawRootPres = extractPresentation(root, normalizations, observedPatterns, outOfScopeReasons);
+    // The canonical decorative root already carries aria-hidden via scene accessibility.
+    const { ariaHidden: rootAriaHidden, ...rootPaint } = rawRootPres;
     const rootPres = {
-      ...rawRootPres,
+      ...(reviewed && accessibility.mode === "decorative" && rootAriaHidden === true ? rootPaint : rawRootPres),
       ...(rawRootPres.fill?.type === "gradient" ? { fill: { ...rawRootPres.fill, id: remapRef(rawRootPres.fill.id) } } : {}),
       ...(rawRootPres.stroke?.type === "gradient" ? { stroke: { ...rawRootPres.stroke, id: remapRef(rawRootPres.stroke.id) } } : {}),
     };
@@ -1763,7 +1793,8 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
       };
     }
 
-    const compileResult = compileScene(scene);
+    const compactPaths = reviewed?.compactPaths ?? sawCompactPath;
+    const compileResult = compileScene(scene, reviewed && { ...reviewed, compactPaths });
     if (!compileResult.ok) {
       const diagCodes = compileResult.diagnostics.map((d) => d.code);
       return {
@@ -1772,6 +1803,22 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
         features,
         normalizations: Array.from(normalizations).sort(),
         sourceSha256,
+      };
+    }
+
+    if (reviewed) {
+      if (!Buffer.from(compileResult.value.svg, "utf8").equals(input)) {
+        return {
+          classification: "REJECTED_OUT_OF_SCOPE",
+          reasonCodes: ["SVG_NOT_CANONICAL_COMPILER_OUTPUT"],
+          features,
+          normalizations: [...normalizations].sort(),
+          sourceSha256,
+        };
+      }
+      return {
+        classification: "SUPPORTED_IMPORT", reasonCodes: [], features, scene, normalizations: [], sourceSha256,
+        ...(reviewed.fitInput ? { compiled: compileResult.value, compactPaths } : {}),
       };
     }
 
