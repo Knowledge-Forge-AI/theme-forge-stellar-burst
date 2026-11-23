@@ -81,9 +81,11 @@ export function compare(reference: Uint8Array, candidate: Uint8Array, width: num
   for (let y = top!; y < bottom!; y += 1) {
     for (let x = left!; x < right!; x += 1) {
       const offset = (y * width + x) * 4;
-      const delta = [0, 1, 2].map((c) => Math.abs(reference[offset + c]! - candidate[offset + c]!));
-      absolute += (delta[0]! + delta[1]! + delta[2]!) / 3;
-      if (Math.max(...delta) > 48) severe += 1;
+      const red = Math.abs(reference[offset]! - candidate[offset]!);
+      const green = Math.abs(reference[offset + 1]! - candidate[offset + 1]!);
+      const blue = Math.abs(reference[offset + 2]! - candidate[offset + 2]!);
+      absolute += (red + green + blue) / 3;
+      if (Math.max(red, green, blue) > 48) severe += 1;
       total += 1;
     }
   }

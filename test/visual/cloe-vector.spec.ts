@@ -135,35 +135,54 @@ test("Cloe native-detail SVG preserves line work at raster delivery sizes", asyn
   await page.route("http://cloe.test/reopened-edit.svg", route =>
     route.fulfill({ contentType: "image/svg+xml", body: reopenedEdit }));
 
-  for (const width of [384, 512, 768, 1024]) {
-    const height = width * 1.5;
-    const before = await render(page, "/reference.webp", width, height);
-    const after = await render(page, "/cloe.svg", width, height);
-    const results = compareCloe(before, after, width, height);
-    for (const variant of ["cut", "tablet", "reopened-edit"]) {
-      const edited = await render(page, `/${variant}.svg`, width, height);
-      const scale = width / 1024;
-      let changed = 0;
-      let outside = 0;
-      for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-          const i = (y * width + x) * 4;
-          if (after.readUInt32LE(i) === edited.readUInt32LE(i)) continue;
-          changed += 1;
-          if (x < 678 * scale || x >= 812 * scale || y < 336 * scale || y >= 452 * scale) outside += 1;
+  async function compareSizes(target: Page, widths: readonly number[]) {
+    for (const width of widths) {
+      const height = width * 1.5;
+      const before = await render(target, "/reference.webp", width, height);
+      const after = await render(target, "/cloe.svg", width, height);
+      const results = compareCloe(before, after, width, height);
+      for (const variant of ["cut", "tablet", "reopened-edit"]) {
+        const edited = await render(target, `/${variant}.svg`, width, height);
+        const scale = width / 1024;
+        let changed = 0;
+        let outside = 0;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            const i = (y * width + x) * 4;
+            if (after.readUInt32LE(i) === edited.readUInt32LE(i)) continue;
+            changed += 1;
+            if (x < 678 * scale || x >= 812 * scale || y < 336 * scale || y >= 452 * scale) outside += 1;
+          }
         }
+        expect(changed).toBeGreaterThan(5_000 * scale ** 2);
+        expect(outside).toBe(0);
+        await info.attach(`${variant}-edit-${width}.json`, { body: JSON.stringify({ changed, outside }), contentType: "application/json" });
       }
-      expect(changed).toBeGreaterThan(5_000 * scale ** 2);
-      expect(outside).toBe(0);
-      await info.attach(`${variant}-edit-${width}.json`, { body: JSON.stringify({ changed, outside }), contentType: "application/json" });
+      if (width !== 512 && width !== 1024) continue;
+      await info.attach(`native-detail-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
+      const limits = width === 1024 ? { full: 1.89, face: 2.06, tablet: 3.1 } : { full: 3.5, face: 5, tablet: 4.5 };
+      for (const region of ["full", "face", "tablet"] as const) {
+        expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(limits[region]);
+        expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.025);
+      }
     }
-    if (width !== 512 && width !== 1024) continue;
-    await info.attach(`native-detail-errors-${width}.json`, { body: JSON.stringify(results), contentType: "application/json" });
-    const limits = width === 1024 ? { full: 1.89, face: 2.06, tablet: 3.1 } : { full: 3.5, face: 5, tablet: 4.5 };
-    for (const region of ["full", "face", "tablet"] as const) {
-      expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(limits[region]);
-      expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.025);
+  }
+
+  // The full-size SVG renders independently of the smaller comparisons.
+  const fullSize = await page.context().newPage();
+  try {
+    await loadCloeReference(fullSize);
+    const drawings = { cloe: svg, cut: cutSvg, tablet: tabletSvg, "reopened-edit": reopenedEdit };
+    for (const [name, body] of Object.entries(drawings)) {
+      await fullSize.route(`http://cloe.test/${name}.svg`, route =>
+        route.fulfill({ contentType: "image/svg+xml", body }));
     }
+    const results = await Promise.allSettled([compareSizes(page, [384, 512, 768]), compareSizes(fullSize, [1024])]);
+    for (const result of results) {
+      if (result.status === "rejected") throw result.reason;
+    }
+  } finally {
+    await fullSize.close();
   }
 });
 
