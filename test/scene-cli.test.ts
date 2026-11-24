@@ -460,6 +460,93 @@ describe("tfsb scene CLI integration", () => {
       await expect(access(join(dir, "revised.json"))).rejects.toThrow();
     });
 
+    it("replaces an existing top-level group without changing its layer position or other elements", async () => {
+      const dir = await makeTestDir();
+      const original = JSON.stringify(source);
+      const replaceGroup = {
+        type: "group", id: "face",
+        children: [{ type: "circle", id: "eye", cx: 3, cy: 4, r: 2 }],
+      };
+      await writeFile(join(dir, "scene.json"), original);
+      await writeFile(join(dir, "edits.json"), JSON.stringify({ replaceGroup }));
+      const args = ["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revised.json", "--json"];
+      const preview = capture();
+      expect(await runCli([...args, "--dry-run"], dir, preview.io)).toBe(0);
+      await expect(access(join(dir, "revised.json"))).rejects.toMatchObject({ code: "ENOENT" });
+      const actual = capture();
+      expect(await runCli(args, dir, actual.io)).toBe(0);
+      expect(JSON.parse(preview.stdout()).data.outputSha256).toBe(JSON.parse(actual.stdout()).data.outputSha256);
+      expect(JSON.parse(await readFile(join(dir, "revised.json"), "utf8"))).toEqual({
+        ...source, elements: [replaceGroup, ...source.elements.slice(1)],
+      });
+      expect(await readFile(join(dir, "scene.json"), "utf8")).toBe(original);
+    });
+
+    it.each([
+      { replaceGroup: appendGroup },
+      { replaceGroup: { ...appendGroup, id: "rect-1" } },
+      { replaceGroup: { ...appendGroup, id: "face", children: [] } },
+      { replaceGroup: { ...appendGroup, id: "face", children: [{ ...appendGroup.children[0], id: "rect-1" }] } },
+      { replaceGroup: { ...appendGroup, id: "face" }, appendGroup },
+    ])("refuses an invalid group replacement without writing a scene %#", async (edits) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      await writeFile(join(dir, "edits.json"), JSON.stringify(edits));
+      expect(await runCli(["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revised.json"], dir, capture().io)).toBe(1);
+      await expect(access(join(dir, "revised.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
+
+    it("revises a child group without sending or changing its enclosing group", async () => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      const parentGroupId = "face";
+      const replacement = {
+        ...appendGroup,
+        children: [{ type: "circle", id: "tablet-highlight", cx: 5, cy: 6, r: 2 }],
+      };
+      const steps = [
+        { appendGroup, parentGroupId },
+        { replaceGroup: replacement, parentGroupId },
+        { removeGroup: appendGroup.id, parentGroupId },
+      ];
+      const parent = source.elements[0];
+      if (parent?.type !== "group" || !("children" in parent) || !parent.children) {
+        throw new Error("Fixture requires a group with children");
+      }
+      const children = [
+        [...parent.children, appendGroup],
+        [...parent.children, replacement],
+        parent.children,
+      ];
+      let input = "scene.json";
+      for (const [index, edit] of steps.entries()) {
+        await writeFile(join(dir, "child-edit.json"), JSON.stringify(edit));
+        const output = `child-revised-${index}.json`;
+        expect(await runCli(["scene", "revise", input, "--edits", "child-edit.json", "--output", output], dir, capture().io)).toBe(0);
+        expect(JSON.parse(await readFile(join(dir, output), "utf8"))).toEqual({
+          ...source,
+          elements: [{ ...parent, children: children[index] }, ...source.elements.slice(1)],
+        });
+        input = output;
+      }
+    });
+
+    it.each([
+      { appendGroup, parentGroupId: "missing" },
+      { appendGroup, parentGroupId: "rect-1" },
+      { appendGroup, parentGroupId: false },
+      { appendGroup, parentGroupId: "face", extra: true },
+      { appendGroup: { ...appendGroup, id: "face" }, parentGroupId: "face" },
+      { replaceGroup: appendGroup, parentGroupId: "face" },
+      { removeGroup: "mouth", parentGroupId: "face" },
+    ])("refuses invalid child group edits without writing a scene %#", async (edits) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      await writeFile(join(dir, "child-edit.json"), JSON.stringify(edits));
+      expect(await runCli(["scene", "revise", "scene.json", "--edits", "child-edit.json", "--output", "revised.json"], dir, capture().io)).toBe(1);
+      await expect(access(join(dir, "revised.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
+
     it("removes one named overlay and recovers the prior compiled SVG", async () => {
       const dir = await makeTestDir();
       const original = JSON.stringify(source);

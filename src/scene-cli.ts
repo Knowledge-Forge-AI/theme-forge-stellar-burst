@@ -58,7 +58,7 @@ export const SCENE_USAGE = `Usage:
 Options:
   --output <file>       Publish destination for SVG, PNG, WebP or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
-  --edits <file>        Apply path replacements by ID or append or remove one named group
+  --edits <file>        Apply path replacements by ID or edit one named group, optionally within a parent group
   --regular             Use the smaller regular trace for ordinary display sizes
   --high-detail         Trace sharp edges at finer resolution (default)
   --native-detail       Prioritize fine artwork at the raster export size
