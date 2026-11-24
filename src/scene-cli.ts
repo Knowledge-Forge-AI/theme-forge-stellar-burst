@@ -801,15 +801,21 @@ export async function runSceneCli(
         }
       }
       let scene;
+      let pixels: ReturnType<typeof decodeStrictPng> | undefined;
       try {
-        scene = traceRasterScene(decodeStrictPng(decodedWebp?.bytes ?? bytes), {
+        pixels = decodeStrictPng(decodedWebp?.bytes ?? bytes);
+        scene = traceRasterScene(pixels, {
           highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, fitSourceColors,
         });
       } catch {
+        const requiresAlphaOptIn = !preserveAlpha && !fitSourceColors && excludeDetail === undefined
+          && pixels?.rgba8.some((channel, index) => index % 4 === 3 && channel !== 255);
         throw new DiagnosticError(diagnostic(
           { operation: "import", domain: "scene" },
           "SCENE_RASTER_TRACE_REJECTED",
-          fitSourceColors
+          requiresAlphaOptIn
+            ? `The ${format} contains transparent or translucent pixels; use --preserve-alpha to trace them.`
+            : fitSourceColors
             ? "Source color fitting requires an opaque native trace at the source grid within scene limits."
             : excludeDetail !== undefined
               ? `Detail exclusion requires a bounded opaque ${format}, a matching native grid, and a valid polygon within trace limits.`

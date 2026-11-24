@@ -280,7 +280,10 @@ test("the trace CLI requires explicit opt-in before publishing a transparent sou
     const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
     const args = ["trace-png", "source.png", "--output", "alpha.json", "--native-detail", "--json"];
     expect(await runSceneCli(args, cwd, io)).toBe(1);
-    expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    expect(JSON.parse(stdout).diagnostics[0]).toMatchObject({
+      code: "SCENE_RASTER_TRACE_REJECTED",
+      message: expect.stringContaining("use --preserve-alpha"),
+    });
     await expect(readFile(join(cwd, "alpha.json"))).rejects.toThrow();
     expect(await runSceneCli([...args, "--preserve-alpha", "--exclude-detail", "cut.json"], cwd, io)).toBe(1);
     expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
@@ -361,6 +364,7 @@ test("traces a supported PNG through the CLI, refuses overwrites and rejects non
     stdout = "";
     expect(await runSceneCli(["trace-png", "invalid.png", "--output", "out/invalid.json", "--json"], cwd, io)).toBe(1);
     expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    expect(JSON.parse(stdout).diagnostics[0].message).not.toContain("use --preserve-alpha");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
