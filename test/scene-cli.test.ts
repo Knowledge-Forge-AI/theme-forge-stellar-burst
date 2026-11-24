@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -377,7 +377,7 @@ describe("tfsb scene CLI integration", () => {
 
       const planned = capture();
       expect(await runCli([...args, "--dry-run"], dir, planned.io)).toBe(0);
-      await expect(access(outputPath)).rejects.toThrow();
+      expect(await readdir(dir)).not.toContain("revised.json");
 
       // This remains a valid, semantically identical scene with a different byte identity.
       await writeFile(scenePath, original + "\n");
@@ -388,7 +388,7 @@ describe("tfsb scene CLI integration", () => {
           data: null,
           diagnostics: [{ code: "SCENE_REVISION_DIGEST_MISMATCH" }],
         });
-        await expect(access(outputPath)).rejects.toThrow();
+        expect(await readdir(dir)).not.toContain("revised.json");
       }
 
       await writeFile(scenePath, original);
