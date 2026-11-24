@@ -43,18 +43,22 @@ import type {
   SceneMetrics,
   SceneReceipt,
   SceneElement,
-  SceneValidationResult,
   SymbolDef,
   VectorScene,
 } from "./types.js";
 import { countTextPathSegments, validateScene, validateSceneForOutput } from "./validate.js";
 import { compactCanonicalPathData, compactCanonicalPathOperands, mapScenePaths } from "./path-canonical.js";
 
-function serializeScene(scene: VectorScene, fitInput = false): string {
-  const expanded = canonicalJsonStringify(scene);
+function serializeScene(
+  scene: VectorScene,
+  fitInput = false,
+  paths?: Pick<ReturnType<typeof validateSceneForOutput>, "formatPath" | "formatCompactPath">,
+): string {
+  const expanded = canonicalJsonStringify(paths === undefined ? scene : mapScenePaths(scene, paths.formatPath));
   if (fitInput && Buffer.byteLength(expanded, "utf8") > SCENE_LIMITS.maxInputBytes) {
     // Keep the smallest existing spelling so an interactive edit has room to grow.
-    return canonicalJsonStringify(mapScenePaths(scene, (path) => compactCanonicalPathOperands(compactCanonicalPathData(path))));
+    const compact = paths?.formatCompactPath ?? ((path: string) => compactCanonicalPathOperands(compactCanonicalPathData(path)));
+    return canonicalJsonStringify(mapScenePaths(scene, compact));
   }
   return expanded;
 }
@@ -97,26 +101,24 @@ function sceneWarnings(scene: VectorScene): string[] {
 }
 
 export function canonicalizeScene(input: unknown, options?: { readonly fitInput?: boolean }): Result<string> {
-  const { result, formatPath } = validateSceneForOutput(input);
-  return serializeValidatedScene(result, formatPath, options?.fitInput);
+  return serializeValidatedScene(validateSceneForOutput(input), options?.fitInput);
 }
 
 export function canonicalizeSceneRevision(
   input: unknown,
   revise: (scene: VectorScene, metrics: SceneMetrics) => unknown,
 ): Result<string> {
-  const { result, formatPath } = validateSceneForOutput(input, revise);
-  return serializeValidatedScene(result, formatPath, true);
+  return serializeValidatedScene(validateSceneForOutput(input, revise), true);
 }
 
 function serializeValidatedScene(
-  result: SceneValidationResult,
-  formatPath: (d: string) => string,
+  validation: ReturnType<typeof validateSceneForOutput>,
   fitInput?: boolean,
 ): Result<string> {
+  const { result } = validation;
   if (!result.ok) return result;
   try {
-    return { ok: true, value: serializeScene(mapScenePaths(result.value.scene, formatPath), fitInput) };
+    return { ok: true, value: serializeScene(result.value.scene, fitInput, validation) };
   } catch { return { ok: false, diagnostics: [diagnostic({ operation: "validate", domain: "scene" }, "SCENE_CANONICAL_LIMIT", "Scene cannot be represented within canonical output limits.")] }; }
 }
 

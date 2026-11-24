@@ -1774,7 +1774,10 @@ export function validateScene(input: unknown): SceneValidationResult {
 export function validateSceneForOutput(
   input: unknown,
   revise?: (scene: VectorScene, metrics: SceneMetrics) => unknown,
-): { readonly result: SceneValidationResult; readonly formatPath: (d: string) => string } {
+): { readonly result: SceneValidationResult;
+  readonly formatPath: (d: string) => string;
+  readonly formatCompactPath: (d: string) => string;
+} {
   const pathSegmentCounts = new Map<string, number>();
   const canonicalPaths = new Map<string, string>();
   const cacheLimit = 16 * 1024 * 1024;
@@ -1790,15 +1793,34 @@ export function validateSceneForOutput(
     return segments;
   };
   const formatPath = (d: string) => canonicalPaths.get(d) ?? canonicalPathData(d);
+  const knownCompacts = new Set<string>();
+  const formatCompactPath = (d: string) => knownCompacts.has(d)
+    ? d
+    : compactCanonicalPathOperands(compactCanonicalPathData(formatPath(d)));
   const original = validateScenePaths(input, pathSegmentCounts, countPath);
   const result = original.ok && revise
     ? validateScenePaths(revise(mapScenePaths(original.value.scene, (d) => {
       // Fit existing geometry before the combined revision reaches the input guard.
-      const compact = compactCanonicalPathOperands(compactCanonicalPathData(formatPath(d)));
-      return compact.length < d.length ? compact : d;
+      const canonical = formatPath(d);
+      const compact = compactCanonicalPathOperands(compactCanonicalPathData(canonical));
+      if (compact.length >= d.length) {
+        if (compact === d) knownCompacts.add(d);
+        return d;
+      }
+      knownCompacts.add(compact);
+      // This exact spelling comes from an already validated path. The
+      // compactor preserves its commands, operands, and segment count.
+      if (!pathSegmentCounts.has(compact)) {
+        pathSegmentCounts.set(compact, pathSegmentCounts.get(d)!);
+      }
+      if (!canonicalPaths.has(compact) && cachedBytes + canonical.length <= cacheLimit) {
+        canonicalPaths.set(compact, canonical);
+        cachedBytes += canonical.length;
+      }
+      return compact;
     }), original.value.metrics), pathSegmentCounts, countPath)
     : original;
-  return { result, formatPath };
+  return { result, formatPath, formatCompactPath };
 }
 
 function validateScenePaths(
