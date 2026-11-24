@@ -581,7 +581,7 @@ function sampleAlphaCell(source: PixelSource, cols: number, rows: number, x: num
   };
 }
 
-function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number, inset: number) {
+function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number, inset: number, maxColors = 64) {
   const width = Math.ceil(cols / cell), height = Math.ceil(rows / cell);
   const samples = makeSamples(width, height, 6);
   const keep = new Uint8Array(width * height);
@@ -607,7 +607,7 @@ function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: num
     }
   }
   if (samples.histogram.size === 0) return undefined;
-  const { colors, indices } = quantize([...samples.histogram.values()], 64, samples.bits);
+  const { colors, indices } = quantize([...samples.histogram.values()], maxColors, samples.bits);
   const pixels = Uint16Array.from(samples.keys, (key, i) => keep[i] ? indices[key]! : colors.length);
   return { width, height, pixels, palette: colors.map(color => ({ color, fillOpacity: 1 })) };
 }
@@ -721,7 +721,9 @@ function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBud
 
       if (nativeLarge) {
         try {
-          const fine = interiorUnderpaint(source, alphas, cols, rows, 3, inset);
+          // Reserve an element for the near-opaque group before selecting fine paints.
+          const spare = SCENE_LIMITS.maxAuthoredElements - detail.elements.length - undercoat.elements.length - 1;
+          const fine = spare > 0 ? interiorUnderpaint(source, alphas, cols, rows, 3, inset, Math.min(64, spare)) : undefined;
           if (fine) {
             const sx = cols / fine.width, sy = rows / fine.height;
             const fineLayer = contoursForLayer("alpha-fine-underpaint", fine.pixels, fine.width, fine.height, fine.palette,
@@ -757,10 +759,14 @@ export function traceRasterScene(
   if (options.preserveAlpha && source.rgba8.some((value, i) => (i & 3) === 3 && value !== 255)) {
     const presets = options.nativeDetail ? [NATIVE_TRANSPARENT_EDGE, 1152, 768, 576] : options.highDetail === false ? [576] : [1152, 768, 576];
     for (const edge of presets) {
-      try {
-        return traceTransparentRaster(source, edge, 1152);
-      } catch (error) {
-        if (!(error instanceof TraceContourLimitError)) throw error;
+      // Retry the established palette at the same resolution before accepting a coarser grid.
+      const paletteBudgets = edge === NATIVE_TRANSPARENT_EDGE ? [1408, 1152] : [1152];
+      for (const colors of paletteBudgets) {
+        try {
+          return traceTransparentRaster(source, edge, colors);
+        } catch (error) {
+          if (!(error instanceof TraceContourLimitError)) throw error;
+        }
       }
     }
     throw new RangeError("Transparent raster contours exceed the scene limits.");

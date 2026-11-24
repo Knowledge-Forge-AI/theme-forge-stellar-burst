@@ -270,6 +270,7 @@ test("Orihime SVG exports a repeatable WebP with the raster master's exact alpha
   const svg = await readFile(info.outputPath("orihime.svg"));
   expect(svg.byteLength).toBeLessThanOrEqual(16_000_000);
   expect(svg.toString("utf8")).toContain('viewBox="0 0 1024 1536"');
+  expect(svg.includes('id="trace-alpha-fine-underpaint-'), "native trace retains fine underpaint").toBe(true);
   const binding = ["--expect-svg-digest", sha256(svg)];
   await scene(["import-svg", "orihime.svg", "--svg-source", ...binding, "--output", "reopened.json"]);
   await scene(["compile", "reopened.json", "--illustration-source", "--output", "recompiled.svg"]);
