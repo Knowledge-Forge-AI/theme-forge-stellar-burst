@@ -21,6 +21,7 @@ import {
   SCENE_SCHEMA,
 } from "./constants.js";
 import { canonicalizeScene, compileScene } from "./compile.js";
+import { SCENE_INPUT_BYTE_LIMIT_MESSAGE } from "./guard.js";
 import {
   ALLOWED_GEOMETRY,
   ALLOWED_PRESENTATION,
@@ -34,7 +35,7 @@ import {
   inspectImportSemantics,
   type ImportFindings,
 } from "./import-svg-guard.js";
-import { compactCanonicalPathData } from "./path-canonical.js";
+import { compactCanonicalPathData, compactCanonicalPathOperands, mapScenePaths } from "./path-canonical.js";
 import type { DiagnosticContext } from "../diagnostics.js";
 import type { HexColor } from "../types.js";
 import type {
@@ -666,9 +667,9 @@ export function sceneImportSvg(input: Uint8Array): SceneImportResult {
   return inspectSceneSvg(input);
 }
 
-/** Admit only exact compiler output when reopening a reviewed SVG. */
-export function validateCanonicalSceneSvg(input: Uint8Array, compactPaths: boolean): SceneImportResult {
-  return inspectSceneSvg(input, { compactPaths });
+/** Admit only exact compiler output, inferring path spelling when unspecified. */
+export function validateCanonicalSceneSvg(input: Uint8Array, compactPaths?: boolean): SceneImportResult {
+  return inspectSceneSvg(input, compactPaths === undefined ? {} : { compactPaths });
 }
 
 type ReviewedSceneImport = SceneImportResult & {
@@ -1137,7 +1138,9 @@ function inspectSceneSvg(input: Uint8Array, reviewed?: { readonly compactPaths?:
       if (localName === "path") {
         const d = el.getAttribute("d");
         if (d !== null) {
-          if (reviewed?.fitInput && /^[Mm][-+.0-9]/.test(d)) sawCompactPath = true;
+          if (reviewed && reviewed.compactPaths === undefined && /^[Mm][-+.0-9]/.test(d)) {
+            sawCompactPath = true;
+          }
           if (Buffer.byteLength(d) > maxPathBytes) {
             outOfScopeReasons.add("LIMIT_PATH_BYTES_EXCEEDED");
           }
@@ -1759,7 +1762,7 @@ function inspectSceneSvg(input: Uint8Array, reviewed?: { readonly compactPaths?:
           }
         : undefined;
 
-    const scene: VectorScene = {
+    let scene: VectorScene = {
       schema: SCENE_SCHEMA,
       compatibility: SCENE_COMPATIBILITY,
       compilerLevel: SCENE_COMPILER_LEVEL,
@@ -1781,7 +1784,14 @@ function inspectSceneSvg(input: Uint8Array, reviewed?: { readonly compactPaths?:
 
     // 9. Compilation validates the scene and enforces its budgets.
     const compactPaths = reviewed?.compactPaths ?? sawCompactPath;
-    const compileResult = compileScene(scene, reviewed && { ...reviewed, compactPaths });
+    const compileOptions = reviewed && { ...reviewed, compactPaths };
+    let compileResult = compileScene(scene, compileOptions);
+    if (reviewed && !compileResult.ok && compileResult.diagnostics.some(
+      (diagnostic) => diagnostic.code === "SCENE_LIMIT_EXCEEDED" && diagnostic.message === SCENE_INPUT_BYTE_LIMIT_MESSAGE,
+    )) {
+      scene = mapScenePaths(scene, compactCanonicalPathOperands);
+      compileResult = compileScene(scene, compileOptions);
+    }
     if (!compileResult.ok) {
       const diagCodes = compileResult.diagnostics.map((d) => d.code);
       return {

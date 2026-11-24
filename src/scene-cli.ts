@@ -21,6 +21,7 @@ import {
   type SceneWebpJsonData,
 } from "./json.js";
 import {
+  parseSceneFileBytes,
   publishSceneBytes,
   publishSceneJson,
   publishSceneSvg,
@@ -43,12 +44,12 @@ import { MAX_TRACE_SOURCE_PIXELS } from "./scene/trace-raster.js";
 
 export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
-  tfsb scene inspect <json> [--json]
+  tfsb scene inspect <json> [--compact-paths] [--json]
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]
   tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
-  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--output-width <pixels>] [--compact-paths] [--viewbox-size] [--json]
-  tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--dry-run] [--json]
+  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--output-width <pixels>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
+  tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256>] [--dry-run] [--json]
   tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--fit-source-colors] [--json]
   tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--fit-source-colors] [--json]
   tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
@@ -57,7 +58,7 @@ export const SCENE_USAGE = `Usage:
 Options:
   --output <file>       Publish destination for SVG, PNG, WebP or scene JSON (absent target only)
   --palette <file>      Override declared scene color tokens for this compilation
-  --edits <file>        Apply path replacements by ID or append one named group
+  --edits <file>        Apply path replacements by ID or append or remove one named group
   --regular             Use the smaller regular trace for ordinary display sizes
   --high-detail         Trace sharp edges at finer resolution (default)
   --native-detail       Prioritize fine artwork at the raster export size
@@ -69,7 +70,10 @@ Options:
   --svg-source          Use exact reviewed canonical SVG bytes for render or import
   --viewbox-size        Rasterize reviewed SVG at its whole-pixel viewBox size
   --output-width        Set WebP width in pixels without changing the artboard ratio
+  --quality <0-100>     Set WebP encoder quality (default 94)
+  --sharp-chroma       Use the versioned sharp WebP color conversion
   --expect-svg-digest <sha256>  Require the SVG digest to match before rendering or importing
+  --expect-scene-digest <sha256>  Match the input JSON digest reported by scene inspect
   --dry-run             Validate and plan compilation or revision without writing output
   --json                Emit one versioned machine-result envelope`;
 
@@ -89,7 +93,10 @@ interface ParsedSceneArgs {
   readonly svgSource?: boolean;
   readonly viewBoxSize?: boolean;
   readonly outputWidth?: number;
+  readonly quality?: number;
+  readonly sharpChroma?: boolean;
   readonly expectedSvgDigest?: string;
+  readonly expectedSceneDigest?: string;
   readonly excludeDetail?: string;
   readonly preserveAlpha?: boolean;
   readonly fitSourceColors?: boolean;
@@ -150,7 +157,10 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let svgSource = false;
   let viewBoxSize = false;
   let outputWidth: number | undefined;
+  let quality: number | undefined;
+  let sharpChroma = false;
   let expectedSvgDigest: string | undefined;
+  let expectedSceneDigest: string | undefined;
   let edits: string | undefined;
   let dryRun = false;
   let compactPaths = false;
@@ -223,8 +233,9 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     }
 
     if (arg === "--compact-paths") {
-      if ((action !== "compile" && action !== "rasterize" && action !== "import-svg" && action !== "export-webp") || compactPaths) {
-        return { action, dryRun, json, error: "Use --compact-paths once with scene compile, rasterize, export-webp, or reviewed import." };
+      if ((action !== "inspect" && action !== "compile" && action !== "rasterize"
+          && action !== "import-svg" && action !== "export-webp") || compactPaths) {
+        return { action, dryRun, json, error: "Use --compact-paths once with scene inspect, compile, rasterize, export-webp, or reviewed import." };
       }
       compactPaths = true;
       i += 1;
@@ -260,12 +271,41 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       continue;
     }
 
+    if (arg === "--sharp-chroma") {
+      if (action !== "export-webp" || sharpChroma) {
+        return { action, dryRun, json, error: "Use --sharp-chroma once with scene export-webp." };
+      }
+      sharpChroma = true;
+      i += 1;
+      continue;
+    }
+    if (arg === "--quality") {
+      const next = rest[i + 1];
+      if (action !== "export-webp" || quality !== undefined || next === undefined
+          || !/^(0|[1-9][0-9]?|100)$/.test(next)) {
+        return { action, dryRun, json, error: "Use --quality <integer from 0 to 100> once with scene export-webp." };
+      }
+      quality = Number(next);
+      i += 2;
+      continue;
+    }
+
     if (arg === "--expect-svg-digest") {
       const next = rest[i + 1];
       if ((action !== "rasterize" && action !== "import-svg" && action !== "export-webp") || expectedSvgDigest !== undefined || next?.length !== 71 || !/^sha256:[0-9a-f]{64}$/.test(next)) {
         return { action, dryRun, json, error: "Use --expect-svg-digest <sha256:hex> once with scene rasterize, export-webp, or reviewed import." };
       }
       expectedSvgDigest = next;
+      i += 2;
+      continue;
+    }
+
+    if (arg === "--expect-scene-digest") {
+      const next = rest[i + 1];
+      if (action !== "revise" || expectedSceneDigest !== undefined || next?.length !== 71 || !/^sha256:[0-9a-f]{64}$/.test(next)) {
+        return { action, dryRun, json, error: "Use --expect-scene-digest <sha256:hex> once with scene revise." };
+      }
+      expectedSceneDigest = next;
       i += 2;
       continue;
     }
@@ -420,7 +460,10 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     svgSource,
     viewBoxSize,
     ...(outputWidth === undefined ? {} : { outputWidth }),
+    ...(quality === undefined ? {} : { quality }),
+    ...(sharpChroma ? { sharpChroma } : {}),
     ...(expectedSvgDigest === undefined ? {} : { expectedSvgDigest }),
+    ...(expectedSceneDigest === undefined ? {} : { expectedSceneDigest }),
     ...(excludeDetail === undefined ? {} : { excludeDetail }),
     ...(traceMode === undefined ? {} : { traceMode }),
     preserveAlpha,
@@ -508,7 +551,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, expectedSvgDigest, traceMode, excludeDetail, preserveAlpha = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, quality, sharpChroma, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -565,7 +608,7 @@ export async function runSceneCli(
       const bytes = await readReviewedSceneSvgBytes(inputPath);
       const digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
       assertExpectedSvg(digest);
-      const validation = validateCanonicalSceneSvg(bytes, compactPaths);
+      const validation = validateCanonicalSceneSvg(bytes, compactPaths || undefined);
       if (validation.classification !== "SUPPORTED_IMPORT" || validation.scene === undefined) {
         throw new DiagnosticError(diagnostic(
           ctx, "SCENE_RASTER_SVG_REJECTED", "Direct rasterization requires exact canonical SVG emitted by this compiler.",
@@ -589,7 +632,7 @@ export async function runSceneCli(
       }
       const { pngBytes, pngDigest, rendererBuildDigest } = await renderSvgPng(bytes, rasterWidth, rasterHeight);
       const { exportSceneWebp } = await import("./illustration/derivative-cli.js");
-      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd);
+      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd, quality, sharpChroma);
       if (!derivative.ok) {
         throw new DiagnosticError(diagnostic(ctx, `SCENE_WEBP_${derivative.code}`, "Scene WebP export refused."));
       }
@@ -606,7 +649,9 @@ export async function runSceneCli(
     if (action === "import-svg") {
       const rawBytes = svgSource ? await readReviewedSceneSvgBytes(inputPath) : await readSceneFileBytes(inputPath);
       if (svgSource) assertExpectedSvg(`sha256:${createHash("sha256").update(rawBytes).digest("hex")}`);
-      const result: SceneImportResult = svgSource ? validateCanonicalSceneSvg(rawBytes, compactPaths) : sceneImportSvg(rawBytes);
+      const result: SceneImportResult = svgSource
+        ? validateCanonicalSceneSvg(rawBytes, compactPaths || undefined)
+        : sceneImportSvg(rawBytes);
 
       if (result.classification !== "SUPPORTED_IMPORT") {
         const data: SceneImportSvgJsonData = {
@@ -769,8 +814,8 @@ export async function runSceneCli(
             : excludeDetail !== undefined
               ? `Detail exclusion requires a bounded opaque ${format}, a matching native grid, and a valid polygon within trace limits.`
               : preserveAlpha
-                ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
-                : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
+                  ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
+                  : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
         ));
       }
       const validation = validateScene(scene);
@@ -797,7 +842,12 @@ export async function runSceneCli(
       return 0;
     }
 
-    const raw = await readSceneFile(inputPath);
+    const inputBytes = await readSceneFileBytes(inputPath);
+    if (expectedSceneDigest !== undefined
+        && `sha256:${createHash("sha256").update(inputBytes).digest("hex")}` !== expectedSceneDigest) {
+      throw new DiagnosticError(diagnostic(ctx, "SCENE_REVISION_DIGEST_MISMATCH", "The scene JSON does not match the expected digest."));
+    }
+    const raw = parseSceneFileBytes(inputBytes);
 
     if (action === "revise") {
       const result = reviseScene(raw, await readSceneFile(resolve(cwd, edits!)));
@@ -861,7 +911,7 @@ export async function runSceneCli(
     }
 
     if (action === "inspect") {
-      const result = inspectScene(raw);
+      const result = inspectScene(raw, { compactPaths });
       if (!result.ok) {
         if (jsonMode) {
           return emitJson(
@@ -881,11 +931,14 @@ export async function runSceneCli(
         return 1;
       }
 
+      const inputSceneDigest = `sha256:${createHash("sha256").update(inputBytes).digest("hex")}`;
       if (jsonMode) {
         const data: SceneInspectJsonData = {
           schema: "tfsb.scene-result-v1",
           action: "inspect",
           valid: true,
+          inputSceneDigest,
+          svgBytes: result.value.svgBytes,
           metrics: result.value.metrics,
           receipt: result.value.receipt,
           warnings: result.value.warnings,
@@ -898,7 +951,9 @@ export async function runSceneCli(
       const m = result.value.metrics;
       io.stdout(`scene: ${r.profile} (${r.sceneSchema})\n`);
       io.stdout(`  source digest: ${r.sourceDigest}\n`);
+      io.stdout(`  input JSON digest: ${inputSceneDigest}\n`);
       io.stdout(`  svg digest: ${r.svgDigest}\n`);
+      io.stdout(`  svg bytes: ${result.value.svgBytes}\n`);
       io.stdout(
         `  artboard: ${r.artboard.width}x${r.artboard.height} [${r.artboard.viewBox.join(",")}]\n`,
       );

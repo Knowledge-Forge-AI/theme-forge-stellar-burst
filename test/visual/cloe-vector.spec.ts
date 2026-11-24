@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { runSceneCli } from "../../src/scene-cli.js";
 import { rgbaPng } from "../brand/raster-test-helper.js";
-import { alphaMeanError, compare, compareCloe, loadCloeReference, loadOrihimeReference, orihimeRegions, render } from "./cloe-visual-helpers.js";
+import { alphaMeanError, cloeFaceContourBounds, compare, compareCloe, cloeHairSatchelBounds, loadCloeReference, loadOrihimeReference, meanLineError, orihimeRegions, render } from "./cloe-visual-helpers.js";
 
 async function traceCloe(page: Page, info: TestInfo, detail?: "--regular" | "--native-detail") {
   await loadCloeReference(page);
@@ -63,6 +63,121 @@ test("Cloe high-detail SVG preserves sharp features when enlarged", async ({ pag
     for (const region of ["full", "face", "tablet"] as const) {
       expect(results[region].mean, `${width}px ${region} mean RGB error`).toBeLessThan(meanLimits[region]);
       expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(0.08);
+    }
+  }
+});
+
+test("Cloe editable line refinement improves full-frame SVG delivery", async ({ page }, info) => {
+  test.setTimeout(90_000);
+  const baseline = await traceCloe(page, info, "--native-detail");
+  const edit = await readFile(new URL("./fixtures/cloe-multiscale-edit.json", import.meta.url));
+  await writeFile(info.outputPath("line-edit.json"), edit);
+  let messages = "";
+  const io = { stdout: (value: string) => { messages += value; }, stderr: (value: string) => { messages += value; } };
+  expect(await runSceneCli([
+    "revise", "cloe.json", "--edits", "line-edit.json", "--output", "line-refined.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "line-refined.json", "--illustration-source", "--output", "line-refined.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  const refined = await readFile(info.outputPath("line-refined.svg"), "utf8");
+  expect(refined).toContain('viewBox="0 0 1024 1536"');
+  expect(Buffer.byteLength(refined)).toBeLessThanOrEqual(16_000_000);
+  const start = refined.lastIndexOf('  <g id="line-repair">');
+  expect(start).toBeGreaterThan(0);
+  expect(refined.slice(0, start) + "</svg>\n" === baseline).toBe(true);
+  await page.route("http://cloe.test/line-refined.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: refined }));
+  const faceEdit = await readFile(new URL("./fixtures/cloe-face-edit.json", import.meta.url));
+  await writeFile(info.outputPath("face-edit.json"), faceEdit);
+  expect(await runSceneCli([
+    "revise", "line-refined.json", "--edits", "face-edit.json", "--output", "face-refined.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "face-refined.json", "--illustration-source", "--output", "face-refined.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  const faceRefined = await readFile(info.outputPath("face-refined.svg"), "utf8");
+  expect(Buffer.byteLength(faceRefined)).toBeLessThanOrEqual(16_000_000);
+  expect(faceRefined).toContain('  <g id="face-contour-refinement">');
+  await writeFile(info.outputPath("remove-face.json"), JSON.stringify({ removeGroup: "face-contour-refinement" }));
+  expect(await runSceneCli([
+    "revise", "face-refined.json", "--edits", "remove-face.json", "--output", "face-restored.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "face-restored.json", "--illustration-source", "--output", "face-restored.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  expect((await readFile(info.outputPath("face-restored.svg"), "utf8")) === refined).toBe(true);
+  await page.route("http://cloe.test/face-refined.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: faceRefined }));
+  const seamEdit = await readFile(new URL("./fixtures/cloe-seam-and-tablet-edit.json", import.meta.url));
+  await writeFile(info.outputPath("seam-edit.json"), seamEdit);
+  expect(await runSceneCli([
+    "revise", "face-refined.json", "--edits", "seam-edit.json", "--output", "seam-refined.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "seam-refined.json", "--illustration-source", "--output", "seam-refined.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  const seamRefined = await readFile(info.outputPath("seam-refined.svg"), "utf8");
+  const seamStart = seamRefined.lastIndexOf('  <g id="seam-and-tablet-refinement">');
+  expect(seamStart).toBeGreaterThan(0);
+  expect(seamRefined.slice(0, seamStart) + "</svg>\n" === faceRefined).toBe(true);
+  await page.route("http://cloe.test/seam-refined.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: seamRefined }));
+  const contourEdit = await readFile(new URL("./fixtures/cloe-hair-and-satchel-edit.json", import.meta.url));
+  await writeFile(info.outputPath("hair-satchel-edit.json"), contourEdit);
+  expect(await runSceneCli([
+    "revise", "seam-refined.json", "--edits", "hair-satchel-edit.json", "--output", "hair-satchel.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "hair-satchel.json", "--illustration-source", "--output", "hair-satchel.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  const contour = await readFile(info.outputPath("hair-satchel.svg"), "utf8");
+  expect(Buffer.byteLength(contour)).toBeLessThanOrEqual(16_000_000);
+  const contourStart = contour.lastIndexOf('  <g id="hair-and-satchel-refinement">');
+  expect(contourStart).toBeGreaterThan(0);
+  expect(contour.slice(0, contourStart) + "</svg>\n" === seamRefined).toBe(true);
+  const contourDigest = `sha256:${createHash("sha256").update(contour).digest("hex")}`;
+  expect(await runSceneCli([
+    "import-svg", "hair-satchel.svg", "--svg-source", "--expect-svg-digest", contourDigest,
+    "--output", "hair-satchel-reopened.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "hair-satchel-reopened.json", "--illustration-source", "--output", "hair-satchel-recompiled.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  expect((await readFile(info.outputPath("hair-satchel-recompiled.svg"), "utf8")) === contour).toBe(true);
+  await page.route("http://cloe.test/hair-satchel.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: contour }));
+  for (const width of [384, 1024]) {
+    const height = width * 1.5;
+    const original = await render(page, "/reference.webp", width, height);
+    const before = await render(page, "/cloe.svg", width, height);
+    const after = await render(page, "/line-refined.svg", width, height);
+    for (const region of [[317, 15, 696, 145], [655, 307, 849, 522]] as const) {
+      const scale = (edge: number) => Math.floor(edge * width / 1024);
+      const bounds = [scale(region[0]), scale(region[1]), scale(region[2]), scale(region[3])] as const;
+      const baselineError = meanLineError(original, before, width, bounds);
+      const refinedError = meanLineError(original, after, width, bounds);
+      if (width === 1024) expect(refinedError).toBeLessThan(baselineError);
+      else expect(refinedError).toBeLessThanOrEqual(baselineError + 0.05);
+    }
+    const face = await render(page, "/face-refined.svg", width, height);
+    const contours = cloeFaceContourBounds(width);
+    expect(meanLineError(original, face, width, contours), `${width}px face contour RGB error`)
+      .toBeLessThan(meanLineError(original, after, width, contours) - 0.01);
+    const seams = await render(page, "/seam-refined.svg", width, height);
+    for (const [region, [left, top, right, bottom]] of [
+      ["cardigan knit", [390, 327, 552, 575]],
+      ["tablet lines", [656, 335, 821, 517]],
+    ] as const) {
+      const scale = (edge: number) => Math.floor(edge * width / 1024);
+      const bounds = [scale(left), scale(top), scale(right), scale(bottom)] as const;
+      expect(meanLineError(original, seams, width, bounds), `${width}px ${region} edge error`)
+        .toBeLessThan(meanLineError(original, face, width, bounds) - 0.002);
+    }
+    const final = await render(page, "/hair-satchel.svg", width, height);
+    for (const [region, bounds] of Object.entries(cloeHairSatchelBounds(width))) {
+      expect(meanLineError(original, final, width, bounds), `${width}px editable ${region} edge error`)
+        .toBeLessThan(meanLineError(original, seams, width, bounds));
     }
   }
 });

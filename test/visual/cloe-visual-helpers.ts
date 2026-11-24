@@ -99,3 +99,44 @@ export function compareCloe(reference: Uint8Array, candidate: Uint8Array, width:
     tablet: compare(reference, candidate, width, height, [0.64, 0.20, 0.83, 0.34]),
   };
 }
+
+export function cloeFaceContourBounds(width: number) {
+  const scale = (coordinate: number) => Math.floor(coordinate * width / 1024);
+  return [scale(421), scale(143), scale(622), scale(285)] as const;
+}
+
+export function cloeHairSatchelBounds(width: number) {
+  const scale = (coordinate: number) => Math.floor(coordinate * width / 1024);
+  return {
+    hair: [scale(225), scale(320), scale(390), scale(638)],
+    satchel: [scale(280), scale(625), scale(447), scale(833)],
+  } as const;
+}
+
+export function meanLineError(
+  reference: Uint8Array,
+  candidate: Uint8Array,
+  width: number,
+  bounds: readonly [number, number, number, number],
+) {
+  const [left, top, right, bottom] = bounds;
+  let total = 0, edges = 0;
+  for (let y = top; y < bottom; y += 1) {
+    for (let x = left; x < right; x += 1) {
+      const offset = (y * width + x) * 4;
+      let error = 0, across = 0, down = 0;
+      for (let channel = 0; channel < 3; channel += 1) {
+        const value = reference[offset + channel]!;
+        error += Math.abs(value - candidate[offset + channel]!);
+        across += Math.abs(value - reference[offset + channel + 4]!);
+        down += Math.abs(value - reference[offset + channel + width * 4]!);
+      }
+      if (Math.max(across, down) >= 42) {
+        total += error;
+        edges += 1;
+      }
+    }
+  }
+  expect(edges).toBeGreaterThan(0);
+  return total / (3 * edges);
+}

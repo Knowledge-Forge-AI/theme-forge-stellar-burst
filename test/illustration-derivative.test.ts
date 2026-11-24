@@ -207,6 +207,18 @@ describe("raster derivative capability", () => {
     expect(DERIVATIVE_RECIPE_DIGEST_BASIS).toBe("tfsb.raster-derivative-recipe-v1\n");
   });
 
+  it("binds sharp chroma only in a version 2 WebP recipe", () => {
+    const { recipeDigest: _old, ...v1 } = recipe(tinyPng());
+    const standard = { ...v1, output: { ...v1.output, mime: "image/webp" } };
+    const sharp = { ...standard, schemaVersion: 2, output: { ...standard.output, chroma: "sharp-yuv" } };
+    const digest = computeRasterDerivativeRecipeDigest(sharp);
+    expect(digest).not.toBe(computeRasterDerivativeRecipeDigest(standard));
+    expect(validateRasterDerivativeRecipe({ ...sharp, recipeDigest: digest })).toMatchObject(sharp);
+    expect(() => computeRasterDerivativeRecipeDigest({ ...sharp, schemaVersion: 1 })).toThrow();
+    expect(() => computeRasterDerivativeRecipeDigest({ ...sharp, output: { ...sharp.output, mime: "image/png" } })).toThrow();
+    expect(() => computeRasterDerivativeRecipeDigest({ ...sharp, output: { ...sharp.output, chroma: "unknown" } })).toThrow();
+  });
+
   it("rejects unknown fields, unsafe recipes, malformed source magic/checksums, and wrong processor text", async () => {
     const source = tinyPng();
     const value = recipe(source);

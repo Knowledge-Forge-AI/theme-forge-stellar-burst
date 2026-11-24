@@ -11,6 +11,16 @@ export function reviseScene(source: unknown, edits: unknown): Result<string> {
 }
 
 function applyEdits(scene: VectorScene, edits: unknown, authoredElementCount: number): unknown {
+  if (edits !== null && typeof edits === "object" && !Array.isArray(edits) && Object.hasOwn(edits, "removeGroup")) {
+    const id = (edits as Record<string, unknown>)["removeGroup"];
+    if (Object.keys(edits).length !== 1 || typeof id !== "string") {
+      invalidEdits("Provide only removeGroup with the id of an existing top-level group.");
+    }
+    const index = scene.elements.findIndex(element => element.type === "group" && element.id === id);
+    if (index === -1) invalidEdits("A group removal must name an existing top-level group.");
+    return { ...scene, elements: [...scene.elements.slice(0, index), ...scene.elements.slice(index + 1)] };
+  }
+
   if (edits !== null && typeof edits === "object" && !Array.isArray(edits) && Object.hasOwn(edits, "appendGroup")) {
     const request = edits as Record<string, unknown>;
     const group = request["appendGroup"];

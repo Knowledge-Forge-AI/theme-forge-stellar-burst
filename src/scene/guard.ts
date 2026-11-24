@@ -1,13 +1,15 @@
 import { fail, type DiagnosticContext } from "../diagnostics.js";
 import { SCENE_LIMITS } from "./constants.js";
 
+export const SCENE_INPUT_BYTE_LIMIT_MESSAGE = "Input exceeds 8 MiB.";
+
 /** Bound plain JSON structure and its exact compact UTF-8 spelling before parsing. */
 export function guardSceneInput(raw: unknown, ctx: DiagnosticContext): void {
   const active = new Set<object>();
   let bytes = 0, nodes = 0;
   const add = (n: number): void => {
     bytes += n;
-    if (bytes > SCENE_LIMITS.maxInputBytes) fail(ctx, "SCENE_LIMIT_EXCEEDED", "Input exceeds 8 MiB.", "$");
+    if (bytes > SCENE_LIMITS.maxInputBytes) fail(ctx, "SCENE_LIMIT_EXCEEDED", SCENE_INPUT_BYTE_LIMIT_MESSAGE, "$");
   };
   const stringBytes = (value: string): void => {
     // Reject XML-invalid controls and lone surrogates, including metadata/title.

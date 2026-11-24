@@ -48,25 +48,14 @@ import type {
   VectorScene,
 } from "./types.js";
 import { countTextPathSegments, validateScene, validateSceneForOutput } from "./validate.js";
-import { compactCanonicalPathData } from "./path-canonical.js";
-
-function mapScenePaths(scene: VectorScene, formatPath: (data: string) => string): VectorScene {
-  let bytes = 0;
-  const visit = (items: readonly SceneElement[]): SceneElement[] => items.map((item) => {
-    if (item.type === "group") return { ...item, children: visit(item.children) };
-    if (item.type !== "path") return item;
-    const d = formatPath(item.d);
-    bytes += d.length;
-    if (bytes > 16_777_216) throw new RangeError("Canonical scene paths exceed 16 MiB.");
-    return { ...item, d };
-  });
-  return { ...scene, elements: visit(scene.elements), ...(scene.definitions ? { definitions: { ...scene.definitions, ...(scene.definitions.symbols ? { symbols: scene.definitions.symbols.map((symbol) => ({ ...symbol, elements: visit(symbol.elements) })) } : {}) } } : {}) };
-}
+import { compactCanonicalPathData, compactCanonicalPathOperands, mapScenePaths } from "./path-canonical.js";
 
 function serializeScene(scene: VectorScene, fitInput = false): string {
   const expanded = canonicalJsonStringify(scene);
   if (fitInput && Buffer.byteLength(expanded, "utf8") > SCENE_LIMITS.maxInputBytes) {
-    return canonicalJsonStringify(mapScenePaths(scene, compactCanonicalPathData));
+    const compact = canonicalJsonStringify(mapScenePaths(scene, compactCanonicalPathData));
+    if (Buffer.byteLength(compact, "utf8") <= SCENE_LIMITS.maxInputBytes) return compact;
+    return canonicalJsonStringify(mapScenePaths(scene, (path) => compactCanonicalPathOperands(compactCanonicalPathData(path))));
   }
   return expanded;
 }
@@ -402,14 +391,17 @@ export function compileScene(
  * Inspect a VectorScene, returning parsed scene, metrics, receipt, and warnings.
  * Accepts `unknown` input.
  */
-export function inspectScene(input: unknown): SceneInspectionResult {
+export function inspectScene(
+  input: unknown,
+  options?: Pick<SceneCompileOptions, "compactPaths">,
+): SceneInspectionResult {
   const ctx: DiagnosticContext = {
     operation: "check",
     domain: "scene" as any,
   };
 
   try {
-    const compileRes = compileScene(input);
+    const compileRes = compileScene(input, { compactPaths: options?.compactPaths ?? false });
     if (!compileRes.ok) {
       return { ok: false, diagnostics: compileRes.diagnostics };
     }
@@ -428,6 +420,7 @@ export function inspectScene(input: unknown): SceneInspectionResult {
         scene,
         metrics,
         receipt: compileRes.value.receipt,
+        svgBytes: Buffer.byteLength(compileRes.value.svg, "utf8"),
         warnings,
       },
     };

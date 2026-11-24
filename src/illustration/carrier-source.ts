@@ -9,7 +9,7 @@ import {
 } from "./carrier-v1.js";
 import {
   canonicalRasterDerivativeRecipeJson, inspectRasterDerivativePayload,
-  validateRasterDerivativeRecipe, type RasterDerivativeRecipeV1,
+  validateRasterDerivativeRecipe, type RasterDerivativeRecipe,
 } from "./derivative.js";
 import { parseRasterIllustration, type RasterIllustrationRecordV1 } from "./v1.js";
 import {
@@ -27,7 +27,7 @@ export class IllustrationSourceError extends Error {
 export interface VerifiedIllustrationSource {
   readonly manifest: IllustrationCarrierManifestV1;
   readonly record: RasterIllustrationRecordV1;
-  readonly recipes: readonly RasterDerivativeRecipeV1[];
+  readonly recipes: readonly RasterDerivativeRecipe[];
 }
 
 interface SourceState {
@@ -53,7 +53,7 @@ async function inventory(path: string, expected: readonly string[]): Promise<voi
   } catch (error) { if (error instanceof IllustrationSourceError) throw error; invalid(); }
 }
 
-function readRecipe(bytes: Uint8Array): RasterDerivativeRecipeV1 {
+function readRecipe(bytes: Uint8Array): RasterDerivativeRecipe {
   try {
     const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
     if (text.startsWith("\uFEFF")) invalid();
@@ -101,7 +101,7 @@ export async function verifyIllustrationSource(directoryInput: string): Promise<
       await inventory(path, entries); inventories.push({ path, entries });
     }
     const payloads = new Map<string, Uint8Array>();
-    const recipes: RasterDerivativeRecipeV1[] = [];
+    const recipes: RasterDerivativeRecipe[] = [];
     for (const item of manifest.derivatives) {
       const recipe = readRecipe((await retain(`recipes/${item.id}.json`, 262144)).bytes);
       const planned = record.exportRecipes.find(entry => entry.id === item.id);

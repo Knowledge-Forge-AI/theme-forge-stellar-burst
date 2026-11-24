@@ -7,7 +7,7 @@ import { createIllustrationCarrierManifest, serializeIllustrationCarrierManifest
 import { disposeIllustrationSource, verifyIllustrationSource } from "./carrier-source.js";
 import {
   canonicalRasterDerivativeRecipeJson, inspectRasterDerivativePayload,
-  validateRasterDerivativeRecipe, type RasterDerivativeRecipeV1,
+  validateRasterDerivativeRecipe, type RasterDerivativeRecipe,
 } from "./derivative.js";
 import {
   closeIllustrationDirectories, illustrationAbsolutePath, retainIllustrationDirectories,
@@ -27,7 +27,7 @@ export async function writeIllustrationCarrier(options: {
   readonly packageId: string;
   readonly revision: number;
   readonly record: unknown;
-  readonly derivatives: readonly { readonly recipe: RasterDerivativeRecipeV1; readonly bytes: Uint8Array }[];
+  readonly derivatives: readonly { readonly recipe: RasterDerivativeRecipe; readonly bytes: Uint8Array }[];
 }): Promise<{ readonly manifestDigest: string; readonly recordDigest: string; readonly files: readonly { readonly path: string; readonly sha256: string }[] }> {
   const directory = illustrationAbsolutePath(options.directory);
   const prepared = new Map<string, Uint8Array>();
