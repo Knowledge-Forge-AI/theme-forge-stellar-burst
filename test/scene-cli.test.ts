@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { access, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { realpathSync } from "node:fs";
+import { access, mkdir, mkdtemp, open, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { constants, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -394,9 +394,15 @@ describe("tfsb scene CLI integration", () => {
       await writeFile(scenePath, original);
       const revised = capture();
       expect(await runCli(args, dir, revised.io)).toBe(0);
-      const outputDigest = createHash("sha256").update(await readFile(outputPath)).digest("hex");
-      expect(JSON.parse(planned.stdout()).data.outputSha256).toBe(outputDigest);
-      expect(JSON.parse(revised.stdout()).data.outputSha256).toBe(outputDigest);
+      const output = await open(outputPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+      try {
+        expect((await output.stat()).isFile()).toBe(true);
+        const outputDigest = createHash("sha256").update(await output.readFile()).digest("hex");
+        expect(JSON.parse(planned.stdout()).data.outputSha256).toBe(outputDigest);
+        expect(JSON.parse(revised.stdout()).data.outputSha256).toBe(outputDigest);
+      } finally {
+        await output.close();
+      }
       expect(await readFile(scenePath, "utf8")).toBe(original);
     });
 
