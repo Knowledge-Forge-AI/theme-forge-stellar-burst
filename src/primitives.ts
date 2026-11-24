@@ -1,4 +1,5 @@
 import { fail, type DiagnosticContext } from "./diagnostics.js";
+import { shortPathIntegerEnd } from "./path-number.js";
 import type {
   AssetId,
   HexColor,
@@ -297,7 +298,7 @@ export function parsePathData(
   if (typeof value !== "string") {
     fail(context, invalidPathCode, "Expected SVG path data.", location);
   }
-  const normalized = value.replace(/[\t\n\r ]+/g, " ").trim();
+  const normalized = value.replace(/ [\t\n\r ]+|[\t\n\r][\t\n\r ]*/g, " ").trim();
   if (!/^[Mm]/.test(normalized)) {
     fail(context, invalidPathCode, "Path data must begin with moveto.", location);
   }
@@ -360,6 +361,12 @@ export function parsePathData(
           position += 1;
           continue;
         }
+        const integerEnd = shortPathIntegerEnd(normalized, position);
+        if (integerEnd !== 0) {
+          if (command === "A" && argument < 2 && normalized[position] === "-") invalidArcRadius = true;
+          position = integerEnd;
+          continue;
+        }
         numberAtPosition.lastIndex = position;
         const number = numberAtPosition.exec(normalized);
         if (number === null) {
@@ -384,6 +391,7 @@ export function parsePathData(
       if (following === ",") {
         continue;
       }
+      if (shortPathIntegerEnd(normalized, position) !== 0) continue;
       numberAtPosition.lastIndex = position;
       if (numberAtPosition.test(normalized)) continue;
       fail(context, invalidPathCode, "Path data contains invalid SVG syntax.", location);

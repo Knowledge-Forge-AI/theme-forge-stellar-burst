@@ -1,6 +1,7 @@
 import { RASTER_MAX_SVG_BYTES } from "../brand/raster-capability.js";
 import type { HexColor } from "../types.js";
 import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, PREVIOUS_NATIVE_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
+import { compactCanonicalPathOperands, mapScenePaths } from "./path-canonical.js";
 import { serializeTransforms } from "./transforms.js";
 import type { PathElement, SceneElement, VectorScene } from "./types.js";
 
@@ -809,7 +810,15 @@ export function traceRasterScene(
           if (subdivision === "directional" && sampled.histogram.size > 2 ** 18) continue;
           const palette = quantize([...sampled.histogram.values()], traceSettings.paletteSize, sampled.bits, subdivision === "directional");
           const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource, excludeDetail, fitColors: options.fitSourceColors === true }, palette);
-          if (excludeDetail || Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
+          if (excludeDetail) return scene;
+          const bytes = Buffer.byteLength(JSON.stringify(scene), "utf8");
+          if (bytes <= SCENE_LIMITS.maxInputBytes) return scene;
+          if (bytes <= SCENE_LIMITS.maxCanonicalPathsBytes) {
+            // Generated contour coordinates are integers. A minus sign already
+            // separates the next operand, so the preceding space is optional.
+            const compact = mapScenePaths(scene, compactCanonicalPathOperands);
+            if (Buffer.byteLength(JSON.stringify(compact), "utf8") <= SCENE_LIMITS.maxInputBytes) return compact;
+          }
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
         }

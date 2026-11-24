@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { runSceneCli } from "../../src/scene-cli.js";
 import { rgbaPng } from "../brand/raster-test-helper.js";
-import { alphaMeanError, cloeFaceContourBounds, compare, compareCloe, cloeHairSatchelBounds, loadCloeReference, loadOrihimeReference, meanLineError, orihimeRegions, render } from "./cloe-visual-helpers.js";
+import { alphaMeanError, cloeFaceContourBounds, compare, compareCloe, cloeHairSatchelBounds, cloeStylusBounds, cloeSupportingHandBounds, cloeTrouserShoeBounds, loadCloeReference, loadOrihimeReference, meanLineError, orihimeRegions, render } from "./cloe-visual-helpers.js";
 
 async function traceCloe(page: Page, info: TestInfo, detail?: "--regular" | "--native-detail") {
   await loadCloeReference(page);
@@ -136,15 +136,61 @@ test("Cloe editable line refinement improves full-frame SVG delivery", async ({ 
   const contourStart = contour.lastIndexOf('  <g id="hair-and-satchel-refinement">');
   expect(contourStart).toBeGreaterThan(0);
   expect(contour.slice(0, contourStart) + "</svg>\n" === seamRefined).toBe(true);
-  const contourDigest = `sha256:${createHash("sha256").update(contour).digest("hex")}`;
+  const lowerEdit = await readFile(new URL("./fixtures/cloe-trouser-and-shoe-edit.json", import.meta.url));
+  await writeFile(info.outputPath("trouser-shoe-edit.json"), lowerEdit);
   expect(await runSceneCli([
-    "import-svg", "hair-satchel.svg", "--svg-source", "--expect-svg-digest", contourDigest,
-    "--output", "hair-satchel-reopened.json",
+    "revise", "hair-satchel.json", "--edits", "trouser-shoe-edit.json", "--output", "trouser-shoe.json",
   ], info.outputDir, io), messages).toBe(0);
   expect(await runSceneCli([
-    "compile", "hair-satchel-reopened.json", "--illustration-source", "--output", "hair-satchel-recompiled.svg",
+    "compile", "trouser-shoe.json", "--illustration-source", "--output", "trouser-shoe.svg",
   ], info.outputDir, io), messages).toBe(0);
-  expect((await readFile(info.outputPath("hair-satchel-recompiled.svg"), "utf8")) === contour).toBe(true);
+  const lower = await readFile(info.outputPath("trouser-shoe.svg"), "utf8");
+  expect(Buffer.byteLength(lower)).toBeLessThanOrEqual(16_000_000);
+  expect(lower).toContain('viewBox="0 0 1024 1536"');
+  const lowerStart = lower.lastIndexOf('  <g id="trouser-and-shoe-refinement">');
+  expect(lowerStart).toBeGreaterThan(0);
+  expect(lower.slice(0, lowerStart) + "</svg>\n" === contour).toBe(true);
+  const lowerDigest = `sha256:${createHash("sha256").update(lower).digest("hex")}`;
+  expect(await runSceneCli([
+    "import-svg", "trouser-shoe.svg", "--svg-source", "--expect-svg-digest", lowerDigest,
+    "--output", "trouser-shoe-reopened.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "trouser-shoe-reopened.json", "--illustration-source", "--output", "trouser-shoe-recompiled.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  expect((await readFile(info.outputPath("trouser-shoe-recompiled.svg"), "utf8")) === lower).toBe(true);
+  const stylusEdit = await readFile(new URL("./fixtures/cloe-stylus-contour-edit.json", import.meta.url));
+  await writeFile(info.outputPath("stylus-edit.json"), stylusEdit);
+  expect(await runSceneCli([
+    "revise", "trouser-shoe-reopened.json", "--edits", "stylus-edit.json", "--output", "stylus.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "stylus.json", "--illustration-source", "--output", "stylus.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  const stylus = await readFile(info.outputPath("stylus.svg"), "utf8");
+  expect(Buffer.byteLength(stylus)).toBeLessThanOrEqual(16_000_000);
+  const stylusStart = stylus.lastIndexOf('  <g id="stylus-contour-refinement">');
+  expect(stylusStart).toBeGreaterThan(0);
+  expect(stylus.slice(0, stylusStart) + "</svg>\n" === lower).toBe(true);
+  await page.route("http://cloe.test/stylus.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: stylus }));
+  const handEdit = await readFile(new URL("./fixtures/cloe-supporting-hand-edit.json", import.meta.url));
+  await writeFile(info.outputPath("hand-edit.json"), handEdit);
+  expect(await runSceneCli([
+    "revise", "stylus.json", "--edits", "hand-edit.json", "--output", "hand.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "hand.json", "--illustration-source", "--output", "hand.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  const hand = await readFile(info.outputPath("hand.svg"), "utf8");
+  expect(Buffer.byteLength(hand)).toBeLessThanOrEqual(16_000_000);
+  const handStart = hand.lastIndexOf('  <g id="hand-line-color-refinement">');
+  expect(handStart).toBeGreaterThan(0);
+  expect(hand.slice(0, handStart) + "</svg>\n" === stylus).toBe(true);
+  await page.route("http://cloe.test/hand.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: hand }));
+  await page.route("http://cloe.test/trouser-shoe.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: lower }));
   await page.route("http://cloe.test/hair-satchel.svg", route =>
     route.fulfill({ contentType: "image/svg+xml", body: contour }));
   for (const width of [384, 1024]) {
@@ -179,6 +225,19 @@ test("Cloe editable line refinement improves full-frame SVG delivery", async ({ 
       expect(meanLineError(original, final, width, bounds), `${width}px editable ${region} edge error`)
         .toBeLessThan(meanLineError(original, seams, width, bounds));
     }
+    const lowerBody = await render(page, "/trouser-shoe.svg", width, height);
+    for (const [region, bounds] of Object.entries(cloeTrouserShoeBounds(width))) {
+      expect(meanLineError(original, lowerBody, width, bounds), `${width}px editable ${region} edge error`)
+        .toBeLessThan(meanLineError(original, final, width, bounds));
+    }
+    const refinedStylus = await render(page, "/stylus.svg", width, height);
+    const stylusBounds = cloeStylusBounds(width);
+    expect(meanLineError(original, refinedStylus, width, stylusBounds), `${width}px stylus edge error`)
+      .toBeLessThan(meanLineError(original, lowerBody, width, stylusBounds));
+    const refinedHand = await render(page, "/hand.svg", width, height);
+    const handBounds = cloeSupportingHandBounds(width);
+    expect(meanLineError(original, refinedHand, width, handBounds), `${width}px supporting hand edge error`)
+      .toBeLessThan(meanLineError(original, refinedStylus, width, handBounds));
   }
 });
 
@@ -191,6 +250,34 @@ test("Cloe native-detail SVG preserves line work at raster delivery sizes", asyn
   await writeFile(info.outputPath("edit.json"), JSON.stringify([{ id: "trace-base", d: replacement }]));
   let messages = "";
   const io = { stdout: (value: string) => { messages += value; }, stderr: (value: string) => { messages += value; } };
+  const width = 1024, height = 1536;
+  const original = await render(page, "/reference.webp", width, height);
+  const busy = Buffer.from(original);
+  // Add reproducible high-frequency detail so the native scene only fits
+  // after lossless path compaction. The original fixture stays intact.
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const offset = 4 * (y * width + x);
+      for (let channel = 0; channel < 3; channel++) {
+        const i = offset + channel;
+        const center = original[i]!;
+        const neighbors = original[i - 4]! + original[i + 4]! + original[i - 4 * width]! + original[i + 4 * width]!;
+        busy[i] = Math.min(255, Math.max(0, center + Math.trunc((4 * center - neighbors) * 70 / 400)));
+      }
+    }
+  }
+  await writeFile(info.outputPath("busy.png"), rgbaPng(width, height, busy));
+  expect(await runSceneCli([
+    "trace-png", "busy.png", "--native-detail", "--output", "busy.json",
+  ], info.outputDir, io), messages).toBe(0);
+  const busyScene = await readFile(info.outputPath("busy.json"));
+  expect(busyScene.byteLength).toBeLessThanOrEqual(8 * 1024 * 1024);
+  expect(JSON.parse(busyScene.toString()).artboard.viewBox).toEqual([0, 0, width, height]);
+  expect(await runSceneCli([
+    "compile", "busy.json", "--illustration-source", "--output", "busy.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  expect((await readFile(info.outputPath("busy.svg"))).byteLength).toBeLessThanOrEqual(16_000_000);
+
   expect(await runSceneCli([
     "revise", "cloe.json", "--edits", "edit.json", "--output", "revised.json",
   ], info.outputDir, io), messages).toBe(0);

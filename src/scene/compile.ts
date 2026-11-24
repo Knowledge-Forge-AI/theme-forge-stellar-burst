@@ -53,8 +53,7 @@ import { compactCanonicalPathData, compactCanonicalPathOperands, mapScenePaths }
 function serializeScene(scene: VectorScene, fitInput = false): string {
   const expanded = canonicalJsonStringify(scene);
   if (fitInput && Buffer.byteLength(expanded, "utf8") > SCENE_LIMITS.maxInputBytes) {
-    const compact = canonicalJsonStringify(mapScenePaths(scene, compactCanonicalPathData));
-    if (Buffer.byteLength(compact, "utf8") <= SCENE_LIMITS.maxInputBytes) return compact;
+    // Keep the smallest existing spelling so an interactive edit has room to grow.
     return canonicalJsonStringify(mapScenePaths(scene, (path) => compactCanonicalPathOperands(compactCanonicalPathData(path))));
   }
   return expanded;

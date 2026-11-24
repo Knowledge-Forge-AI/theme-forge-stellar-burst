@@ -5,7 +5,7 @@ import { runSceneCli } from "../../src/scene-cli.js";
 import { runIllustrationCli } from "../../src/illustration-cli.js";
 import { createRasterDerivativeRecipe, probeMagickDerivativeCapability } from "../../src/illustration/derivative.js";
 import { rgbaPng } from "../brand/raster-test-helper.js";
-import { alphaMeanError, cloeFaceContourBounds, cloeHairSatchelBounds, compare, compareCloe, meanLineError, loadCloeReference, loadOrihimeReference, orihimeRegions, render } from "./cloe-visual-helpers.js";
+import { alphaMeanError, cloeFaceContourBounds, cloeHairSatchelBounds, cloeStylusBounds, cloeSupportingHandBounds, cloeTrouserShoeBounds, compare, compareCloe, meanLineError, loadCloeReference, loadOrihimeReference, orihimeRegions, render } from "./cloe-visual-helpers.js";
 
 test("transparent editable SVG preserves alpha in Standard and Sharp WebP", async ({ page }, info) => {
   const width = 64, height = 96;
@@ -184,11 +184,13 @@ test("Cloe line refinement survives SVG reopen and repeatable WebP delivery", as
   expect(faceWebp.byteLength).toBeLessThan(sharpWebp.byteLength * 1.07);
   await page.route("http://cloe.test/face-refined.webp", route =>
     route.fulfill({ contentType: "image/webp", body: faceWebp }));
+  const faceFrames = new Map<number, { reference: Buffer; face: Buffer }>();
   for (const width of [384, 512]) {
     const height = width * 1.5;
-    const src = await render(page, "/reference.webp", width, height);
-    const before = await render(page, "/line-refined-sharp.webp", width, height);
+    const src = width === 512 ? responsiveReference : await render(page, "/reference.webp", width, height);
+    const before = width === 512 ? sharpPixels : await render(page, "/line-refined-sharp.webp", width, height);
     const after = await render(page, "/face-refined.webp", width, height);
+    faceFrames.set(width, { reference: src, face: after });
     const bounds = cloeFaceContourBounds(width);
     expect(meanLineError(src, after, width, bounds), `${width}px Sharp face contour RGB error`)
       .toBeLessThan(meanLineError(src, before, width, bounds));
@@ -217,8 +219,9 @@ test("Cloe line refinement survives SVG reopen and repeatable WebP delivery", as
     route.fulfill({ contentType: "image/webp", body: fineWebp }));
   for (const width of [336, 384, 512]) {
     const height = width * 1.5;
-    const src = await render(page, "/reference.webp", width, height);
-    const before = await render(page, "/face-refined.webp", width, height);
+    const frame = faceFrames.get(width);
+    const src = frame?.reference ?? await render(page, "/reference.webp", width, height);
+    const before = frame?.face ?? await render(page, "/face-refined.webp", width, height);
     const after = await render(page, "/seams-fine.webp", width, height);
     const scale = (edge: number) => Math.floor(edge * width / 1024);
     for (const [region, [left, top, right, bottom]] of [
@@ -337,6 +340,115 @@ test("Orihime SVG exports a repeatable WebP with the raster master's exact alpha
   });
 });
 
+async function runCloeScene(directory: string, args: string[], exitCode = 0) {
+  let stdout = "", stderr = "";
+  const io = { stdout: (text: string) => { stdout += text; }, stderr: (text: string) => { stderr += text; } };
+  expect(await runSceneCli([...args, "--json"], directory, io), stdout + stderr).toBe(exitCode);
+  return JSON.parse(stdout);
+}
+
+test("Cloe layered contour refinements preserve Fine Sharp WebP detail", async ({ page }, info) => {
+  test.setTimeout(120_000);
+  const capability = await probeMagickDerivativeCapability();
+  if (!capability.available) throw new Error("This suite requires the TFSB WebP processor (ImageMagick with WebP support).");
+  const reference = await loadCloeReference(page);
+  await mkdir(info.outputDir, { recursive: true });
+  const directory = await realpath(info.outputDir);
+  await writeFile(info.outputPath("reference.webp"), reference);
+  const sha256 = (bytes: Uint8Array) => `sha256:${createHash("sha256").update(bytes).digest("hex")}` as const;
+  const scene = (args: string[]) => runCloeScene(directory, args);
+  const { data: traced } = await scene([
+    "trace-webp", "reference.webp", "--native-detail", "--output", "cloe.scene.json",
+  ]);
+  expect(traced.sourceSha256).toBe(sha256(reference).slice("sha256:".length));
+  let sceneFile = "cloe.scene.json";
+  for (const [fixture, name] of [
+    ["cloe-multiscale-edit.json", "line"],
+    ["cloe-face-edit.json", "face"],
+    ["cloe-seam-and-tablet-edit.json", "seams"],
+    ["cloe-hair-and-satchel-edit.json", "hair-satchel"],
+    ["cloe-trouser-and-shoe-edit.json", "trouser-shoe"],
+    ["cloe-stylus-contour-edit.json", "stylus"],
+    ["cloe-supporting-hand-edit.json", "hand"],
+  ] as const) {
+    const edit = await readFile(new URL(`./fixtures/${fixture}`, import.meta.url));
+    await writeFile(info.outputPath(`${name}-edit.json`), edit);
+    const output = `${name}-refined.json`;
+    await scene(["revise", sceneFile, "--edits", `${name}-edit.json`, "--output", output]);
+    sceneFile = output;
+  }
+  async function exportFine(name: "seams" | "hair-satchel" | "trouser-shoe" | "stylus" | "hand") {
+    const master = `${name}.svg`;
+    await scene([
+      "compile", `${name}-refined.json`, "--illustration-source", "--compact-paths", "--output", master,
+    ]);
+    const svgDigest = sha256(await readFile(info.outputPath(master)));
+    const file = `${name}-fine.webp`;
+    const { data } = await scene([
+      "export-webp", master, "--expect-svg-digest", svgDigest,
+      "--output-width", "512", "--quality", "96", "--sharp-chroma", "--output", file,
+    ]);
+    const bytes = await readFile(info.outputPath(file));
+    expect(data).toMatchObject({
+      svgDigest, rasterWidth: 1024, rasterHeight: 1536,
+      recipe: {
+        schemaVersion: 2, sourceSha256: data.pngDigest,
+        output: { width: 512, height: 768, quality: 96, chroma: "sharp-yuv" },
+      },
+      receipt: { outputSha256: sha256(bytes), width: 512, height: 768 },
+    });
+    await page.route(`http://cloe.test/${file}`, route => route.fulfill({ contentType: "image/webp", body: bytes }));
+    return { bytes, pngDigest: data.pngDigest };
+  }
+  const seam = await exportFine("seams");
+  const contour = await exportFine("hair-satchel");
+  expect(sha256(contour.bytes)).toBe("sha256:51db73e95567c2f18365a1d8ca6015ebdb4762f53922d12b4278e828aa19ea17");
+  expect(contour.pngDigest).not.toBe(seam.pngDigest);
+  expect(contour.bytes.byteLength).toBeLessThan(seam.bytes.byteLength * 1.01);
+  const lower = await exportFine("trouser-shoe");
+  expect(sha256(lower.bytes)).toBe("sha256:c46802c7b332f6cb3c406646ca9ce8aa084e2cd797dbeb3b75c145dcdc6c896e");
+  expect(lower.pngDigest).not.toBe(contour.pngDigest);
+  expect(lower.bytes.byteLength).toBeLessThan(contour.bytes.byteLength * 1.01);
+  const stylus = await exportFine("stylus");
+  expect(sha256(stylus.bytes)).toBe("sha256:9e33b828d1c8318a45dc3f35d616d565bb9c2746fb1184560c2566c961a58689");
+  expect(stylus.pngDigest).not.toBe(lower.pngDigest);
+  expect(stylus.bytes.byteLength).toBeLessThan(lower.bytes.byteLength);
+  const hand = await exportFine("hand");
+  expect(sha256(hand.bytes)).toBe("sha256:55a11407bdfc09fbd8005b9ee7799b2bdac1cc091ea0526e1f2b9fc9cfa50db2");
+  expect(hand.pngDigest).not.toBe(stylus.pngDigest);
+  expect(hand.bytes.byteLength).toBeLessThan(stylus.bytes.byteLength * 1.01);
+  let lowerBodyGain = 0;
+  for (const displayWidth of [384, 512]) {
+    const height = displayWidth * 1.5;
+    const src = await render(page, "/reference.webp", displayWidth, height);
+    const before = await render(page, "/seams-fine.webp", displayWidth, height);
+    const after = await render(page, "/hair-satchel-fine.webp", displayWidth, height);
+    let combinedGain = 0;
+    for (const [region, bounds] of Object.entries(cloeHairSatchelBounds(displayWidth))) {
+      const gain = meanLineError(src, before, displayWidth, bounds) - meanLineError(src, after, displayWidth, bounds);
+      // Small resampling differences can shift error between these two regions.
+      expect(gain, `${displayWidth}px Fine Sharp ${region} edge gain`).toBeGreaterThan(-0.02);
+      combinedGain += gain;
+    }
+    expect(combinedGain, `${displayWidth}px Fine Sharp combined edge gain`).toBeGreaterThan(0);
+    const refined = await render(page, "/trouser-shoe-fine.webp", displayWidth, height);
+    for (const [region, bounds] of Object.entries(cloeTrouserShoeBounds(displayWidth))) {
+      const gain = meanLineError(src, after, displayWidth, bounds) - meanLineError(src, refined, displayWidth, bounds);
+      expect(gain, `${displayWidth}px Fine Sharp ${region} edge gain`).toBeGreaterThan(-0.02);
+      lowerBodyGain += gain;
+    }
+    const refinedStylus = await render(page, "/stylus-fine.webp", displayWidth, height);
+    const stylusBounds = cloeStylusBounds(displayWidth);
+    expect(meanLineError(src, refinedStylus, displayWidth, stylusBounds), `${displayWidth}px Fine Sharp stylus edge error`)
+      .toBeLessThan(meanLineError(src, refined, displayWidth, stylusBounds));
+    const refinedHand = await render(page, "/hand-fine.webp", displayWidth, height);
+    const handBounds = cloeSupportingHandBounds(displayWidth);
+    expect(meanLineError(src, refinedHand, displayWidth, handBounds), `${displayWidth}px Fine Sharp supporting hand edge error`)
+      .toBeLessThan(meanLineError(src, refinedStylus, displayWidth, handBounds));
+  }
+  expect(lowerBodyGain, "Fine Sharp lower-body edge gain across delivery sizes").toBeGreaterThan(0);
+});
+
 for (const detail of [null, "--high-detail", "--native-detail"] as const) {
   const fromSvg = detail !== null;
   const nativeDetail = detail === "--native-detail";
@@ -360,12 +472,7 @@ for (const detail of [null, "--high-detail", "--native-detail"] as const) {
     let traceReceipt: unknown;
     let directWebp: Buffer | undefined;
     if (fromSvg) {
-      async function scene(args: string[], exitCode = 0) {
-        let stdout = "", stderr = "";
-        const io = { stdout: (text: string) => { stdout += text; }, stderr: (text: string) => { stderr += text; } };
-        expect(await runSceneCli([...args, "--json"], directory, io), stdout + stderr).toBe(exitCode);
-        return JSON.parse(stdout);
-      }
+      const scene = (args: string[], exitCode = 0) => runCloeScene(directory, args, exitCode);
       const traceArgs = nativeDetail
         ? ["trace-webp", "reference.webp", "--native-detail"]
         : ["trace-png", "reference.png"];
@@ -433,62 +540,6 @@ for (const detail of [null, "--high-detail", "--native-detail"] as const) {
         ], 1);
         expect(clobber).toMatchObject({ data: null, diagnostics: [{ code: "SCENE_WEBP_OUTPUT_TARGET_EXISTS" }] });
         expect((await readFile(info.outputPath("direct.webp"))).equals(directWebp)).toBe(true);
-
-        let sceneFile = "cloe.scene.json";
-        for (const [fixture, name] of [
-          ["cloe-multiscale-edit.json", "line"],
-          ["cloe-face-edit.json", "face"],
-          ["cloe-seam-and-tablet-edit.json", "seams"],
-          ["cloe-hair-and-satchel-edit.json", "hair-satchel"],
-        ] as const) {
-          const edit = await readFile(new URL(`./fixtures/${fixture}`, import.meta.url));
-          await writeFile(info.outputPath(`${name}-edit.json`), edit);
-          const output = `${name}-refined.json`;
-          await scene(["revise", sceneFile, "--edits", `${name}-edit.json`, "--output", output]);
-          sceneFile = output;
-        }
-        async function exportFine(name: "seams" | "hair-satchel") {
-          const master = `${name}.svg`;
-          await scene([
-            "compile", `${name}-refined.json`, "--illustration-source", "--compact-paths", "--output", master,
-          ]);
-          const svgDigest = sha256(await readFile(info.outputPath(master)));
-          const file = `${name}-fine.webp`;
-          const { data } = await scene([
-            "export-webp", master, "--expect-svg-digest", svgDigest,
-            "--output-width", "512", "--quality", "96", "--sharp-chroma", "--output", file,
-          ]);
-          const bytes = await readFile(info.outputPath(file));
-          expect(data).toMatchObject({
-            svgDigest, rasterWidth: 1024, rasterHeight: 1536,
-            recipe: {
-              schemaVersion: 2, sourceSha256: data.pngDigest,
-              output: { width: 512, height: 768, quality: 96, chroma: "sharp-yuv" },
-            },
-            receipt: { outputSha256: sha256(bytes), width: 512, height: 768 },
-          });
-          await page.route(`http://cloe.test/${file}`, route => route.fulfill({ contentType: "image/webp", body: bytes }));
-          return { bytes, pngDigest: data.pngDigest };
-        }
-        const seam = await exportFine("seams");
-        const contour = await exportFine("hair-satchel");
-        expect(sha256(contour.bytes)).toBe("sha256:51db73e95567c2f18365a1d8ca6015ebdb4762f53922d12b4278e828aa19ea17");
-        expect(contour.pngDigest).not.toBe(seam.pngDigest);
-        expect(contour.bytes.byteLength).toBeLessThan(seam.bytes.byteLength * 1.01);
-        for (const displayWidth of [384, 512]) {
-          const height = displayWidth * 1.5;
-          const src = await render(page, "/reference.webp", displayWidth, height);
-          const before = await render(page, "/seams-fine.webp", displayWidth, height);
-          const after = await render(page, "/hair-satchel-fine.webp", displayWidth, height);
-          let combinedGain = 0;
-          for (const [region, bounds] of Object.entries(cloeHairSatchelBounds(displayWidth))) {
-            const gain = meanLineError(src, before, displayWidth, bounds) - meanLineError(src, after, displayWidth, bounds);
-            // Small resampling differences can shift error between these two regions.
-            expect(gain, `${displayWidth}px Fine Sharp ${region} edge gain`).toBeGreaterThan(-0.02);
-            combinedGain += gain;
-          }
-          expect(combinedGain, `${displayWidth}px Fine Sharp combined edge gain`).toBeGreaterThan(0);
-        }
       }
       rasterReceipt = rasterized;
       await page.route("http://cloe.test/svg-render.png", async (route) =>

@@ -3,7 +3,14 @@ import {
   fail,
   type DiagnosticContext,
 } from "../diagnostics.js";
-import { canonicalPathData, canonicalPathWithCount, countCanonicalPathSegments as countPathSegments } from "./path-canonical.js";
+import {
+  canonicalPathData,
+  canonicalPathWithCount,
+  compactCanonicalPathData,
+  compactCanonicalPathOperands,
+  countCanonicalPathSegments as countPathSegments,
+  mapScenePaths,
+} from "./path-canonical.js";
 import { isLocalId, LOCAL_ID_PATTERN, parseHexColor, parsePathData } from "../primitives.js";
 import type { HexColor } from "../types.js";
 import {
@@ -1782,11 +1789,16 @@ export function validateSceneForOutput(
     }
     return segments;
   };
+  const formatPath = (d: string) => canonicalPaths.get(d) ?? canonicalPathData(d);
   const original = validateScenePaths(input, pathSegmentCounts, countPath);
   const result = original.ok && revise
-    ? validateScenePaths(revise(original.value.scene, original.value.metrics), pathSegmentCounts, countPath)
+    ? validateScenePaths(revise(mapScenePaths(original.value.scene, (d) => {
+      // Fit existing geometry before the combined revision reaches the input guard.
+      const compact = compactCanonicalPathOperands(compactCanonicalPathData(formatPath(d)));
+      return compact.length < d.length ? compact : d;
+    }), original.value.metrics), pathSegmentCounts, countPath)
     : original;
-  return { result, formatPath: (d) => canonicalPaths.get(d) ?? canonicalPathData(d) };
+  return { result, formatPath };
 }
 
 function validateScenePaths(

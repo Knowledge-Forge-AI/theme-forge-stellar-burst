@@ -113,6 +113,24 @@ export function cloeHairSatchelBounds(width: number) {
   } as const;
 }
 
+export function cloeTrouserShoeBounds(width: number) {
+  const scale = (coordinate: number) => Math.floor(coordinate * width / 1024);
+  return {
+    trousers: [scale(343), scale(739), scale(664), scale(1328)],
+    shoes: [scale(309), scale(1318), scale(625), scale(1502)],
+  } as const;
+}
+
+export function cloeStylusBounds(width: number) {
+  const scale = (coordinate: number) => Math.floor(coordinate * width / 1024);
+  return [scale(555), scale(406), scale(668), scale(550)] as const;
+}
+
+export function cloeSupportingHandBounds(width: number) {
+  const scale = (coordinate: number) => Math.floor(coordinate * width / 1024);
+  return [scale(728), scale(453), scale(799), scale(544)] as const;
+}
+
 export function meanLineError(
   reference: Uint8Array,
   candidate: Uint8Array,

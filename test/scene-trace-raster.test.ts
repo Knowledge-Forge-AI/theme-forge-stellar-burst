@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { runSceneCli } from "../src/scene-cli.js";
+import { canonicalizeSceneRevision } from "../src/scene/compile.js";
+import { SCENE_LIMITS } from "../src/scene/constants.js";
 import { validateCanonicalSceneSvg } from "../src/scene/import-svg.js";
 import { canonicalPathData } from "../src/scene/path-canonical.js";
 import { canonicalizeScene, compileScene, traceRasterScene, validateScene } from "../src/scene/index.js";
@@ -146,6 +148,55 @@ test("binds the compile receipt to compact editable JSON while preserving the fu
   expect(prepared.value.receipt.svgDigest).toBe(original.value.receipt.svgDigest);
   expect(prepared.value.receipt.sourceDigest).toBe("sha256:" + createHash("sha256").update(editable.value).digest("hex"));
   expect(original.value.receipt.sourceDigest).toBe("sha256:" + createHash("sha256").update(expanded.value).digest("hex"));
+});
+
+test("recovers room for a revision by compacting the existing validated paths", () => {
+  const d = "M0 0" + " ".repeat(60_000);
+  const scene = {
+    schema: "tfsb.vector-scene-v1", compatibility: 1, compilerLevel: 1,
+    profile: "diagram", artboard: { width: 10, height: 10, viewBox: [0, 0, 10, 10] },
+    accessibility: { mode: "decorative" },
+    elements: Array.from({ length: 138 }, () => ({ type: "path", d })),
+  };
+  const added = [
+    { type: "path", d, id: "new-first" },
+    { type: "path", d, id: "new-second" },
+  ];
+  expect(Buffer.byteLength(JSON.stringify(scene))).toBeLessThan(SCENE_LIMITS.maxInputBytes);
+  expect(Buffer.byteLength(JSON.stringify({ ...scene, elements: [...scene.elements, ...added] })))
+    .toBeGreaterThan(SCENE_LIMITS.maxInputBytes);
+  const revised = canonicalizeSceneRevision(scene, current => ({
+    ...current,
+    elements: [...current.elements, ...added],
+  }));
+  if (!revised.ok) throw new Error(revised.diagnostics[0]?.message);
+  const expected = compileScene({
+    ...scene, elements: [...scene.elements, ...added].map(element => ({ ...element, d: "M0 0" })),
+  });
+  expect(compileScene(JSON.parse(revised.value))).toEqual(expected);
+  expect(scene.elements[0]?.d).toBe(d);
+});
+
+test("retains room for a desktop edit when fitting a dense editable scene", () => {
+  const base = traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) });
+  const path = { type: "path", d: "M0 0" + "l1 -1l-1 1".repeat(2000) };
+  const elements = Array.from({ length: 410 }, () => path);
+  const additional = Array.from({ length: 10 }, () => path);
+  const scene = { ...base, elements };
+  const cap = 8 * 1024 * 1024;
+  expect(Buffer.byteLength(JSON.stringify(scene))).toBeLessThan(cap);
+  expect(Buffer.byteLength(JSON.stringify({ ...scene, elements: [...elements, ...additional] }))).toBeGreaterThan(cap);
+
+  const regular = compileScene(scene);
+  const fitted = compileScene(scene, { fitInput: true });
+  if (!regular.ok || !fitted.ok || !fitted.value.canonicalJson) throw new Error("Fixture did not compile");
+  expect(fitted.value.svg).toBe(regular.value.svg);
+  expect(fitted.value.receipt.sourceDigest).toBe("sha256:" + createHash("sha256").update(fitted.value.canonicalJson).digest("hex"));
+  const editable = JSON.parse(fitted.value.canonicalJson);
+  const draft = { ...editable, elements: [...editable.elements, ...additional] };
+  expect(Buffer.byteLength(JSON.stringify(draft))).toBeLessThanOrEqual(cap);
+  const compiled = compileScene(draft, { fitInput: true });
+  expect(compiled.ok).toBe(true);
 });
 
 test("uses fractional pixel coverage when the source does not divide into trace cells", () => {
