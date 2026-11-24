@@ -670,7 +670,7 @@ function validateElement(
     glyphCount: number;
     pathSegmentCount: number;
     pathSegmentCounts: Map<string, number>;
-    countPath: (d: string) => number;
+    countPath: (d: string, ctx: DiagnosticContext, location: string) => number;
     maxDepth: number;
     authoredElementCount: number;
   },
@@ -766,8 +766,7 @@ function validateElement(
       }
       let segs = state.pathSegmentCounts.get(d);
       if (segs === undefined) {
-        parsePathData(d, ctx, `${location}.d`);
-        segs = state.countPath(d);
+        segs = state.countPath(d, ctx, `${location}.d`);
         state.pathSegmentCounts.set(d, segs);
       }
       state.pathSegmentCount += segs;
@@ -1770,6 +1769,35 @@ export function validateScene(input: unknown): SceneValidationResult {
   return validateScenePaths(input, new Map());
 }
 
+const RECENT_PATH_BYTES = 64 * 1024 * 1024;
+const RECENT_PATH_ENTRIES = 4096;
+const recentPaths = new Map<string, { key: string; data: string; segments: number; bytes: number }>();
+let recentPathBytes = 0;
+
+function reuseValidatedPath(d: string, ctx: DiagnosticContext, location: string) {
+  const hit = recentPaths.get(d);
+  if (hit !== undefined) {
+    recentPaths.delete(d);
+    recentPaths.set(hit.key, hit);
+    return hit;
+  }
+  parsePathData(d, ctx, location);
+  const value = canonicalPathWithCount(d);
+  // Charge both strings as UTF-16 plus fixed per-entry overhead.
+  const bytes = 2 * (d.length + value.data.length) + 128;
+  if (bytes > RECENT_PATH_BYTES) return value;
+  while (recentPaths.size >= RECENT_PATH_ENTRIES || recentPathBytes + bytes > RECENT_PATH_BYTES) {
+    const oldest = recentPaths.keys().next().value!;
+    recentPathBytes -= recentPaths.get(oldest)!.bytes;
+    recentPaths.delete(oldest);
+  }
+  const key = Buffer.from(d, "utf16le").toString("utf16le");
+  const record = { ...value, key, bytes };
+  recentPaths.set(key, record);
+  recentPathBytes += bytes;
+  return record;
+}
+
 /** Validate complete scenes and retain bounded canonical spelling for their output pass. */
 export function validateSceneForOutput(
   input: unknown,
@@ -1782,9 +1810,9 @@ export function validateSceneForOutput(
   const canonicalPaths = new Map<string, string>();
   const cacheLimit = 16 * 1024 * 1024;
   let cachedBytes = 0;
-  const countPath = (d: string): number => {
-    if (cachedBytes >= cacheLimit) return countPathSegments(d);
-    const { data, segments } = canonicalPathWithCount(d);
+  const countPath = (d: string, ctx: DiagnosticContext, location: string): number => {
+    if (cachedBytes >= cacheLimit) return validatePathAndCount(d, ctx, location);
+    const { data, segments } = reuseValidatedPath(d, ctx, location);
     if (cachedBytes + data.length <= cacheLimit) {
       // Canonical path spelling is ASCII. Only unique validated strings are kept.
       canonicalPaths.set(d, data);
@@ -1823,10 +1851,15 @@ export function validateSceneForOutput(
   return { result, formatPath, formatCompactPath };
 }
 
+function validatePathAndCount(d: string, ctx: DiagnosticContext, location: string): number {
+  parsePathData(d, ctx, location);
+  return countPathSegments(d);
+}
+
 function validateScenePaths(
   input: unknown,
   pathSegmentCounts: Map<string, number>,
-  countPath = countPathSegments,
+  countPath = validatePathAndCount,
 ): SceneValidationResult {
   const ctx: DiagnosticContext = {
     operation: "validate",
