@@ -613,7 +613,9 @@ function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: num
   return { width, height, pixels, palette: colors.map(color => ({ color, fillOpacity: 1 })) };
 }
 
-function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBudget: number): VectorScene {
+function traceTransparentRaster(
+  source: PixelSource, maxEdge: number, paletteBudget: number, authoredElementBudget: number,
+): VectorScene {
   const { cols, rows } = traceGrid(source, maxEdge);
   const alphas = new Uint8Array(cols * rows);
   const colorKeys = new Uint32Array(cols * rows);
@@ -680,7 +682,7 @@ function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBud
     const authoredCount = layers.reduce((total, layer) => total + layer.elements.length, 0) +
       (groupedElements === undefined ? 0 : 1);
     if (bytes > RASTER_MAX_SVG_BYTES || segments > ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments ||
-        authoredCount > SCENE_LIMITS.maxAuthoredElements) {
+        authoredCount > authoredElementBudget) {
       throw new TraceContourLimitError("Transparent trace exceeds the SVG contour budget.");
     }
     const elements = groupedElements ?? layers.flatMap(layer => layer.elements);
@@ -723,7 +725,7 @@ function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBud
       if (nativeLarge) {
         try {
           // Reserve an element for the near-opaque group before selecting fine paints.
-          const spare = SCENE_LIMITS.maxAuthoredElements - detail.elements.length - undercoat.elements.length - 1;
+          const spare = authoredElementBudget - detail.elements.length - undercoat.elements.length - 1;
           const fine = spare > 0 ? interiorUnderpaint(source, alphas, cols, rows, 3, inset, Math.min(64, spare)) : undefined;
           if (fine) {
             const sx = cols / fine.width, sy = rows / fine.height;
@@ -748,7 +750,7 @@ const HIGH_DETAIL_SVG_BUDGET = 12_000_000;
 /** Trace sRGB illustrations as editable contours. Alpha preservation is opt-in. */
 export function traceRasterScene(
   source: PixelSource,
-  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean; readonly fitSourceColors?: boolean; readonly excludeDetail?: unknown; readonly preserveAlpha?: boolean } = {},
+  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean; readonly fitSourceColors?: boolean; readonly excludeDetail?: unknown; readonly preserveAlpha?: boolean; readonly reserveElements?: number } = {},
 ): VectorScene {
   const grid = traceGrid(source);
   if (options.fitSourceColors && (!options.nativeDetail || options.preserveAlpha)) {
@@ -757,14 +759,22 @@ export function traceRasterScene(
   if (options.preserveAlpha && options.excludeDetail !== undefined) {
     throw new RangeError("Transparent tracing does not support detail exclusion.");
   }
-  if (options.preserveAlpha && source.rgba8.some((value, i) => (i & 3) === 3 && value !== 255)) {
+  const transparent = options.preserveAlpha && source.rgba8.some((value, i) => (i & 3) === 3 && value !== 255);
+  const reserve = options.reserveElements ?? 0;
+  if (options.reserveElements !== undefined && (!transparent || !Number.isInteger(reserve)
+      || reserve < 1 || reserve >= SCENE_LIMITS.maxAuthoredElements)) {
+    throw new RangeError("Element reservation requires transparent tracing and a positive count below the scene limit.");
+  }
+  if (transparent) {
+    const authoredElementBudget = SCENE_LIMITS.maxAuthoredElements - reserve;
     const presets = options.nativeDetail ? [NATIVE_TRANSPARENT_EDGE, 1152, 768, 576] : options.highDetail === false ? [576] : [1152, 768, 576];
     for (const edge of presets) {
       // Retry the established palette at the same resolution before accepting a coarser grid.
-      const paletteBudgets = edge === NATIVE_TRANSPARENT_EDGE ? [1408, 1152] : [1152];
+      const palettePresets = edge === NATIVE_TRANSPARENT_EDGE ? [1408, 1152] : [1152];
+      const paletteBudgets = new Set(palettePresets.flatMap(colors => [colors, Math.max(1, colors - reserve)]));
       for (const colors of paletteBudgets) {
         try {
-          return traceTransparentRaster(source, edge, colors);
+          return traceTransparentRaster(source, edge, colors, authoredElementBudget);
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
         }

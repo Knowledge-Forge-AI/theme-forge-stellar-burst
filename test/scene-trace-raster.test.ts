@@ -269,6 +269,18 @@ test("preserves transparent holes and translucent paint on the original artboard
   expect(compiled.value.svg).not.toContain("trace-base");
 });
 
+test("reserves scene elements only for transparent artwork", () => {
+  const rgba8 = Uint8Array.of(0, 0, 0, 0, 220, 40, 20, 128, 220, 40, 20, 255, 0, 0, 0, 0);
+  const input = { width: 2, height: 2, rgba8 };
+  const options = { preserveAlpha: true, nativeDetail: true };
+  const original = traceRasterScene(input, options);
+  expect(traceRasterScene(input, { ...options, reserveElements: 1998 })).toEqual(original);
+  expect(() => traceRasterScene(input, { ...options, reserveElements: 1999 })).toThrow(/scene limits/);
+  expect(() => traceRasterScene(input, { ...options, reserveElements: 0 })).toThrow(/positive count/);
+  expect(() => traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(0, 0, 0, 255) },
+    { ...options, reserveElements: 1 })).toThrow(/requires transparent tracing/);
+});
+
 test("composites seam underpaint and near-opaque detail together without filling soft edges", () => {
   const width = 16, height = 16;
   const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) => {
@@ -338,7 +350,14 @@ test("the trace CLI requires explicit opt-in before publishing a transparent sou
     await expect(readFile(join(cwd, "alpha.json"))).rejects.toThrow();
     expect(await runSceneCli([...args, "--preserve-alpha", "--exclude-detail", "cut.json"], cwd, io)).toBe(1);
     expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
-    expect(await runSceneCli([...args, "--preserve-alpha"], cwd, io)).toBe(0);
+    expect(await runSceneCli([...args, "--reserve-elements", "1"], cwd, io)).toBe(1);
+    expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
+    for (const invalid of ["0", "1.5", "2000"]) {
+      expect(await runSceneCli([...args, "--preserve-alpha", "--reserve-elements", invalid], cwd, io)).toBe(1);
+      expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
+    }
+    await expect(readFile(join(cwd, "alpha.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await runSceneCli([...args, "--preserve-alpha", "--reserve-elements", "1"], cwd, io)).toBe(0);
     const scene = JSON.parse(await readFile(join(cwd, "alpha.json"), "utf8"));
     expect(scene.elements).toHaveLength(1);
     expect(scene.elements[0].presentation.fillOpacity).toBe(128 / 255);

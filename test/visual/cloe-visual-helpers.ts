@@ -131,6 +131,11 @@ export function cloeSupportingHandBounds(width: number) {
   return [scale(728), scale(453), scale(799), scale(544)] as const;
 }
 
+export function cloeChalkboardBounds(width: number) {
+  const scale = (coordinate: number) => Math.floor(coordinate * width / 1024);
+  return [scale(640), scale(18), scale(1012), scale(299)] as const;
+}
+
 export function meanLineError(
   reference: Uint8Array,
   candidate: Uint8Array,

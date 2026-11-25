@@ -5,7 +5,7 @@ import { runSceneCli } from "../../src/scene-cli.js";
 import { runIllustrationCli } from "../../src/illustration-cli.js";
 import { createRasterDerivativeRecipe, probeMagickDerivativeCapability } from "../../src/illustration/derivative.js";
 import { rgbaPng } from "../brand/raster-test-helper.js";
-import { alphaMeanError, cloeFaceContourBounds, cloeHairSatchelBounds, cloeStylusBounds, cloeSupportingHandBounds, cloeTrouserShoeBounds, compare, compareCloe, meanLineError, loadCloeReference, loadOrihimeReference, orihimeRegions, render } from "./cloe-visual-helpers.js";
+import { alphaMeanError, cloeChalkboardBounds, cloeFaceContourBounds, cloeHairSatchelBounds, cloeStylusBounds, cloeSupportingHandBounds, cloeTrouserShoeBounds, compare, compareCloe, meanLineError, loadCloeReference, loadOrihimeReference, orihimeRegions, render } from "./cloe-visual-helpers.js";
 
 test("transparent editable SVG preserves alpha in Standard and Sharp WebP", async ({ page }, info) => {
   const width = 64, height = 96;
@@ -370,6 +370,7 @@ test("Cloe layered contour refinements preserve Fine Sharp WebP detail", async (
     ["cloe-trouser-and-shoe-edit.json", "trouser-shoe"],
     ["cloe-stylus-contour-edit.json", "stylus"],
     ["cloe-supporting-hand-edit.json", "hand"],
+    ["cloe-chalkboard-network-edit.json", "chalkboard"],
   ] as const) {
     const edit = await readFile(new URL(`./fixtures/${fixture}`, import.meta.url));
     await writeFile(info.outputPath(`${name}-edit.json`), edit);
@@ -377,7 +378,7 @@ test("Cloe layered contour refinements preserve Fine Sharp WebP detail", async (
     await scene(["revise", sceneFile, "--edits", `${name}-edit.json`, "--output", output]);
     sceneFile = output;
   }
-  async function exportFine(name: "seams" | "hair-satchel" | "trouser-shoe" | "stylus" | "hand") {
+  async function exportFine(name: "seams" | "hair-satchel" | "trouser-shoe" | "stylus" | "hand" | "chalkboard") {
     const master = `${name}.svg`;
     await scene([
       "compile", `${name}-refined.json`, "--illustration-source", "--compact-paths", "--output", master,
@@ -417,6 +418,10 @@ test("Cloe layered contour refinements preserve Fine Sharp WebP detail", async (
   expect(sha256(hand.bytes)).toBe("sha256:55a11407bdfc09fbd8005b9ee7799b2bdac1cc091ea0526e1f2b9fc9cfa50db2");
   expect(hand.pngDigest).not.toBe(stylus.pngDigest);
   expect(hand.bytes.byteLength).toBeLessThan(stylus.bytes.byteLength * 1.01);
+  const chalkboard = await exportFine("chalkboard");
+  expect(sha256(chalkboard.bytes)).toBe("sha256:52ccf2182d2844a2b8732aef68813a0252267b2a0c0ac7a8d03a2476a086a65d");
+  expect(chalkboard.pngDigest).not.toBe(hand.pngDigest);
+  expect(chalkboard.bytes.byteLength).toBeLessThan(hand.bytes.byteLength * 1.01);
   let lowerBodyGain = 0;
   for (const displayWidth of [384, 512]) {
     const height = displayWidth * 1.5;
@@ -445,6 +450,16 @@ test("Cloe layered contour refinements preserve Fine Sharp WebP detail", async (
     const handBounds = cloeSupportingHandBounds(displayWidth);
     expect(meanLineError(src, refinedHand, displayWidth, handBounds), `${displayWidth}px Fine Sharp supporting hand edge error`)
       .toBeLessThan(meanLineError(src, refinedStylus, displayWidth, handBounds));
+    const refinedChalkboard = await render(page, "/chalkboard-fine.webp", displayWidth, height);
+    const chalkboardBounds = cloeChalkboardBounds(displayWidth);
+    const beforeChalkboard = meanLineError(src, refinedHand, displayWidth, chalkboardBounds);
+    const afterChalkboard = meanLineError(src, refinedChalkboard, displayWidth, chalkboardBounds);
+    if (displayWidth === 512) {
+      expect(afterChalkboard, "Native-size Fine Sharp chalkboard edge error").toBeLessThan(beforeChalkboard);
+    } else {
+      // Fractional downsampling can move individual lines by a subpixel.
+      expect(afterChalkboard, "Resampled Fine Sharp chalkboard edge error").toBeLessThanOrEqual(beforeChalkboard + 0.015);
+    }
   }
   expect(lowerBodyGain, "Fine Sharp lower-body edge gain across delivery sizes").toBeGreaterThan(0);
 });
@@ -625,6 +640,164 @@ for (const detail of [null, "--high-detail", "--native-detail"] as const) {
         expect(mean, `${displayWidth}px ${region} mean RGB error`).toBeLessThan(fromSvg ? 13 : 2.25);
         expect(severe, `${displayWidth}px ${region} large-error rate`).toBeLessThan(fromSvg ? 0.08 : 0.002);
       }
+    }
+  });
+}
+
+const transparentArt = [
+  {
+    title: "Hikari reserves editable elements and exports the subgroup without altering alpha",
+    referenceFile: "hikari-original-site.webp",
+    editFile: "hikari-needlework-edit.json",
+    referenceDigest: "sha256:79f3fb675f2644069d6a3d5aa6a3a19d61c313e7691cb638c830c5f857cb5c23",
+    groupId: "uniform-needlework-refinement",
+    additions: 125,
+    reserveElements: 125,
+    region: [211, 280, 307, 480] as const,
+    expected: undefined,
+  },
+  {
+    title: "Rei Ai reopens the tablet edit and exports both WebP sizes without altering alpha",
+    referenceFile: "rei-ai-original-site.webp",
+    editFile: "rei-ai-tablet-edit.json",
+    referenceDigest: "sha256:c5e09f5cb7cc83b5df159467d853d6627c4de27f9dd87db06a71a57dabbbfe1d",
+    groupId: "tablet-line-refinement",
+    additions: 116,
+    reserveElements: 125,
+    expected: {
+      nativeRegion: [664, 216, 824, 379] as const,
+      svg: "sha256:e257463553896bb04d0afefc617c6326fb7c38a72e33e0ec523f019e5ba5333d",
+      mobile: "sha256:e1e98ee6804c439b50949002893719429631f8e0c10f5da4d6850631a2d15afb",
+      full: "sha256:1d03f3f22d922708b24f64651515fb28ec95e58eae4026598ab626de3defbde7",
+    },
+  },
+  {
+    title: "Shiori reopens the grimoire edit and exports both WebP sizes without altering alpha",
+    referenceFile: "shiori-original-site.webp",
+    editFile: "shiori-grimoire-edit.json",
+    referenceDigest: "sha256:1232c9de2fe441aae6586937aad627c591f7d3db21c34145140342b2d6c920b8",
+    groupId: "grimoire-metalwork-refinement",
+    additions: 26,
+    reserveElements: 26,
+    expected: {
+      nativeRegion: [570, 318, 875, 512] as const,
+      svg: "sha256:b592cd7412f07e544dd9351c89a42956aec8c62f02faa5e6bba7e5d0f74f84c8",
+      mobile: "sha256:e094a346963e8cd9b745adb062a4e790be1a488c251dced43686abad80fe9e56",
+      full: "sha256:b0b7432edb1fa38d372b032a6deb9043a7acecc4886a79ca512d5eb7a237818b",
+    },
+  },
+];
+
+for (const art of transparentArt) {
+  test(art.title, async ({ page }, info) => {
+    test.setTimeout(120_000);
+    const reference = await readFile(new URL(`./fixtures/${art.referenceFile}`, import.meta.url));
+    const edit = await readFile(new URL(`./fixtures/${art.editFile}`, import.meta.url));
+    const hash = (bytes: Uint8Array) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+    expect(hash(reference)).toBe(art.referenceDigest);
+    await mkdir(info.outputDir, { recursive: true });
+    const directory = await realpath(info.outputDir);
+    await writeFile(info.outputPath("reference.webp"), reference);
+    await writeFile(info.outputPath("edit.json"), edit);
+    async function scene(args: string[]) {
+      let stdout = "", stderr = "";
+      const io = { stdout: (text: string) => { stdout += text; }, stderr: (text: string) => { stderr += text; } };
+      expect(await runSceneCli([...args, "--json"], directory, io), stdout + stderr).toBe(0);
+      return JSON.parse(stdout).data;
+    }
+    const outputArgs = ["--compact-paths", "--illustration-source"];
+    const reservation = ["--reserve-elements", String(art.reserveElements)];
+    await scene(["trace-webp", "reference.webp", "--native-detail", "--preserve-alpha", ...reservation, "--output", "reserved.json"]);
+    const { metrics: reserved } = await scene(["inspect", "reserved.json"]);
+    expect(reserved.authoredElementCount).toBeLessThanOrEqual(2_000 - Math.max(art.reserveElements, art.additions));
+    await scene(["revise", "reserved.json", "--edits", "edit.json", "--output", "edited.json"]);
+    const { metrics: edited } = await scene(["inspect", "edited.json"]);
+    expect(edited.authoredElementCount - reserved.authoredElementCount).toBe(art.additions);
+    await scene(["compile", "reserved.json", ...outputArgs, "--output", "reserved.svg"]);
+    await scene(["compile", "edited.json", ...outputArgs, "--output", "edited.svg"]);
+    const before = await readFile(info.outputPath("reserved.svg"));
+    const after = await readFile(info.outputPath("edited.svg"));
+    expect(after.byteLength).toBeLessThanOrEqual(16_000_000);
+    expect(after.toString()).toContain('viewBox="0 0 1024 1536"');
+    expect(after.toString()).toContain(`id="${art.groupId}"`);
+    const binding = ["--expect-svg-digest", hash(after)];
+    await scene(["import-svg", "edited.svg", "--svg-source", ...binding, "--output", "reopened.json"]);
+    await scene(["compile", "reopened.json", ...outputArgs, "--output", "reopened.svg"]);
+    expect((await readFile(info.outputPath("reopened.svg"))).equals(after)).toBe(true);
+    await writeFile(info.outputPath("remove-edit.json"), JSON.stringify({
+      parentGroupId: "trace-near-opaque", removeGroup: art.groupId,
+    }));
+    await scene(["revise", "reopened.json", "--edits", "remove-edit.json", "--output", "restored.json"]);
+    await scene(["compile", "restored.json", ...outputArgs, "--output", "restored.svg"]);
+    expect((await readFile(info.outputPath("restored.svg"))).equals(before)).toBe(true);
+
+    await scene(["rasterize", "reserved.svg", "--svg-source", "--expect-svg-digest", hash(before), "--output", "reserved.png"]);
+    const raster = await scene(["rasterize", "edited.svg", "--svg-source", ...binding, "--output", "edited.png"]);
+    const responsive = ["--output-width", "512", "--quality", "96", "--sharp-chroma"];
+    await scene(["export-webp", "reserved.svg", "--expect-svg-digest", hash(before), ...responsive, "--output", "reserved.webp"]);
+    const first = await scene(["export-webp", "edited.svg", ...binding, ...responsive, "--output", "edited.webp"]);
+    const second = await scene(["export-webp", "edited.svg", ...binding, ...responsive, "--output", "repeat.webp"]);
+    const webp = await readFile(info.outputPath("edited.webp"));
+    expect((await readFile(info.outputPath("repeat.webp"))).equals(webp)).toBe(true);
+    expect(second.receipt).toEqual(first.receipt);
+    expect(first.receipt).toMatchObject({
+      sourceSha256: raster.pngDigest, outputSha256: hash(webp), width: 512, height: 768, alpha: "has-alpha",
+    });
+
+    if (art.expected) {
+      expect(hash(after)).toBe(art.expected.svg);
+      expect(hash(webp)).toBe(art.expected.mobile);
+      await scene(["export-webp", "reserved.svg", "--expect-svg-digest", hash(before),
+        "--quality", "94", "--output", "reserved-full.webp"]);
+      const fullArgs = ["export-webp", "reopened.svg", ...binding, "--quality", "94"];
+      const full = await scene([...fullArgs, "--output", "full.webp"]);
+      const repeatFull = await scene([...fullArgs, "--output", "repeat-full.webp"]);
+      const fullWebp = await readFile(info.outputPath("full.webp"));
+      expect(hash(fullWebp)).toBe(art.expected.full);
+      expect((await readFile(info.outputPath("repeat-full.webp"))).equals(fullWebp)).toBe(true);
+      expect(repeatFull.receipt).toEqual(full.receipt);
+      expect(full.receipt).toMatchObject({
+        sourceSha256: raster.pngDigest, outputSha256: hash(fullWebp), width: 1024, height: 1536, alpha: "has-alpha",
+      });
+    }
+
+    const origin = "http://transparent-art.test";
+    await page.route(origin + "/", route => route.fulfill({
+      contentType: "text/html", body: "<!doctype html><title>Transparent illustration fixture</title>",
+    }));
+    await page.route(origin + "/reference.webp", route => route.fulfill({ contentType: "image/webp", body: reference }));
+    const comparedExports = art.expected ? ["reserved-full.webp", "full.webp"] : ["reserved.webp", "edited.webp"];
+    for (const name of ["reserved.png", "edited.png", ...comparedExports]) {
+      const body = await readFile(info.outputPath(name));
+      await page.route(origin + "/" + name, route => route.fulfill({
+        contentType: name.endsWith(".png") ? "image/png" : "image/webp", body,
+      }));
+    }
+    await page.goto(origin + "/");
+    const masterBefore = await render(page, "/reserved.png", 1024, 1536, null);
+    const masterAfter = await render(page, "/edited.png", 1024, 1536, null);
+    expect(alphaMeanError(masterBefore, masterAfter)).toBe(0);
+    expect(masterAfter.equals(masterBefore)).toBe(false);
+    if (art.expected) {
+      const { nativeRegion } = art.expected;
+      const nativeReference = await render(page, "/reference.webp", 1024, 1536);
+      const score = async (path: string) => meanLineError(
+        nativeReference, await render(page, path, 1024, 1536), 1024, nativeRegion,
+      );
+      const scores = {
+        svgBefore: await score("/reserved.png"), svgAfter: await score("/edited.png"),
+        webpBefore: await score("/reserved-full.webp"), webpAfter: await score("/full.webp"),
+      };
+      await info.attach("native-edge-error.json", { body: JSON.stringify(scores), contentType: "application/json" });
+      expect(scores.svgAfter, "edited-region edge error in the SVG render").toBeLessThan(scores.svgBefore);
+      expect(scores.webpAfter, "edited-region edge error in the full-size WebP").toBeLessThan(scores.webpBefore);
+    } else {
+      const referenceMobile = await render(page, "/reference.webp", 384, 576);
+      const exportBefore = await render(page, "/reserved.webp", 384, 576);
+      const exportAfter = await render(page, "/edited.webp", 384, 576);
+      const originalError = meanLineError(referenceMobile, exportBefore, 384, art.region);
+      const refinedError = meanLineError(referenceMobile, exportAfter, 384, art.region);
+      expect(refinedError, "mobile embroidery edge error").toBeLessThan(originalError);
     }
   });
 }

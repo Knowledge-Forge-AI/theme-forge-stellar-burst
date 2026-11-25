@@ -1,0 +1,53 @@
+name: Illustration WebP
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tfsb-webp-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  native-webp:
+    name: Native Linux x86-64 WebP qualification
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'staging'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout merge candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22.23.2
+      - name: Record exact merge candidate
+        run: |
+          mkdir -p .test-reports/native-webp
+          node tools/ci/exact-head.mjs --output .test-reports/native-webp/receipt.json --expected-branch staging --expected-base main --checkout-role merge-candidate
+      - name: Install locked JavaScript dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --prefix packages/tfsb-raster-resvg --ignore-scripts --no-audit --no-fund
+          mkdir -p node_modules/@knowledge-forge-ai
+          ln -s ../../packages/tfsb-raster-resvg node_modules/@knowledge-forge-ai/tfsb-raster-resvg
+          git diff --exit-code
+      - name: Verify the encoder and run the isolated WebP suite
+        run: bash tools/ci/run-webp-visual.sh .test-reports/native-webp
+      - name: Bind the qualification evidence
+        run: node tools/ci/artifact-manifest.mjs --root .test-reports/native-webp --output .test-reports/native-webp/artifact-manifest.json --job native-webp --require receipt.json --require encoder-closure.json --require webp-proof.json
+      - name: Upload digest-bound evidence
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: native-webp-evidence
+          path: .test-reports/native-webp/
+          if-no-files-found: error
+          retention-days: 14

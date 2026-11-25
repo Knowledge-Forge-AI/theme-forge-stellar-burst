@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { runSceneCli } from "../../src/scene-cli.js";
 import { rgbaPng } from "../brand/raster-test-helper.js";
-import { alphaMeanError, cloeFaceContourBounds, compare, compareCloe, cloeHairSatchelBounds, cloeStylusBounds, cloeSupportingHandBounds, cloeTrouserShoeBounds, loadCloeReference, loadOrihimeReference, meanLineError, orihimeRegions, render } from "./cloe-visual-helpers.js";
+import { alphaMeanError, cloeChalkboardBounds, cloeFaceContourBounds, compare, compareCloe, cloeHairSatchelBounds, cloeStylusBounds, cloeSupportingHandBounds, cloeTrouserShoeBounds, loadCloeReference, loadOrihimeReference, meanLineError, orihimeRegions, render } from "./cloe-visual-helpers.js";
 
 async function traceCloe(page: Page, info: TestInfo, detail?: "--regular" | "--native-detail") {
   await loadCloeReference(page);
@@ -67,8 +67,8 @@ test("Cloe high-detail SVG preserves sharp features when enlarged", async ({ pag
   }
 });
 
-test("Cloe editable line refinement improves full-frame SVG delivery", async ({ page }, info) => {
-  test.setTimeout(90_000);
+test("Cloe editable line refinement improves full-frame SVG delivery", async ({ page, browserName }, info) => {
+  test.setTimeout(browserName === "webkit" ? 150_000 : 90_000);
   const baseline = await traceCloe(page, info, "--native-detail");
   const edit = await readFile(new URL("./fixtures/cloe-multiscale-edit.json", import.meta.url));
   await writeFile(info.outputPath("line-edit.json"), edit);
@@ -187,6 +187,22 @@ test("Cloe editable line refinement improves full-frame SVG delivery", async ({ 
   const handStart = hand.lastIndexOf('  <g id="hand-line-color-refinement">');
   expect(handStart).toBeGreaterThan(0);
   expect(hand.slice(0, handStart) + "</svg>\n" === stylus).toBe(true);
+  const chalkboardEdit = await readFile(new URL("./fixtures/cloe-chalkboard-network-edit.json", import.meta.url));
+  await writeFile(info.outputPath("chalkboard-edit.json"), chalkboardEdit);
+  expect(await runSceneCli([
+    "revise", "hand.json", "--edits", "chalkboard-edit.json", "--output", "chalkboard.json",
+  ], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli([
+    "compile", "chalkboard.json", "--illustration-source", "--output", "chalkboard.svg",
+  ], info.outputDir, io), messages).toBe(0);
+  const chalkboard = await readFile(info.outputPath("chalkboard.svg"), "utf8");
+  expect(chalkboard).toContain('viewBox="0 0 1024 1536"');
+  expect(Buffer.byteLength(chalkboard)).toBeLessThanOrEqual(16_000_000);
+  const chalkboardStart = chalkboard.lastIndexOf('  <g id="chalkboard-network-refinement">');
+  expect(chalkboardStart).toBeGreaterThan(0);
+  expect(chalkboard.slice(0, chalkboardStart) + "</svg>\n" === hand).toBe(true);
+  await page.route("http://cloe.test/chalkboard.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: chalkboard }));
   await page.route("http://cloe.test/hand.svg", route =>
     route.fulfill({ contentType: "image/svg+xml", body: hand }));
   await page.route("http://cloe.test/trouser-shoe.svg", route =>
@@ -238,11 +254,15 @@ test("Cloe editable line refinement improves full-frame SVG delivery", async ({ 
     const handBounds = cloeSupportingHandBounds(width);
     expect(meanLineError(original, refinedHand, width, handBounds), `${width}px supporting hand edge error`)
       .toBeLessThan(meanLineError(original, refinedStylus, width, handBounds));
+    const refinedChalkboard = await render(page, "/chalkboard.svg", width, height);
+    const chalkboardBounds = cloeChalkboardBounds(width);
+    expect(meanLineError(original, refinedChalkboard, width, chalkboardBounds), `${width}px chalkboard edge error`)
+      .toBeLessThan(meanLineError(original, refinedHand, width, chalkboardBounds));
   }
 });
 
-test("Cloe native-detail SVG preserves line work at raster delivery sizes", async ({ page }, info) => {
-  test.setTimeout(90_000);
+test("Cloe native-detail SVG preserves line work at raster delivery sizes", async ({ page, browserName }, info) => {
+  test.setTimeout(browserName === "webkit" ? 150_000 : 90_000);
   const svg = await traceCloe(page, info, "--native-detail");
   expect(svg).toContain('viewBox="0 0 1024 1536"');
 
