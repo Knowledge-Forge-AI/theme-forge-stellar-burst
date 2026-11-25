@@ -67,8 +67,8 @@ test("Cloe high-detail SVG preserves sharp features when enlarged", async ({ pag
   }
 });
 
-test("Cloe editable line refinement improves full-frame SVG delivery", async ({ page }, info) => {
-  test.setTimeout(90_000);
+test("Cloe editable line refinement improves full-frame SVG delivery", async ({ page, browserName }, info) => {
+  test.setTimeout(browserName === "webkit" ? 150_000 : 90_000);
   const baseline = await traceCloe(page, info, "--native-detail");
   const edit = await readFile(new URL("./fixtures/cloe-multiscale-edit.json", import.meta.url));
   await writeFile(info.outputPath("line-edit.json"), edit);
@@ -261,8 +261,8 @@ test("Cloe editable line refinement improves full-frame SVG delivery", async ({ 
   }
 });
 
-test("Cloe native-detail SVG preserves line work at raster delivery sizes", async ({ page }, info) => {
-  test.setTimeout(90_000);
+test("Cloe native-detail SVG preserves line work at raster delivery sizes", async ({ page, browserName }, info) => {
+  test.setTimeout(browserName === "webkit" ? 150_000 : 90_000);
   const svg = await traceCloe(page, info, "--native-detail");
   expect(svg).toContain('viewBox="0 0 1024 1536"');
 

@@ -32,6 +32,7 @@ python3 tools/ci/webp-encoder-lock.py check "$temp/path-info.json" "$lock"
 cp "$lock" "$output/encoder-closure.json"
 
 docker run --rm --pull=never --platform linux/amd64 --network none --read-only \
+  --user "$(id -u):$(id -g)" \
   --shm-size 1g --tmpfs /tmp:rw,nosuid,mode=1777,size=1g --workdir /workspace \
   --env "PATH=/opt/pinned-node:$encoder/bin:/usr/local/bin:/usr/bin:/bin" \
   --env HOME=/tmp --env PLAYWRIGHT_JSON_OUTPUT_FILE=/result/report.json \
