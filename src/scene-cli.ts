@@ -40,6 +40,7 @@ import {
 import { canonicalJsonStringify } from "./scene/canonical.js";
 import { validateCanonicalSceneSvg } from "./scene/import-svg.js";
 import { reviseScene } from "./scene/path-edits.js";
+import { SCENE_LIMITS } from "./scene/constants.js";
 import { MAX_TRACE_SOURCE_PIXELS } from "./scene/trace-raster.js";
 
 export const SCENE_USAGE = `Usage:
@@ -50,8 +51,8 @@ export const SCENE_USAGE = `Usage:
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
   tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--output-width <pixels>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256>] [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--fit-source-colors] [--json]
-  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha | --exclude-detail <json>] [--fit-source-colors] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | --exclude-detail <json>] [--fit-source-colors] [--json]
+  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | --exclude-detail <json>] [--fit-source-colors] [--json]
   tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
@@ -64,6 +65,7 @@ Options:
   --native-detail       Prioritize fine artwork at the raster export size
   --fit-source-colors  Fit fills to source pixels on a matching opaque native grid
   --preserve-alpha      Trace transparency as editable paths with fill opacity
+  --reserve-elements    Leave room for authored edits in a transparent trace
   --exclude-detail <file>  Omit native detail cells inside a convex source-pixel polygon
   --compact-paths       Remove optional SVG path spacing when compiling
   --illustration-source  Limit compiled SVG for illustration export to 16,000,000 bytes
@@ -99,6 +101,7 @@ interface ParsedSceneArgs {
   readonly expectedSceneDigest?: string;
   readonly excludeDetail?: string;
   readonly preserveAlpha?: boolean;
+  readonly reserveElements?: number;
   readonly fitSourceColors?: boolean;
   readonly traceMode?: "regular" | "high-detail" | "native-detail";
   readonly dryRun: boolean;
@@ -167,6 +170,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let illustrationSource = false;
   let excludeDetail: string | undefined;
   let preserveAlpha = false;
+  let reserveElements: number | undefined;
   let fitSourceColors = false;
   let traceMode: ParsedSceneArgs["traceMode"];
   const positionals: string[] = [];
@@ -220,6 +224,17 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       }
       fitSourceColors = true;
       i += 1;
+      continue;
+    }
+
+    if (arg === "--reserve-elements") {
+      const next = rest[i + 1];
+      if (!trace || reserveElements !== undefined || next === undefined || !/^[1-9][0-9]*$/.test(next)
+          || Number(next) >= SCENE_LIMITS.maxAuthoredElements) {
+        return { action, dryRun, json, error: "Use --reserve-elements once with a positive count below the scene element limit." };
+      }
+      reserveElements = Number(next);
+      i += 2;
       continue;
     }
 
@@ -445,6 +460,9 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   if (excludeDetail !== undefined && traceMode !== "native-detail") {
     return { action, dryRun, json, error: "--exclude-detail requires --native-detail." };
   }
+  if (reserveElements !== undefined && !preserveAlpha) {
+    return { action, dryRun, json, error: "--reserve-elements requires --preserve-alpha." };
+  }
   if (excludeDetail !== undefined && preserveAlpha) {
     return { action, dryRun, json, error: "--exclude-detail cannot be combined with --preserve-alpha." };
   }
@@ -467,6 +485,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     ...(excludeDetail === undefined ? {} : { excludeDetail }),
     ...(traceMode === undefined ? {} : { traceMode }),
     preserveAlpha,
+    ...(reserveElements === undefined ? {} : { reserveElements }),
     fitSourceColors,
     dryRun,
     json,
@@ -551,7 +570,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, quality, sharpChroma, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, quality, sharpChroma, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, reserveElements, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -805,7 +824,7 @@ export async function runSceneCli(
       try {
         pixels = decodeStrictPng(decodedWebp?.bytes ?? bytes);
         scene = traceRasterScene(pixels, {
-          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, fitSourceColors,
+          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, ...(reserveElements === undefined ? {} : { reserveElements }), fitSourceColors,
         });
       } catch {
         const requiresAlphaOptIn = !preserveAlpha && !fitSourceColors && excludeDetail === undefined

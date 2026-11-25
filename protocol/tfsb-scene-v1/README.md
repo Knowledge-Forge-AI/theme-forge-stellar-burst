@@ -167,6 +167,15 @@ The JSON result binds the input WebP hash, decoded PNG digest, decode recipe,
 and written scene hash. The editor scene can then be compiled to SVG and
 exported with `scene export-webp`.
 
+For artwork with transparent or translucent pixels, add
+`--preserve-alpha --reserve-elements 125` to either trace command to leave room
+for up to 125 authored elements in later edits. The reservation counts groups
+and their contents. The tracer keeps its current preset when it fits and may
+use a smaller palette or coarser trace when more room is needed. The scene
+still has a 2,000-element limit and the illustration SVG still has a
+16,000,000-byte ceiling. A reservation does not guarantee space under other
+limits for any particular edit.
+
 High-detail tracing is the default for both input commands. On sufficiently large
 inputs, it subdivides cells at color transitions on a finer grid to retain
 thin strokes. It uses up to 1,152 detail colors with a separate 96-color

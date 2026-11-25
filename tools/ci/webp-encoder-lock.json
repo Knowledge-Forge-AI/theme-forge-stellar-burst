@@ -1,0 +1,918 @@
+{
+  "cache": "https://cache.nixos.org",
+  "encoderVersion": "7.1.2-31",
+  "paths": {
+    "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3": {
+      "narHash": "sha256-QJ3HdCFj15bEwmPNLrVv4wrp3SNulIfJ5R8vsqsT1lM=",
+      "narSize": 16118832,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/4rmm2iyraagqc7ah3ii279mai2yf89bp-util-linux-minimal-2.42.3-lib",
+        "/nix/store/aasq42p6nsqq9g7l9fbz8h9f0jq4ffyx-libffi-3.8.0",
+        "/nix/store/fnx2wbj1rqqgf8d29daqnz2qwjxnc96p-pcre2-10.48",
+        "/nix/store/lzk2jmjmj730zg0dy4l2pbljcxx0nq33-libselinux-3.10",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/0jgmmsnp3p8qy353pa8lfqhgh61lcibv-keyutils-1.6.3-lib": {
+      "narHash": "sha256-BhA1TE173RUKmiOU6LZavEN8O4/F38zIRvDs1bNlsnY=",
+      "narSize": 42848,
+      "references": [
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/0v4zwdmb69zzbk8miw8z2yk1yzl515hk-libvmaf-3.0.0": {
+      "narHash": "sha256-juP4CEs2e1TCujKhv5QXuGKeGK21jKWNmJNY71S/rB4=",
+      "narSize": 2778976,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/1173lkv0907lf120kvm1zbyg8arlfknh-fribidi-1.0.16": {
+      "narHash": "sha256-xHssnnFMzPdkHnd498/VTMRcR3pVgk+Qf/J0Xi6kV6c=",
+      "narSize": 166400,
+      "references": [
+        "/nix/store/1173lkv0907lf120kvm1zbyg8arlfknh-fribidi-1.0.16",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/1azpm6clm0wag3k0y94afd79m1a3sgd8-libtiff-4.7.2": {
+      "narHash": "sha256-hi5z8AZVCGCsXn6axluWm38JK0x4EgqfFPUKNAGlLAg=",
+      "narSize": 766176,
+      "references": [
+        "/nix/store/1azpm6clm0wag3k0y94afd79m1a3sgd8-libtiff-4.7.2",
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/9j94n5i1jxjqmypxl5z3cpi4qsw4p8q0-libdeflate-1.25",
+        "/nix/store/h56a74ka348fr2sqp0163x0afq3j73kc-libwebp-1.6.0",
+        "/nix/store/h9l5w8jdirvpihfzy99rmhahn83y5996-xz-5.8.4",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/k3x0dcw2yrr0y2shmchpwcvivmsawdxy-lerc-4.1.1",
+        "/nix/store/y5xhanv1fmrkwslgz41nwnvajmvs17hj-zstd-1.5.7",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/1p4zg402ibjx35kciw578a0ckvy17mg4-libxau-1.0.12": {
+      "narHash": "sha256-Wtmid2HEPdDi3zTVJ6IDzn32b2SE5e7+7viwE2TwtAc=",
+      "narSize": 27792,
+      "references": [
+        "/nix/store/1p4zg402ibjx35kciw578a0ckvy17mg4-libxau-1.0.12",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/1zns14x0dv9krcnbznbxkqlj28jxmdcp-imagemagick-7.1.2-31": {
+      "narHash": "sha256-zfXB7Toah7S6Sfji7iB0/KvgXBliuMD1q3mdr18LUuM=",
+      "narSize": 8544720,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/1azpm6clm0wag3k0y94afd79m1a3sgd8-libtiff-4.7.2",
+        "/nix/store/1zns14x0dv9krcnbznbxkqlj28jxmdcp-imagemagick-7.1.2-31",
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/2pfh66qmng1460mydmghrcfngckrgp0c-curl-8.22.0-bin",
+        "/nix/store/2v6jrpd1827rgmbsgsdmbiyk7szbv55a-potrace-1.16",
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/5684xwi5pxfbra2jpldnbmf3iv71wzkl-liblqr-1-0.4.3",
+        "/nix/store/5c6z9rh78nmh3ajxvivbr1nw5vzsc48h-libxt-1.3.1",
+        "/nix/store/5vicmwfi31nv3i6rvm3b9g8k1b3k5wm0-openexr-3.4.15",
+        "/nix/store/6y366i4gsql6kcg5aznz6id3p06b5ngd-libxml2-2.15.4",
+        "/nix/store/7ni0ai18560pw5lg7q17kmsk682lxzkj-gdk-pixbuf-2.44.7",
+        "/nix/store/7sl918qz81by3bwl7ylgv807rxr7nwqb-harfbuzz-13.2.1",
+        "/nix/store/833invqvsk7anqnqrki5hqncrcllj825-coreutils-9.11",
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/b7fcqsg01qmxwgiw2a3m0zzdpr4z18i8-librsvg-2.62.3",
+        "/nix/store/bnh0j6mr8qsgcxf3yilxfxpawlfx6m7g-openjpeg-2.5.4",
+        "/nix/store/c6v52vbxmzvijwsbv0id6qiagv95s9hn-lcms2-2.18",
+        "/nix/store/czq129didxadlvjjwrnkhg6l23xh0i5g-libraqm-0.10.5",
+        "/nix/store/df701bw6s2pk3wvmb20wp8zc1y458kvn-libjxl-0.11.2",
+        "/nix/store/dz8p9np08q1gbjp9qa1xa8sk82q607d1-imath-3.2.2",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/g706vj5ziqvf6gjsz0nzmvy131ab5pc5-libheif-1.23.4-lib",
+        "/nix/store/gbqpck20fdj8h2idhp2dshxhjk9malym-fontconfig-2.17.1-lib",
+        "/nix/store/gil0ycgwnij6b85rsyvnn2xnizy7wjpx-libraw-0.22.1-lib",
+        "/nix/store/icik9s1qrcks17ml5sx46fk0cr81wdgq-libsm-1.2.6",
+        "/nix/store/jcg7bmaj399j3494v0ppghs70v93l3qz-pango-1.57.1",
+        "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib",
+        "/nix/store/jkswprq04f9sm9qs2nqr287zywv8k9wf-libxext-1.3.7",
+        "/nix/store/kbk9illl5r0s6agm1jvx2sn4l3s8vhla-djvulibre-3.5.29-lib",
+        "/nix/store/mbd8pzf0lgdm1s5vl9jb2i27978a6paa-libultrahdr-1.4.0",
+        "/nix/store/n0rip9alj8hd6l8s27bdq25nkl259z92-cairo-1.18.4",
+        "/nix/store/nd6w1hgw4b5ymqgiwfj51gr5h1kn6f25-bzip2-1.0.8",
+        "/nix/store/p72l0mq0wrh4h04y12fvynwck63hy0p3-libice-1.1.2",
+        "/nix/store/vrlz5pa55xb56k6sw81vny9mbch29ma3-fftw-double-3.3.11",
+        "/nix/store/xfp9vx40ih5k5fgmbgkxq8gbrzybmi3v-libwebp-1.6.0",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/21j2y0wvhva2xgw3rrsvi03qa7k0v67b-libunwind-1.8.3": {
+      "narHash": "sha256-4R4OfXg6FEAMKAdZThiXh5DcZuZjIaQpnrD2RobCCwc=",
+      "narSize": 274056,
+      "references": [
+        "/nix/store/21j2y0wvhva2xgw3rrsvi03qa7k0v67b-libunwind-1.8.3",
+        "/nix/store/h9l5w8jdirvpihfzy99rmhahn83y5996-xz-5.8.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib": {
+      "narHash": "sha256-YWiWZu0lNLx+bZgrHdBcApRILJpXUsXfW2d5nbIf4hs=",
+      "narSize": 10317392,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/wmqpr1cgqfyliinpzhfqcwmj9b4csh85-gcc-15.3.0-libgcc",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/2pfh66qmng1460mydmghrcfngckrgp0c-curl-8.22.0-bin": {
+      "narHash": "sha256-0EdFTBkBFCHj0hzTUIILVCB5Y1wGuy0yXVtx6ns9o6Q=",
+      "narSize": 383552,
+      "references": [
+        "/nix/store/3jhij66dx2xpqv9bw7397ns1w4y7ky09-curl-8.22.0",
+        "/nix/store/61l1s0l62m865rixfj03gx789y161wad-ngtcp2-1.22.1",
+        "/nix/store/7fr737xfi9qw3fzvdsqmnbqid56knndp-openssl-3.6.4",
+        "/nix/store/7n1hai8jk6vgc967drgkqi6k7j6ff28q-bash-5.3p9",
+        "/nix/store/8pf3c5kh87gpzyfm8cc3lym5j14npzyw-libidn2-2.3.8",
+        "/nix/store/9q9v2njyswl21s222p037msdmhhmxbnm-krb5-1.22.2-lib",
+        "/nix/store/fwq2bxky5459hkm18y03p0s5h5b4hh4n-nghttp3-1.15.0",
+        "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib",
+        "/nix/store/pgj9mspbfv2r1hd88dsjl962jchvd1xw-libpsl-0.21.5",
+        "/nix/store/piklp6qkwb250dby63aa3hb9w40c50ad-libssh2-1.11.1",
+        "/nix/store/pq045nk37wd7y4slqbdx7ksdp2qlsxnd-nghttp2-1.69.0-lib",
+        "/nix/store/y5xhanv1fmrkwslgz41nwnvajmvs17hj-zstd-1.5.7",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/2v6jrpd1827rgmbsgsdmbiyk7szbv55a-potrace-1.16": {
+      "narHash": "sha256-oTiPSpfvxRM8oKFNNHZQB66hG2LboJixVbHcdiMA9xk=",
+      "narSize": 259552,
+      "references": [
+        "/nix/store/2v6jrpd1827rgmbsgsdmbiyk7szbv55a-potrace-1.16",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/39m23yla3lnw563f4a1sa6hnn0dgjyj1-libunistring-1.4.2": {
+      "narHash": "sha256-VE1x99r0g/lJtnEFV5PVEO7JYHtH2wDSbHJe5P3f2PE=",
+      "narSize": 2078944,
+      "references": [
+        "/nix/store/39m23yla3lnw563f4a1sa6hnn0dgjyj1-libunistring-1.4.2"
+      ]
+    },
+    "/nix/store/3jhij66dx2xpqv9bw7397ns1w4y7ky09-curl-8.22.0": {
+      "narHash": "sha256-ZDXIOQaYCYNuFqlNPnfsS/nuVYsNY4g0io2Zcm7Wirs=",
+      "narSize": 1286232,
+      "references": [
+        "/nix/store/3jhij66dx2xpqv9bw7397ns1w4y7ky09-curl-8.22.0",
+        "/nix/store/61l1s0l62m865rixfj03gx789y161wad-ngtcp2-1.22.1",
+        "/nix/store/7fr737xfi9qw3fzvdsqmnbqid56knndp-openssl-3.6.4",
+        "/nix/store/8pf3c5kh87gpzyfm8cc3lym5j14npzyw-libidn2-2.3.8",
+        "/nix/store/9q9v2njyswl21s222p037msdmhhmxbnm-krb5-1.22.2-lib",
+        "/nix/store/fwq2bxky5459hkm18y03p0s5h5b4hh4n-nghttp3-1.15.0",
+        "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib",
+        "/nix/store/pgj9mspbfv2r1hd88dsjl962jchvd1xw-libpsl-0.21.5",
+        "/nix/store/piklp6qkwb250dby63aa3hb9w40c50ad-libssh2-1.11.1",
+        "/nix/store/pq045nk37wd7y4slqbdx7ksdp2qlsxnd-nghttp2-1.69.0-lib",
+        "/nix/store/y5xhanv1fmrkwslgz41nwnvajmvs17hj-zstd-1.5.7",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/3l9a5sx4hcw27k9cwgjjgfdi8if30lzr-libdatrie-2019-12-20-lib": {
+      "narHash": "sha256-HCssFUkKPyB61u4cgV6Am18pt28iKmNd+r1u2y/iR7Q=",
+      "narSize": 43240,
+      "references": [
+        "/nix/store/3l9a5sx4hcw27k9cwgjjgfdi8if30lzr-libdatrie-2019-12-20-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/4rmm2iyraagqc7ah3ii279mai2yf89bp-util-linux-minimal-2.42.3-lib": {
+      "narHash": "sha256-pdUlQvDZZaUb2VQb38mbb494C0THAhYOTrdxd9+awtY=",
+      "narSize": 2100904,
+      "references": [
+        "/nix/store/4rmm2iyraagqc7ah3ii279mai2yf89bp-util-linux-minimal-2.42.3-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13": {
+      "narHash": "sha256-pz+WTiddUcCogQsL128sMfLv0EjSZyh6uUoSRndsr8c=",
+      "narSize": 2700240,
+      "references": [
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/w74djvy71mp1g88gzl9ppgj7p9ppi13s-libxcb-1.17.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/5684xwi5pxfbra2jpldnbmf3iv71wzkl-liblqr-1-0.4.3": {
+      "narHash": "sha256-gQEGLgTqwGQ9UxCkVSFdBmwJ+DQ/OZc2d1cxCtoJdQE=",
+      "narSize": 79120,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/5684xwi5pxfbra2jpldnbmf3iv71wzkl-liblqr-1-0.4.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/5c6z9rh78nmh3ajxvivbr1nw5vzsc48h-libxt-1.3.1": {
+      "narHash": "sha256-TLnuBIYwLtPM2qR+Ze5e+dZXtlpqWjGe+Bp5JiONbbU=",
+      "narSize": 495352,
+      "references": [
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/5c6z9rh78nmh3ajxvivbr1nw5vzsc48h-libxt-1.3.1",
+        "/nix/store/icik9s1qrcks17ml5sx46fk0cr81wdgq-libsm-1.2.6",
+        "/nix/store/p72l0mq0wrh4h04y12fvynwck63hy0p3-libice-1.1.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/5vicmwfi31nv3i6rvm3b9g8k1b3k5wm0-openexr-3.4.15": {
+      "narHash": "sha256-qRubuuB6XUe02nfydt74RjD3sG937q8TzT/B9qLH6z0=",
+      "narSize": 3922488,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/5vicmwfi31nv3i6rvm3b9g8k1b3k5wm0-openexr-3.4.15",
+        "/nix/store/9j94n5i1jxjqmypxl5z3cpi4qsw4p8q0-libdeflate-1.25",
+        "/nix/store/dz8p9np08q1gbjp9qa1xa8sk82q607d1-imath-3.2.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/61l1s0l62m865rixfj03gx789y161wad-ngtcp2-1.22.1": {
+      "narHash": "sha256-cvBQIya5sIyaHMFlSOTA0NkvMtmZmCh42Hfl0S8TuzE=",
+      "narSize": 495896,
+      "references": [
+        "/nix/store/61l1s0l62m865rixfj03gx789y161wad-ngtcp2-1.22.1",
+        "/nix/store/7fr737xfi9qw3fzvdsqmnbqid56knndp-openssl-3.6.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/61rm1l19wj94b282fmvmqh1pkr56hydr-gmp-with-cxx-6.3.0": {
+      "narHash": "sha256-vHSGeuEgnM56ffletYiH3/fNVE2cuPKqBr39ytFcwKY=",
+      "narSize": 783432,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/61rm1l19wj94b282fmvmqh1pkr56hydr-gmp-with-cxx-6.3.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/6a83hb31idn9ddr01a85nm9icgyi2maj-libde265-1.1.2": {
+      "narHash": "sha256-CQW9wGlDYnZBT0eRGCvDEhaEpNIjOq1U5OT6qEYSoBU=",
+      "narSize": 1007112,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/6a83hb31idn9ddr01a85nm9icgyi2maj-libde265-1.1.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/6y366i4gsql6kcg5aznz6id3p06b5ngd-libxml2-2.15.4": {
+      "narHash": "sha256-s/uqNiw/29zxX7xeCetJinqysrzVtUYfQCWmv7JKhmY=",
+      "narSize": 1460576,
+      "references": [
+        "/nix/store/6y366i4gsql6kcg5aznz6id3p06b5ngd-libxml2-2.15.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/7b8qh31i26q56xnifk3j7lncdzn7ijph-djvulibre-3.5.29": {
+      "narHash": "sha256-Hw9LfeGsGPOj85+Pf0U3i9A/Jqv0zBLzZDUJT5gcsoM=",
+      "narSize": 405680,
+      "references": []
+    },
+    "/nix/store/7fr737xfi9qw3fzvdsqmnbqid56knndp-openssl-3.6.4": {
+      "narHash": "sha256-btEJh4H9GhTqhQBa4r70G2BgTlayg65WieBAFW3v3uk=",
+      "narSize": 9317400,
+      "references": [
+        "/nix/store/7fr737xfi9qw3fzvdsqmnbqid56knndp-openssl-3.6.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/7n1hai8jk6vgc967drgkqi6k7j6ff28q-bash-5.3p9": {
+      "narHash": "sha256-ugeBbdFhe9fSshuTYZ33JBppHa7+TvCHgwsJJW1bHHE=",
+      "narSize": 1852752,
+      "references": [
+        "/nix/store/7n1hai8jk6vgc967drgkqi6k7j6ff28q-bash-5.3p9",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/7ni0ai18560pw5lg7q17kmsk682lxzkj-gdk-pixbuf-2.44.7": {
+      "narHash": "sha256-VJ5uIXPLm2g1Y5YhQFCgddkNMeL4h8IYdBTXh23ShwA=",
+      "narSize": 2992192,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/1azpm6clm0wag3k0y94afd79m1a3sgd8-libtiff-4.7.2",
+        "/nix/store/7ni0ai18560pw5lg7q17kmsk682lxzkj-gdk-pixbuf-2.44.7",
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/7r09hcdyr2jc4zm6sg5j3gh5p1g1jjag-x265-4.1": {
+      "narHash": "sha256-mo+uGBwTHLJAlIpUXayzNiIAQlf/ELZDoPllJXSnxfc=",
+      "narSize": 24864272,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/7r09hcdyr2jc4zm6sg5j3gh5p1g1jjag-x265-4.1",
+        "/nix/store/dm7q8fmjgnly1fpa3d4l9n1qbr34bblb-numactl-2.0.18",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/7sl918qz81by3bwl7ylgv807rxr7nwqb-harfbuzz-13.2.1": {
+      "narHash": "sha256-3BUY0W/uqThel39g+YikGI49XG6z19+0wMEtZ4LRt9k=",
+      "narSize": 3896464,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/7sl918qz81by3bwl7ylgv807rxr7nwqb-harfbuzz-13.2.1",
+        "/nix/store/95k23n9y39ylbdwhlm60fgclsz2s4dnq-graphite2-1.3.15",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/833invqvsk7anqnqrki5hqncrcllj825-coreutils-9.11": {
+      "narHash": "sha256-hKC0lw33cCZzk1XhtLy5+YISwyJ+3akjc98Jl49x7yE=",
+      "narSize": 1806736,
+      "references": [
+        "/nix/store/61rm1l19wj94b282fmvmqh1pkr56hydr-gmp-with-cxx-6.3.0",
+        "/nix/store/833invqvsk7anqnqrki5hqncrcllj825-coreutils-9.11",
+        "/nix/store/lgzpgvflhykqpw82jar8vrs6albwyjfd-acl-2.4.0",
+        "/nix/store/rkninrfbgid0pfbrmy992z77yhp0j2ll-attr-2.6.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/8fyv2ziky28xn8gq4w7mf5sidg2dad0l-expat-2.8.4": {
+      "narHash": "sha256-7anTGcfrIph3eFkokfEh5N/9wtASwaG6DH9cbbKa3dU=",
+      "narSize": 330112,
+      "references": [
+        "/nix/store/8fyv2ziky28xn8gq4w7mf5sidg2dad0l-expat-2.8.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/8pf3c5kh87gpzyfm8cc3lym5j14npzyw-libidn2-2.3.8": {
+      "narHash": "sha256-Gc+iis9yLsywLYukMj/2+8gJdAGV0lF/sMTII/eV1HE=",
+      "narSize": 368176,
+      "references": [
+        "/nix/store/39m23yla3lnw563f4a1sa6hnn0dgjyj1-libunistring-1.4.2",
+        "/nix/store/8pf3c5kh87gpzyfm8cc3lym5j14npzyw-libidn2-2.3.8"
+      ]
+    },
+    "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4": {
+      "narHash": "sha256-RIEhepiW8fsojIkpJ2MYihoCh8z9Z0wOCsWTMzFsi7Q=",
+      "narSize": 2057832,
+      "references": [
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/95k23n9y39ylbdwhlm60fgclsz2s4dnq-graphite2-1.3.15": {
+      "narHash": "sha256-9oYtmk8gOSbi+E4IRgHoEjgodQpo0bOJg1LHlKl+lNY=",
+      "narSize": 233464,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/95k23n9y39ylbdwhlm60fgclsz2s4dnq-graphite2-1.3.15",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/9j94n5i1jxjqmypxl5z3cpi4qsw4p8q0-libdeflate-1.25": {
+      "narHash": "sha256-OL/PPwY0WA5uzhuJJwOGh7cetfAC/qS9eMTDxwXSz1U=",
+      "narSize": 469632,
+      "references": [
+        "/nix/store/9j94n5i1jxjqmypxl5z3cpi4qsw4p8q0-libdeflate-1.25",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/9q9v2njyswl21s222p037msdmhhmxbnm-krb5-1.22.2-lib": {
+      "narHash": "sha256-fo6i7nwBqjfP0WCDLn0fSKKMf1F1rM4gWGZHVeoTn9s=",
+      "narSize": 2879776,
+      "references": [
+        "/nix/store/0jgmmsnp3p8qy353pa8lfqhgh61lcibv-keyutils-1.6.3-lib",
+        "/nix/store/7fr737xfi9qw3fzvdsqmnbqid56knndp-openssl-3.6.4",
+        "/nix/store/9q9v2njyswl21s222p037msdmhhmxbnm-krb5-1.22.2-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/aan8f41qpjrblfnk06gwfa9i9yc1pbjx-libxdmcp-1.1.5": {
+      "narHash": "sha256-RZvSRsUkNha2WcV2T+2qbA8GtE2QsL9ksxXu0QoW2Uc=",
+      "narSize": 31912,
+      "references": [
+        "/nix/store/aan8f41qpjrblfnk06gwfa9i9yc1pbjx-libxdmcp-1.1.5",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/aasq42p6nsqq9g7l9fbz8h9f0jq4ffyx-libffi-3.8.0": {
+      "narHash": "sha256-fU1VTy9kyz3NF4+4RtfrsFMu2DPiw2Uv0gTokXm/AnE=",
+      "narSize": 95792,
+      "references": [
+        "/nix/store/aasq42p6nsqq9g7l9fbz8h9f0jq4ffyx-libffi-3.8.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/aghjd1w3b6wrjynldz7xi9svabdxvmxr-libxft-2.3.9": {
+      "narHash": "sha256-Py2jXq9KhRxGtB+KT+SSkXD2HGmKKPX/3lTjLU7PKpE=",
+      "narSize": 154672,
+      "references": [
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/aghjd1w3b6wrjynldz7xi9svabdxvmxr-libxft-2.3.9",
+        "/nix/store/gbqpck20fdj8h2idhp2dshxhjk9malym-fontconfig-2.17.1-lib",
+        "/nix/store/v1zv9f9jlq2qk2jz11xls9rcqcbix51g-libxrender-0.9.12",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/b7fcqsg01qmxwgiw2a3m0zzdpr4z18i8-librsvg-2.62.3": {
+      "narHash": "sha256-DnNJAkK5BJyefiy7OyNA8PsS6uXT9SdL5mZWArDJ6Q8=",
+      "narSize": 16090688,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/6y366i4gsql6kcg5aznz6id3p06b5ngd-libxml2-2.15.4",
+        "/nix/store/7ni0ai18560pw5lg7q17kmsk682lxzkj-gdk-pixbuf-2.44.7",
+        "/nix/store/7sl918qz81by3bwl7ylgv807rxr7nwqb-harfbuzz-13.2.1",
+        "/nix/store/b7fcqsg01qmxwgiw2a3m0zzdpr4z18i8-librsvg-2.62.3",
+        "/nix/store/gbqpck20fdj8h2idhp2dshxhjk9malym-fontconfig-2.17.1-lib",
+        "/nix/store/ixywvi377gddmqw4zcq33g6g5xl09gnw-dav1d-1.5.3",
+        "/nix/store/jcg7bmaj399j3494v0ppghs70v93l3qz-pango-1.57.1",
+        "/nix/store/n0rip9alj8hd6l8s27bdq25nkl259z92-cairo-1.18.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/ba8rnmi3ha6p3j8xc85hdq1p9dq3mr6q-dejavu-fonts-minimal-2.37": {
+      "narHash": "sha256-vrAoGxYC3uNmwI+Z02MkvKBXMycrRbUSwWCWq72Mfbo=",
+      "narSize": 760472,
+      "references": []
+    },
+    "/nix/store/bnh0j6mr8qsgcxf3yilxfxpawlfx6m7g-openjpeg-2.5.4": {
+      "narHash": "sha256-jJBSliOBBPixH4ZBjns6+VRWPCeFqTpMvdyIyb2gZxc=",
+      "narSize": 1686488,
+      "references": [
+        "/nix/store/1azpm6clm0wag3k0y94afd79m1a3sgd8-libtiff-4.7.2",
+        "/nix/store/bnh0j6mr8qsgcxf3yilxfxpawlfx6m7g-openjpeg-2.5.4",
+        "/nix/store/c6v52vbxmzvijwsbv0id6qiagv95s9hn-lcms2-2.18",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/c6v52vbxmzvijwsbv0id6qiagv95s9hn-lcms2-2.18": {
+      "narHash": "sha256-O6E/5ejVB83eD0gT3GeIHn2OPt6ewWz+Qtoj7tlVc7s=",
+      "narSize": 495896,
+      "references": [
+        "/nix/store/c6v52vbxmzvijwsbv0id6qiagv95s9hn-lcms2-2.18",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/czq129didxadlvjjwrnkhg6l23xh0i5g-libraqm-0.10.5": {
+      "narHash": "sha256-7sAj+SvveAKNZqTJC3uCJxBDZGBSB8UWlwQmQ08FuYI=",
+      "narSize": 44840,
+      "references": [
+        "/nix/store/1173lkv0907lf120kvm1zbyg8arlfknh-fribidi-1.0.16",
+        "/nix/store/7sl918qz81by3bwl7ylgv807rxr7nwqb-harfbuzz-13.2.1",
+        "/nix/store/czq129didxadlvjjwrnkhg6l23xh0i5g-libraqm-0.10.5",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/df701bw6s2pk3wvmb20wp8zc1y458kvn-libjxl-0.11.2": {
+      "narHash": "sha256-hL23OxBjoIY+67uspVqiw0R5zRLd/CJ5y4n+nvc17rk=",
+      "narSize": 10893952,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/5vicmwfi31nv3i6rvm3b9g8k1b3k5wm0-openexr-3.4.15",
+        "/nix/store/7n1hai8jk6vgc967drgkqi6k7j6ff28q-bash-5.3p9",
+        "/nix/store/7ni0ai18560pw5lg7q17kmsk682lxzkj-gdk-pixbuf-2.44.7",
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/c6v52vbxmzvijwsbv0id6qiagv95s9hn-lcms2-2.18",
+        "/nix/store/df701bw6s2pk3wvmb20wp8zc1y458kvn-libjxl-0.11.2",
+        "/nix/store/dz8p9np08q1gbjp9qa1xa8sk82q607d1-imath-3.2.2",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/g9n2n4znyb02sn235i8fa0m24df3jpza-giflib-5.2.2",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib",
+        "/nix/store/kc5z8z4dgbcdkxgdmf7k87lb94wgd899-gperftools-2.17.2",
+        "/nix/store/xfp9vx40ih5k5fgmbgkxq8gbrzybmi3v-libwebp-1.6.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/dm7q8fmjgnly1fpa3d4l9n1qbr34bblb-numactl-2.0.18": {
+      "narHash": "sha256-0fXbj74EYFkQrRrUMuSTDn6Co7MS8kewLAItOgO53cY=",
+      "narSize": 276408,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/dm7q8fmjgnly1fpa3d4l9n1qbr34bblb-numactl-2.0.18",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/dz8p9np08q1gbjp9qa1xa8sk82q607d1-imath-3.2.2": {
+      "narHash": "sha256-cEwCKt49P7a4MWJx1Q0C2ULwzHHlsOwZbkltcf76+rI=",
+      "narSize": 923024,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/dz8p9np08q1gbjp9qa1xa8sk82q607d1-imath-3.2.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58": {
+      "narHash": "sha256-9tmnaGUMcjzK/S2yNavgEKyQEbX3TPqM3MSEp1X5QXw=",
+      "narSize": 275792,
+      "references": [
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/f7dzv3ivp0hpymb4nv5q5v78ya8xialg-libaom-3.12.1": {
+      "narHash": "sha256-pz6QTwVNy7sCIH9+iNyDHYnp4wM7YpGwnzngGr31y5w=",
+      "narSize": 8854400,
+      "references": [
+        "/nix/store/0v4zwdmb69zzbk8miw8z2yk1yzl515hk-libvmaf-3.0.0",
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/fnx2wbj1rqqgf8d29daqnz2qwjxnc96p-pcre2-10.48": {
+      "narHash": "sha256-Z57I/4mGYtAYjCdi6qsrivsFV64C7ELREJsBuyMm9Bc=",
+      "narSize": 2096432,
+      "references": [
+        "/nix/store/fnx2wbj1rqqgf8d29daqnz2qwjxnc96p-pcre2-10.48",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/fwq2bxky5459hkm18y03p0s5h5b4hh4n-nghttp3-1.15.0": {
+      "narHash": "sha256-pWoiYUeL7FAg2BJwfaMTeCV/IXi9zOhD/tT1Pw5+VdM=",
+      "narSize": 233128,
+      "references": [
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/g706vj5ziqvf6gjsz0nzmvy131ab5pc5-libheif-1.23.4-lib": {
+      "narHash": "sha256-VPljUWrHhZv9NG7AG7s+lXNvoTaG/09wB+2i5e74Pm0=",
+      "narSize": 2991056,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/6a83hb31idn9ddr01a85nm9icgyi2maj-libde265-1.1.2",
+        "/nix/store/7ni0ai18560pw5lg7q17kmsk682lxzkj-gdk-pixbuf-2.44.7",
+        "/nix/store/7r09hcdyr2jc4zm6sg5j3gh5p1g1jjag-x265-4.1",
+        "/nix/store/f7dzv3ivp0hpymb4nv5q5v78ya8xialg-libaom-3.12.1",
+        "/nix/store/g706vj5ziqvf6gjsz0nzmvy131ab5pc5-libheif-1.23.4-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/g9n2n4znyb02sn235i8fa0m24df3jpza-giflib-5.2.2": {
+      "narHash": "sha256-PtMF6IexiSWy4hTtpva2BzFp7c7Uu+VhIMsqQAL1gfw=",
+      "narSize": 413232,
+      "references": [
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/gbqpck20fdj8h2idhp2dshxhjk9malym-fontconfig-2.17.1-lib": {
+      "narHash": "sha256-JwEjb5gFve1u4SHnyPv+vpe4KODauuT+j+kVozEhcXM=",
+      "narSize": 424784,
+      "references": [
+        "/nix/store/8fyv2ziky28xn8gq4w7mf5sidg2dad0l-expat-2.8.4",
+        "/nix/store/ba8rnmi3ha6p3j8xc85hdq1p9dq3mr6q-dejavu-fonts-minimal-2.37",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/gbqpck20fdj8h2idhp2dshxhjk9malym-fontconfig-2.17.1-lib",
+        "/nix/store/hcr53fich39whl54wmxr5jxj9x5sbywk-fontconfig-2.17.1",
+        "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib",
+        "/nix/store/nd6w1hgw4b5ymqgiwfj51gr5h1kn6f25-bzip2-1.0.8",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/gil0ycgwnij6b85rsyvnn2xnizy7wjpx-libraw-0.22.1-lib": {
+      "narHash": "sha256-l+jO/MYe5z3KFSHiFRnwiNa6NtInMC1+soww3ZZtCYA=",
+      "narSize": 2624560,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/c6v52vbxmzvijwsbv0id6qiagv95s9hn-lcms2-2.18",
+        "/nix/store/gil0ycgwnij6b85rsyvnn2xnizy7wjpx-libraw-0.22.1-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/h56a74ka348fr2sqp0163x0afq3j73kc-libwebp-1.6.0": {
+      "narHash": "sha256-mhhWbgvmLQ232TWHLA5vJXlGNuS3HGMYCbKqjxve/PE=",
+      "narSize": 1768368,
+      "references": [
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/g9n2n4znyb02sn235i8fa0m24df3jpza-giflib-5.2.2",
+        "/nix/store/h56a74ka348fr2sqp0163x0afq3j73kc-libwebp-1.6.0",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/h9l5w8jdirvpihfzy99rmhahn83y5996-xz-5.8.4": {
+      "narHash": "sha256-sMpI3BSsr+TwFrkk+vmo45ESmjZbAO2aNFTQPqOjr7w=",
+      "narSize": 873248,
+      "references": [
+        "/nix/store/h9l5w8jdirvpihfzy99rmhahn83y5996-xz-5.8.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/hcr53fich39whl54wmxr5jxj9x5sbywk-fontconfig-2.17.1": {
+      "narHash": "sha256-x5DrWlzNcm7gdnj3XZLAMmV9SGL+cdXZ4bKKRA/GJA0=",
+      "narSize": 1286064,
+      "references": [
+        "/nix/store/ba8rnmi3ha6p3j8xc85hdq1p9dq3mr6q-dejavu-fonts-minimal-2.37",
+        "/nix/store/hcr53fich39whl54wmxr5jxj9x5sbywk-fontconfig-2.17.1"
+      ]
+    },
+    "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2": {
+      "narHash": "sha256-AMhLXVxODRUtIw7P8SOFB/N2SiqL8nkw6N8lkhbbYBc=",
+      "narSize": 132608,
+      "references": [
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/hna4zsz4rdnl4mdbmwmks7cx3cdkkyqc-xgcc-15.3.0-libgcc": {
+      "narHash": "sha256-cMuvHKKZQ7us4kpUA40tNxZpkQQRivt6fWtZHAPVcK8=",
+      "narSize": 197672,
+      "references": []
+    },
+    "/nix/store/icik9s1qrcks17ml5sx46fk0cr81wdgq-libsm-1.2.6": {
+      "narHash": "sha256-l4/227QtfFkrYzRz5qjTelinuszBaTON1LxQkm1thPc=",
+      "narSize": 45656,
+      "references": [
+        "/nix/store/4rmm2iyraagqc7ah3ii279mai2yf89bp-util-linux-minimal-2.42.3-lib",
+        "/nix/store/icik9s1qrcks17ml5sx46fk0cr81wdgq-libsm-1.2.6",
+        "/nix/store/p72l0mq0wrh4h04y12fvynwck63hy0p3-libice-1.1.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/ixywvi377gddmqw4zcq33g6g5xl09gnw-dav1d-1.5.3": {
+      "narHash": "sha256-jDqJkTw7A+Y22H21D2IJgQg0Rz6VIJFQy5iM2wr4588=",
+      "narSize": 2642136,
+      "references": [
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/jcg7bmaj399j3494v0ppghs70v93l3qz-pango-1.57.1": {
+      "narHash": "sha256-OkVOuwvWNrV2XfYVQkH9zj5AiX7Lmu699kikofFWO0A=",
+      "narSize": 939376,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/1173lkv0907lf120kvm1zbyg8arlfknh-fribidi-1.0.16",
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/7sl918qz81by3bwl7ylgv807rxr7nwqb-harfbuzz-13.2.1",
+        "/nix/store/aghjd1w3b6wrjynldz7xi9svabdxvmxr-libxft-2.3.9",
+        "/nix/store/gbqpck20fdj8h2idhp2dshxhjk9malym-fontconfig-2.17.1-lib",
+        "/nix/store/jcg7bmaj399j3494v0ppghs70v93l3qz-pango-1.57.1",
+        "/nix/store/m087k3r80mcix344ggrs9qxcar94ap33-libthai-0.1.30",
+        "/nix/store/n0rip9alj8hd6l8s27bdq25nkl259z92-cairo-1.18.4",
+        "/nix/store/v1zv9f9jlq2qk2jz11xls9rcqcbix51g-libxrender-0.9.12",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib": {
+      "narHash": "sha256-+IhGLlO8V8XkgWko+ZMao9YPB5nrFgOXkTw9KJ5LVEU=",
+      "narSize": 984976,
+      "references": [
+        "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/jkswprq04f9sm9qs2nqr287zywv8k9wf-libxext-1.3.7": {
+      "narHash": "sha256-2+vr9yFldcL5BOYv5ogmb7Pg9bpYHSsSW5Lcqr1zO18=",
+      "narSize": 95944,
+      "references": [
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/jkswprq04f9sm9qs2nqr287zywv8k9wf-libxext-1.3.7",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/k3x0dcw2yrr0y2shmchpwcvivmsawdxy-lerc-4.1.1": {
+      "narHash": "sha256-R6iMsKPGOL0MwGDkawofMTHlWziNIfyGP7SEb+PBWdA=",
+      "narSize": 841192,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/kbk9illl5r0s6agm1jvx2sn4l3s8vhla-djvulibre-3.5.29-lib": {
+      "narHash": "sha256-/kz8utniRz3E04AVXrCumAgmRo7Ia1QRTMTWgrf65UM=",
+      "narSize": 2164672,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/7b8qh31i26q56xnifk3j7lncdzn7ijph-djvulibre-3.5.29",
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/kbk9illl5r0s6agm1jvx2sn4l3s8vhla-djvulibre-3.5.29-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/kc5z8z4dgbcdkxgdmf7k87lb94wgd899-gperftools-2.17.2": {
+      "narHash": "sha256-EQHyW4GMXEafMFb7H3GSz6Ny+mRXXgT7FEAlF4cGQMs=",
+      "narSize": 5066128,
+      "references": [
+        "/nix/store/21j2y0wvhva2xgw3rrsvi03qa7k0v67b-libunwind-1.8.3",
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/kc5z8z4dgbcdkxgdmf7k87lb94wgd899-gperftools-2.17.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/lgzpgvflhykqpw82jar8vrs6albwyjfd-acl-2.4.0": {
+      "narHash": "sha256-MNY4glg8jusPOti1bU6O+BAymgf4ANarttQCHyQwh1Q=",
+      "narSize": 137600,
+      "references": [
+        "/nix/store/lgzpgvflhykqpw82jar8vrs6albwyjfd-acl-2.4.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/lvjwz18ixfvp0r7vj3qxg66mjxnlplkc-pixman-0.46.4": {
+      "narHash": "sha256-R+etz2/SsjFfE4Of2K9N/hPDa8b4tOBTN4KultwcHe0=",
+      "narSize": 878912,
+      "references": [
+        "/nix/store/lvjwz18ixfvp0r7vj3qxg66mjxnlplkc-pixman-0.46.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/lzk2jmjmj730zg0dy4l2pbljcxx0nq33-libselinux-3.10": {
+      "narHash": "sha256-BZjHug9BT8MdWRARtETs9Tr+3+uAomrYZbASnurNNMI=",
+      "narSize": 706728,
+      "references": [
+        "/nix/store/fnx2wbj1rqqgf8d29daqnz2qwjxnc96p-pcre2-10.48",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/m087k3r80mcix344ggrs9qxcar94ap33-libthai-0.1.30": {
+      "narHash": "sha256-esdyoGEnYeOdKw9bgTYChcx5aXNPMy+qnwCtiXhmXNE=",
+      "narSize": 652312,
+      "references": [
+        "/nix/store/3l9a5sx4hcw27k9cwgjjgfdi8if30lzr-libdatrie-2019-12-20-lib",
+        "/nix/store/m087k3r80mcix344ggrs9qxcar94ap33-libthai-0.1.30",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/mbd8pzf0lgdm1s5vl9jb2i27978a6paa-libultrahdr-1.4.0": {
+      "narHash": "sha256-57+FW7aJDPloM7NQ/s8+1IfgW94+7u9rkC3hh0fs5e0=",
+      "narSize": 3072520,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/n0rip9alj8hd6l8s27bdq25nkl259z92-cairo-1.18.4": {
+      "narHash": "sha256-q4BgX9nRgA6JyeVeF6BWS3SaVXV+QeDJ9HXEGOUUy3k=",
+      "narSize": 2171680,
+      "references": [
+        "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/gbqpck20fdj8h2idhp2dshxhjk9malym-fontconfig-2.17.1-lib",
+        "/nix/store/jkswprq04f9sm9qs2nqr287zywv8k9wf-libxext-1.3.7",
+        "/nix/store/lvjwz18ixfvp0r7vj3qxg66mjxnlplkc-pixman-0.46.4",
+        "/nix/store/n0rip9alj8hd6l8s27bdq25nkl259z92-cairo-1.18.4",
+        "/nix/store/q5z611k75qqa8sgknq5xg9vsr6cy9mnx-lzo-2.10",
+        "/nix/store/v1zv9f9jlq2qk2jz11xls9rcqcbix51g-libxrender-0.9.12",
+        "/nix/store/w74djvy71mp1g88gzl9ppgj7p9ppi13s-libxcb-1.17.0",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/nd6w1hgw4b5ymqgiwfj51gr5h1kn6f25-bzip2-1.0.8": {
+      "narHash": "sha256-gCk5Ui1Na/vV16FryBcfb+3NJqZ2lYfE2p/9HDD4Jr0=",
+      "narSize": 88952,
+      "references": [
+        "/nix/store/nd6w1hgw4b5ymqgiwfj51gr5h1kn6f25-bzip2-1.0.8",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/p72l0mq0wrh4h04y12fvynwck63hy0p3-libice-1.1.2": {
+      "narHash": "sha256-mlvJDCR5b+njfwlHhDVB+wI++MIG0YbNXm2/mBJ2Q6A=",
+      "narSize": 128824,
+      "references": [
+        "/nix/store/p72l0mq0wrh4h04y12fvynwck63hy0p3-libice-1.1.2",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/pgj9mspbfv2r1hd88dsjl962jchvd1xw-libpsl-0.21.5": {
+      "narHash": "sha256-CdRooDRh0PO4rTwKG1Z8hAPZS9dNDz0KyxIoSWBbWjs=",
+      "narSize": 117608,
+      "references": [
+        "/nix/store/39m23yla3lnw563f4a1sa6hnn0dgjyj1-libunistring-1.4.2",
+        "/nix/store/8pf3c5kh87gpzyfm8cc3lym5j14npzyw-libidn2-2.3.8",
+        "/nix/store/pgj9mspbfv2r1hd88dsjl962jchvd1xw-libpsl-0.21.5",
+        "/nix/store/xmkxxla2kpc38r4wsdxc4v52nplsw7rc-publicsuffix-list-0-unstable-2026-05-13",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/piklp6qkwb250dby63aa3hb9w40c50ad-libssh2-1.11.1": {
+      "narHash": "sha256-YKvZ1SmxOkawkBnId/cEu1RASs4ov1kifcRhA754eIM=",
+      "narSize": 338512,
+      "references": [
+        "/nix/store/7fr737xfi9qw3fzvdsqmnbqid56knndp-openssl-3.6.4",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/piklp6qkwb250dby63aa3hb9w40c50ad-libssh2-1.11.1",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/pq045nk37wd7y4slqbdx7ksdp2qlsxnd-nghttp2-1.69.0-lib": {
+      "narHash": "sha256-LSA9YKYX+y71EHXm3wHv2gnkvLYAw9xIfB4quUO+vB4=",
+      "narSize": 230728,
+      "references": [
+        "/nix/store/pq045nk37wd7y4slqbdx7ksdp2qlsxnd-nghttp2-1.69.0-lib",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/q5z611k75qqa8sgknq5xg9vsr6cy9mnx-lzo-2.10": {
+      "narHash": "sha256-zA+rCBqqh6YttYEEJixHbht/GxHAtBIYUdHrB+FRqJo=",
+      "narSize": 163496,
+      "references": [
+        "/nix/store/q5z611k75qqa8sgknq5xg9vsr6cy9mnx-lzo-2.10",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/qlnky885gm1ssq1ah0zplcr1w3097d26-zlib-1.3.2-static": {
+      "narHash": "sha256-H4iuWFO0o/Qk4Kn7Ak+CpfLiU9RncYFVXmErOfNleGQ=",
+      "narSize": 152912,
+      "references": []
+    },
+    "/nix/store/rkninrfbgid0pfbrmy992z77yhp0j2ll-attr-2.6.0": {
+      "narHash": "sha256-cFoUdkqjm69j2WMvqZ5fn+1ahGhISGNXkrkOgFzVuBY=",
+      "narSize": 90936,
+      "references": [
+        "/nix/store/rkninrfbgid0pfbrmy992z77yhp0j2ll-attr-2.6.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/v1zv9f9jlq2qk2jz11xls9rcqcbix51g-libxrender-0.9.12": {
+      "narHash": "sha256-d2DOW5PulmUwkQd9BJ2R3dZQ3g1UGQb1/ndbMQytShw=",
+      "narSize": 54504,
+      "references": [
+        "/nix/store/4wkicwb2jx5h63d79g5qyp9kn4vx27yb-libx11-1.8.13",
+        "/nix/store/v1zv9f9jlq2qk2jz11xls9rcqcbix51g-libxrender-0.9.12",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/vrlz5pa55xb56k6sw81vny9mbch29ma3-fftw-double-3.3.11": {
+      "narHash": "sha256-OgyUjLIFial+ALBRSTNwyeDkOwUHp7s/51iai3B6YQg=",
+      "narSize": 4048584,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/vrlz5pa55xb56k6sw81vny9mbch29ma3-fftw-double-3.3.11",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/w74djvy71mp1g88gzl9ppgj7p9ppi13s-libxcb-1.17.0": {
+      "narHash": "sha256-8FsnwVyOPTv6q9I4RljOF+WQ3rWUL+T0KoIs7Nmk7Cs=",
+      "narSize": 1449264,
+      "references": [
+        "/nix/store/1p4zg402ibjx35kciw578a0ckvy17mg4-libxau-1.0.12",
+        "/nix/store/aan8f41qpjrblfnk06gwfa9i9yc1pbjx-libxdmcp-1.1.5",
+        "/nix/store/w74djvy71mp1g88gzl9ppgj7p9ppi13s-libxcb-1.17.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/wmqpr1cgqfyliinpzhfqcwmj9b4csh85-gcc-15.3.0-libgcc": {
+      "narHash": "sha256-tONCFj6jkBmjuySLfD+Ja0ClggwKox3Dytormhcj1Ro=",
+      "narSize": 197752,
+      "references": []
+    },
+    "/nix/store/xfp9vx40ih5k5fgmbgkxq8gbrzybmi3v-libwebp-1.6.0": {
+      "narHash": "sha256-8gLu+Qi0P6nLrUJzOfDWLogW2h0n9oLrWRT2zYUklec=",
+      "narSize": 1777968,
+      "references": [
+        "/nix/store/1azpm6clm0wag3k0y94afd79m1a3sgd8-libtiff-4.7.2",
+        "/nix/store/94jiyi1n4rdvcahrv354c8hk4z9w448y-libjpeg-turbo-3.1.4",
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/g9n2n4znyb02sn235i8fa0m24df3jpza-giflib-5.2.2",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/xfp9vx40ih5k5fgmbgkxq8gbrzybmi3v-libwebp-1.6.0",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/xmkxxla2kpc38r4wsdxc4v52nplsw7rc-publicsuffix-list-0-unstable-2026-05-13": {
+      "narHash": "sha256-RoYmk5JxPOkArV815zDkRFKxqxJByK9qY7BQytRx6V4=",
+      "narSize": 337752,
+      "references": []
+    },
+    "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3": {
+      "narHash": "sha256-jUOxhTQchbONEIFbtxYOlnSVj4lx4hH6uszOfntjH5U=",
+      "narSize": 2264808,
+      "references": [
+        "/nix/store/f4wh9l378n2sn0glgsxa1h750p0zwr48-libpng-apng-1.6.58",
+        "/nix/store/hl2rmyygyyfzfmhw3ms08xhj07pqglzi-zlib-1.3.2",
+        "/nix/store/jf2fy2llfjgac6c7f3f195vrswxv4m57-brotli-1.2.0-lib",
+        "/nix/store/nd6w1hgw4b5ymqgiwfj51gr5h1kn6f25-bzip2-1.0.8",
+        "/nix/store/qlnky885gm1ssq1ah0zplcr1w3097d26-zlib-1.3.2-static",
+        "/nix/store/y0asvmqcan3rias90binkdw9xm66gvzl-freetype-2.14.3",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/y5xhanv1fmrkwslgz41nwnvajmvs17hj-zstd-1.5.7": {
+      "narHash": "sha256-+YVjjyqL075DQ/WbTLIheBmAFFsbgUeEbVqmoQdrlIs=",
+      "narSize": 1202224,
+      "references": [
+        "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+        "/nix/store/y5xhanv1fmrkwslgz41nwnvajmvs17hj-zstd-1.5.7",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    },
+    "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84": {
+      "narHash": "sha256-o31AOzvbJvWsNRtxVw+mBExdTdDDhyypWXwkKXI9oko=",
+      "narSize": 35073176,
+      "references": [
+        "/nix/store/8pf3c5kh87gpzyfm8cc3lym5j14npzyw-libidn2-2.3.8",
+        "/nix/store/hna4zsz4rdnl4mdbmwmks7cx3cdkkyqc-xgcc-15.3.0-libgcc",
+        "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+      ]
+    }
+  },
+  "root": "/nix/store/1zns14x0dv9krcnbznbxkqlj28jxmdcp-imagemagick-7.1.2-31",
+  "schemaVersion": 1,
+  "system": "x86_64-linux"
+}
