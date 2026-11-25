@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { realpathSync } from "node:fs";
+import { access, mkdir, mkdtemp, open, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { constants, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -161,6 +161,54 @@ describe("tfsb scene CLI integration", () => {
     expect(JSON.parse(run.stdout())).toMatchObject({ diagnostics: [{ code: "USAGE_ERROR" }] });
   });
 
+  it("accepts one sharp-chroma flag for export and refuses it elsewhere or repeated", async () => {
+    const dir = await makeTestDir();
+    for (const [action, options, rejected] of [
+      ["export-webp", ["--sharp-chroma"], false],
+      ["export-webp", ["--sharp-chroma", "--sharp-chroma"], true],
+      ["rasterize", ["--sharp-chroma"], true],
+    ] as const) {
+      const cap = capture();
+      const exit = await runSceneCli([action, "missing.svg", "--expect-svg-digest", "sha256:" + "0".repeat(64),
+        "--output", "output.webp", ...options, "--json"], dir, cap.io);
+      expect(exit).toBe(1);
+      const diagnostics = JSON.parse(cap.stdout()).diagnostics;
+      expect(diagnostics.some((entry: { code: string }) => entry.code === "USAGE_ERROR")).toBe(rejected);
+    }
+  });
+
+  it.each([
+    ["rasterize", "--output-width", "512"],
+    ["export-webp", "--output-width", "0"],
+    ["export-webp", "--output-width", "12.5"],
+    ["export-webp", "--output-width", "9007199254740992"],
+    ["export-webp", "--output-width", "512", "--output-width", "256"],
+  ])("refuses invalid or misplaced WebP width (%s %s)", async (action, ...options) => {
+    const run = capture();
+    expect(await runSceneCli([
+      action, "missing.svg", "--expect-svg-digest", "sha256:" + "0".repeat(64),
+      "--output", "output.webp", ...options, "--json",
+    ], "/tmp", run.io)).toBe(1);
+    expect(JSON.parse(run.stdout())).toMatchObject({ diagnostics: [{ code: "USAGE_ERROR" }] });
+  });
+
+  it.each([
+    ["rasterize", "--quality", "94"],
+    ["export-webp", "--quality"],
+    ["export-webp", "--quality", "-1"],
+    ["export-webp", "--quality", "101"],
+    ["export-webp", "--quality", "94.5"],
+    ["export-webp", "--quality", "9e1"],
+    ["export-webp", "--quality", "0", "--quality", "94"],
+  ])("refuses invalid or misplaced WebP quality (%s %s)", async (action, ...options) => {
+    const run = capture();
+    expect(await runSceneCli([
+      action, "missing.svg", "--expect-svg-digest", "sha256:" + "0".repeat(64),
+      "--output", "output.webp", ...options, "--json",
+    ], "/tmp", run.io)).toBe(1);
+    expect(JSON.parse(run.stdout())).toMatchObject({ diagnostics: [{ code: "USAGE_ERROR" }] });
+  });
+
   it("refuses WebP widths that enlarge the artboard or require a fractional height", async () => {
     const dir = await makeTestDir();
     await writeFile(join(dir, "scene.json"), JSON.stringify(sampleValidScene));
@@ -193,6 +241,72 @@ describe("tfsb scene CLI integration", () => {
       expect(JSON.parse(run.stdout())).toMatchObject({ data: null, diagnostics: [{ code }] });
       await expect(access(join(dir, "output.webp"))).rejects.toMatchObject({ code: "ENOENT" });
     }
+  });
+
+  it("recognizes reviewed compact SVG while refusing mixed path spelling", async () => {
+    const dir = await makeTestDir();
+    await writeFile(join(dir, "scene.json"), JSON.stringify({
+      ...sampleValidScene,
+      artboard: { width: 48, height: 24, viewBox: [0, 0, 48, 48] },
+      elements: [
+        { id: "first", type: "path", d: "M 0 0 H 20 V 20 H 0 Z" },
+        { id: "second", type: "path", d: "M 2 2 L 10 6" },
+      ],
+    }));
+    const compile = capture();
+    expect(await runSceneCli([
+      "compile", "scene.json", "--compact-paths", "--output", "compact.svg", "--json",
+    ], dir, compile.io)).toBe(0);
+    const { svgDigest } = JSON.parse(compile.stdout()).data.receipt;
+    const inspected = capture();
+    expect(await runSceneCli(["inspect", "scene.json", "--compact-paths", "--json"], dir, inspected.io)).toBe(0);
+    const compact = JSON.parse(inspected.stdout()).data;
+    expect(compact.receipt.svgDigest).toBe(svgDigest);
+    expect(compact.svgBytes).toBe((await readFile(join(dir, "compact.svg"))).byteLength);
+
+    const standard = capture();
+    expect(await runSceneCli(["inspect", "scene.json", "--json"], dir, standard.io)).toBe(0);
+    const defaultInspection = JSON.parse(standard.stdout()).data;
+    expect(defaultInspection.inputSceneDigest).toBe(compact.inputSceneDigest);
+    expect(defaultInspection.receipt.svgDigest).not.toBe(svgDigest);
+    expect(defaultInspection.svgBytes).toBeGreaterThan(compact.svgBytes);
+
+    const reviewed = ["--svg-source", "--expect-svg-digest", svgDigest, "--json"];
+    const reopened = capture();
+    expect(await runSceneCli([
+      "import-svg", "compact.svg", ...reviewed, "--output", "editable.json",
+    ], dir, reopened.io)).toBe(0);
+    const svg = await readFile(join(dir, "compact.svg"), "utf8");
+    expect(svg).toContain('d="M0');
+    const restored = capture();
+    expect(await runSceneCli([
+      "compile", "editable.json", "--compact-paths", "--output", "restored.svg",
+    ], dir, restored.io)).toBe(0);
+    expect(await readFile(join(dir, "restored.svg"), "utf8")).toBe(svg);
+
+    // These deliberate size refusals occur after reviewed SVG validation
+    // and before looking up the optional rasterizer and WebP encoder.
+    const raster = capture();
+    expect(await runSceneCli([
+      "rasterize", "compact.svg", ...reviewed, "--viewbox-size", "--output", "unwritten.png",
+    ], dir, raster.io)).toBe(1);
+    expect(JSON.parse(raster.stdout()).diagnostics[0].code).toBe("SCENE_RASTER_SIZE_INVALID");
+    const webp = capture();
+    expect(await runSceneCli([
+      "export-webp", "compact.svg", "--expect-svg-digest", svgDigest,
+      "--output-width", "49", "--output", "unwritten.webp", "--json",
+    ], dir, webp.io)).toBe(1);
+    expect(JSON.parse(webp.stdout()).diagnostics[0].code).toBe("SCENE_WEBP_SIZE_INVALID");
+
+    const mixed = svg.replace('d="M0', 'd="M 0');
+    await writeFile(join(dir, "mixed.svg"), mixed);
+    const refused = capture();
+    expect(await runSceneCli([
+      "import-svg", "mixed.svg", "--svg-source", "--expect-svg-digest",
+      "sha256:" + createHash("sha256").update(mixed).digest("hex"), "--output", "mixed.json", "--json",
+    ], dir, refused.io)).toBe(1);
+    expect(JSON.parse(refused.stdout()).diagnostics[0].code).toBe("SVG_NOT_CANONICAL_COMPILER_OUTPUT");
+    await expect(access(join(dir, "mixed.json"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   describe("path revisions", () => {
@@ -245,6 +359,70 @@ describe("tfsb scene CLI integration", () => {
       expect(await readFile(join(dir, "revise.svg"), "utf8")).toContain('d="M 4 5 Q 6 7 9 5"');
     });
 
+    it("binds the edit to the exact reviewed input bytes in dry-run and write mode", async () => {
+      const dir = await makeTestDir();
+      const scenePath = join(dir, "scene.json");
+      const outputPath = join(dir, "revised.json");
+      const original = JSON.stringify(source, null, 2);
+      await writeFile(scenePath, original);
+      await writeFile(join(dir, "edits.json"), JSON.stringify([{ id: "mouth", d: "M 4 5 L 9 5" }]));
+
+      const inspected = capture();
+      expect(await runCli(["scene", "inspect", scenePath, "--json"], dir, inspected.io)).toBe(0);
+      const { inputSceneDigest: digest, receipt } = JSON.parse(inspected.stdout()).data;
+      expect(digest).toBe("sha256:" + createHash("sha256").update(original).digest("hex"));
+      expect(digest).not.toBe(receipt.sourceDigest);
+      const args = ["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revised.json",
+        "--expect-scene-digest", digest, "--json"];
+
+      const planned = capture();
+      expect(await runCli([...args, "--dry-run"], dir, planned.io)).toBe(0);
+      expect(await readdir(dir)).not.toContain("revised.json");
+
+      // This remains a valid, semantically identical scene with a different byte identity.
+      await writeFile(scenePath, original + "\n");
+      for (const flags of [[], ["--dry-run"]]) {
+        const rejected = capture();
+        expect(await runCli([...args, ...flags], dir, rejected.io)).toBe(1);
+        expect(JSON.parse(rejected.stdout())).toMatchObject({
+          data: null,
+          diagnostics: [{ code: "SCENE_REVISION_DIGEST_MISMATCH" }],
+        });
+        expect(await readdir(dir)).not.toContain("revised.json");
+      }
+
+      await writeFile(scenePath, original);
+      const revised = capture();
+      expect(await runCli(args, dir, revised.io)).toBe(0);
+      const output = await open(outputPath, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+      try {
+        expect((await output.stat()).isFile()).toBe(true);
+        const outputDigest = createHash("sha256").update(await output.readFile()).digest("hex");
+        expect(JSON.parse(planned.stdout()).data.outputSha256).toBe(outputDigest);
+        expect(JSON.parse(revised.stdout()).data.outputSha256).toBe(outputDigest);
+      } finally {
+        await output.close();
+      }
+      expect(await readFile(scenePath, "utf8")).toBe(original);
+    });
+
+    it("rejects malformed, repeated, and misplaced scene digest options", async () => {
+      const digest = "sha256:" + "a".repeat(64);
+      for (const args of [
+        ["revise", "--expect-scene-digest"],
+        ["revise", "--expect-scene-digest", digest + "\n"],
+        ["revise", "--expect-scene-digest", digest.toUpperCase()],
+        ["revise", "--expect-scene-digest", digest, "--expect-scene-digest", digest],
+        ["compile", "--expect-scene-digest", digest],
+      ]) {
+        const result = capture();
+        expect(await runCli(["scene", ...args, "--json"], process.cwd(), result.io)).toBe(1);
+        expect(JSON.parse(result.stdout()).diagnostics).toEqual([
+          expect.objectContaining({ code: "USAGE_ERROR", message: expect.stringContaining("--expect-scene-digest") }),
+        ]);
+      }
+    });
+
     const appendGroup = {
       type: "group", id: "tablet",
       children: [{ type: "path", id: "tablet-screen", d: "M 2 3 H 7 V 8 H 2 Z" }],
@@ -286,6 +464,133 @@ describe("tfsb scene CLI integration", () => {
       await writeFile(join(dir, "edits.json"), JSON.stringify(edits));
       expect(await runCli(["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revised.json"], dir, capture().io)).toBe(1);
       await expect(access(join(dir, "revised.json"))).rejects.toThrow();
+    });
+
+    it("replaces an existing top-level group without changing its layer position or other elements", async () => {
+      const dir = await makeTestDir();
+      const original = JSON.stringify(source);
+      const replaceGroup = {
+        type: "group", id: "face",
+        children: [{ type: "circle", id: "eye", cx: 3, cy: 4, r: 2 }],
+      };
+      await writeFile(join(dir, "scene.json"), original);
+      await writeFile(join(dir, "edits.json"), JSON.stringify({ replaceGroup }));
+      const args = ["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revised.json", "--json"];
+      const preview = capture();
+      expect(await runCli([...args, "--dry-run"], dir, preview.io)).toBe(0);
+      await expect(access(join(dir, "revised.json"))).rejects.toMatchObject({ code: "ENOENT" });
+      const actual = capture();
+      expect(await runCli(args, dir, actual.io)).toBe(0);
+      expect(JSON.parse(preview.stdout()).data.outputSha256).toBe(JSON.parse(actual.stdout()).data.outputSha256);
+      expect(JSON.parse(await readFile(join(dir, "revised.json"), "utf8"))).toEqual({
+        ...source, elements: [replaceGroup, ...source.elements.slice(1)],
+      });
+      expect(await readFile(join(dir, "scene.json"), "utf8")).toBe(original);
+    });
+
+    it.each([
+      { replaceGroup: appendGroup },
+      { replaceGroup: { ...appendGroup, id: "rect-1" } },
+      { replaceGroup: { ...appendGroup, id: "face", children: [] } },
+      { replaceGroup: { ...appendGroup, id: "face", children: [{ ...appendGroup.children[0], id: "rect-1" }] } },
+      { replaceGroup: { ...appendGroup, id: "face" }, appendGroup },
+    ])("refuses an invalid group replacement without writing a scene %#", async (edits) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      await writeFile(join(dir, "edits.json"), JSON.stringify(edits));
+      expect(await runCli(["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revised.json"], dir, capture().io)).toBe(1);
+      await expect(access(join(dir, "revised.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
+
+    it("revises a child group without sending or changing its enclosing group", async () => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      const parentGroupId = "face";
+      const replacement = {
+        ...appendGroup,
+        children: [{ type: "circle", id: "tablet-highlight", cx: 5, cy: 6, r: 2 }],
+      };
+      const steps = [
+        { appendGroup, parentGroupId },
+        { replaceGroup: replacement, parentGroupId },
+        { removeGroup: appendGroup.id, parentGroupId },
+      ];
+      const parent = source.elements[0];
+      if (parent?.type !== "group" || !("children" in parent) || !parent.children) {
+        throw new Error("Fixture requires a group with children");
+      }
+      const children = [
+        [...parent.children, appendGroup],
+        [...parent.children, replacement],
+        parent.children,
+      ];
+      let input = "scene.json";
+      for (const [index, edit] of steps.entries()) {
+        await writeFile(join(dir, "child-edit.json"), JSON.stringify(edit));
+        const output = `child-revised-${index}.json`;
+        expect(await runCli(["scene", "revise", input, "--edits", "child-edit.json", "--output", output], dir, capture().io)).toBe(0);
+        expect(JSON.parse(await readFile(join(dir, output), "utf8"))).toEqual({
+          ...source,
+          elements: [{ ...parent, children: children[index] }, ...source.elements.slice(1)],
+        });
+        input = output;
+      }
+    });
+
+    it.each([
+      { appendGroup, parentGroupId: "missing" },
+      { appendGroup, parentGroupId: "rect-1" },
+      { appendGroup, parentGroupId: false },
+      { appendGroup, parentGroupId: "face", extra: true },
+      { appendGroup: { ...appendGroup, id: "face" }, parentGroupId: "face" },
+      { replaceGroup: appendGroup, parentGroupId: "face" },
+      { removeGroup: "mouth", parentGroupId: "face" },
+    ])("refuses invalid child group edits without writing a scene %#", async (edits) => {
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify(source));
+      await writeFile(join(dir, "child-edit.json"), JSON.stringify(edits));
+      expect(await runCli(["scene", "revise", "scene.json", "--edits", "child-edit.json", "--output", "revised.json"], dir, capture().io)).toBe(1);
+      await expect(access(join(dir, "revised.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    });
+
+    it("removes one named overlay and recovers the prior compiled SVG", async () => {
+      const dir = await makeTestDir();
+      const original = JSON.stringify(source);
+      const overlaid = JSON.stringify({ ...source, elements: [...source.elements, appendGroup] });
+      await writeFile(join(dir, "scene.json"), original);
+      await writeFile(join(dir, "overlaid.json"), overlaid);
+      await writeFile(join(dir, "remove.json"), JSON.stringify({ removeGroup: "tablet" }));
+      const args = ["scene", "revise", "overlaid.json", "--edits", "remove.json", "--output", "restored.json", "--json"];
+      const preview = capture();
+      expect(await runCli([...args, "--dry-run"], dir, preview.io)).toBe(0);
+      await expect(access(join(dir, "restored.json"))).rejects.toMatchObject({ code: "ENOENT" });
+      const actual = capture();
+      expect(await runCli(args, dir, actual.io)).toBe(0);
+      expect(JSON.parse(preview.stdout()).data.outputSha256).toBe(JSON.parse(actual.stdout()).data.outputSha256);
+      expect(JSON.parse(await readFile(join(dir, "restored.json"), "utf8"))).toEqual(source);
+      expect(await readFile(join(dir, "overlaid.json"), "utf8")).toBe(overlaid);
+      for (const name of ["scene", "restored"]) {
+        expect(await runCli(["scene", "compile", `${name}.json`, "--output", `${name}.svg`], dir, capture().io)).toBe(0);
+      }
+      expect((await readFile(join(dir, "restored.svg"))).equals(await readFile(join(dir, "scene.svg")))).toBe(true);
+    });
+
+    it.each([
+      { removeGroup: "unknown" },
+      { removeGroup: "rect-1" },
+      { removeGroup: "mouth" },
+      { removeGroup: 42 },
+      { removeGroup: "face", appendGroup },
+    ])("refuses an invalid group removal without writing a scene %#", async (edits) => {
+      const dir = await makeTestDir();
+      const original = JSON.stringify(source);
+      await writeFile(join(dir, "scene.json"), original);
+      await writeFile(join(dir, "edits.json"), JSON.stringify(edits));
+      const output = capture();
+      expect(await runCli(["scene", "revise", "scene.json", "--edits", "edits.json", "--output", "revised.json", "--json"], dir, output.io)).toBe(1);
+      expect(JSON.parse(output.stdout()).diagnostics[0].code).toBe("SCENE_INVALID_PATH_EDITS");
+      await expect(access(join(dir, "revised.json"))).rejects.toMatchObject({ code: "ENOENT" });
+      expect(await readFile(join(dir, "scene.json"), "utf8")).toBe(original);
     });
 
     it.each([
@@ -503,6 +808,7 @@ describe("tfsb scene CLI integration", () => {
       expect(exitCode).toBe(0);
       expect(cap.stdout()).toContain("scene: illustration (tfsb.vector-scene-v1)");
       expect(cap.stdout()).toContain("source digest: sha256:");
+      expect(cap.stdout()).toContain("input JSON digest: sha256:");
       expect(cap.stdout()).toContain("svg digest: sha256:");
       expect(cap.stdout()).toContain("artboard: 1440x720");
       expect(cap.stderr()).toBe("");
@@ -942,7 +1248,7 @@ describe("tfsb scene CLI integration", () => {
       const cap = capture();
       expect(await runCli(["--help"], "/tmp", cap.io)).toBe(0);
       expect(cap.stdout()).toContain("tfsb scene validate <json> [--json]");
-      expect(cap.stdout()).toContain("tfsb scene inspect <json> [--json]");
+      expect(cap.stdout()).toContain("tfsb scene inspect <json> [--compact-paths] [--json]");
       expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]");
     });
   });

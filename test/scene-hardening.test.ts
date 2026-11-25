@@ -49,6 +49,20 @@ describe("scene production boundary challenges", () => {
     if (!result.ok) throw new Error("Expected repeated path data to be valid");
     expect(result.value.metrics.pathSegmentCount).toBe(20);
   });
+  it("keeps output and per-scene diagnostics when exact path spellings are reused", () => {
+    const path = { type: "path", d: "M0 0A4 5 0 0 1 10 10z" };
+    const source = { ...scene(), elements: [path] };
+    const original = compileScene(source);
+    expect(original.ok).toBe(true);
+    expect(compileScene({ ...source, elements: [{ ...path }] })).toEqual(original);
+
+    const invalid = { ...path, d: "M0 0A4 5 0 2 1 10 10z" };
+    for (const elements of [[invalid], [rect, invalid]]) {
+      const result = compileScene({ ...source, elements });
+      if (result.ok) throw new Error("Expected the invalid arc flag to fail");
+      expect(result.diagnostics[0]?.location).toBe(`$.elements[${elements.length - 1}].d`);
+    }
+  });
   it("admits bounded illustration contours without extending the diagram budget", () => {
     const withInstances = (profile: string, count: number) => ({
       ...scene(), profile,

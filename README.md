@@ -79,6 +79,10 @@ Start with a static, metadata-free WebP or a PNG at the intended artboard
 size. Use `--native-detail` for fine artwork and add `--preserve-alpha`
 for a transparent reference. WebP tracing uses the qualified `magick`
 executable. For a PNG reference, use `scene trace-png`.
+Add `--fit-source-colors` to fit the existing opaque native contours'
+fill colors to their source pixels. It requires the directional trace
+at the exact source grid and fails if that trace exceeds the existing
+limits. Reuse the option when retracing a region with `--exclude-detail`.
 The default trace balances detail and size. Use `--illustration-source`
 to enforce the 16,000,000-byte cap when compiling. Reviewed SVG import and
 WebP export apply the same cap.
@@ -105,11 +109,16 @@ new paths. Keep the SVG and export receipt alongside the delivery file.
 Use `--output-width 512` with a new output path to export a narrower
 WebP. Its height must be a whole number of pixels at the source ratio.
 The option retains the same SVG and PNG digests in the export receipt.
+Add `--quality 93 --sharp-chroma` to select the Compact Sharp recipe.
+Standard export defaults to quality 94 and recipe version 1. Sharp
+chroma uses recipe version 2. Retain that recipe with the matching PNG
+to replay it with `tfsb illustration export`.
 
 To reopen the reviewed SVG for editing, pass the matching digest to
 `scene import-svg`. Compile edits to a new SVG and export against its
-new digest. If the source was compiled with `--compact-paths`, pass that
-option when reopening and exporting it.
+new digest. Reviewed import and export recognize spaced and compact
+compiler output. Use `--compact-paths` when recompiling to retain compact
+path spelling.
 
 ```sh
 tfsb scene import-svg artwork.svg --svg-source --expect-svg-digest "$svg_digest" \

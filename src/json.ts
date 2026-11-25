@@ -16,7 +16,7 @@ import type { NormalizationPolicyIdentityV1 } from "./normalization-policy.js";
 import type { Diagnostic } from "./types.js";
 import type { SceneMetrics, SceneReceipt, VectorScene } from "./scene/types.js";
 import type { IllustrationDerivativeCliReceiptV1 } from "./illustration/derivative-cli.js";
-import type { RasterDerivativeRecipeV1 } from "./illustration/derivative.js";
+import type { RasterDerivativeRecipe } from "./illustration/derivative.js";
 
 export const JSON_RESULT_SCHEMA_VERSION = 1 as const;
 export type JsonCommand = "import" | "check" | "list" | "reconcile" | "diff" | "bundle" | "fmt" | "preview" | "analyze" | "migrate" | "shard" | "derive" | "qa" | "consumer" | "export" | "scene";
@@ -146,6 +146,9 @@ export interface SceneInspectJsonData {
   readonly schema: "tfsb.scene-result-v1";
   readonly action: "inspect";
   readonly valid: true;
+  /** SHA-256 of the exact JSON bytes accepted by scene revise. */
+  readonly inputSceneDigest: string;
+  readonly svgBytes: number;
   readonly metrics: SceneMetrics;
   readonly receipt: SceneReceipt;
   readonly warnings: readonly string[];
@@ -190,6 +193,7 @@ export interface SceneReviseJsonData {
 }
 
 export interface SceneTracePngJsonData {
+  readonly colorFit?: "source-pixel-median-v1";
   readonly schema: "tfsb.scene-result-v1";
   readonly action: "trace-png";
   readonly valid: true;
@@ -232,7 +236,7 @@ export interface SceneWebpJsonData {
   readonly rendererBuildDigest: string;
   readonly rasterWidth: number;
   readonly rasterHeight: number;
-  readonly recipe: RasterDerivativeRecipeV1;
+  readonly recipe: RasterDerivativeRecipe;
   readonly receipt: IllustrationDerivativeCliReceiptV1;
 }
 

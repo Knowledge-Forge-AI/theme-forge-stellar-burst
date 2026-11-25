@@ -43,30 +43,22 @@ import type {
   SceneMetrics,
   SceneReceipt,
   SceneElement,
-  SceneValidationResult,
   SymbolDef,
   VectorScene,
 } from "./types.js";
 import { countTextPathSegments, validateScene, validateSceneForOutput } from "./validate.js";
-import { compactCanonicalPathData } from "./path-canonical.js";
+import { compactCanonicalPathData, compactCanonicalPathOperands, mapScenePaths } from "./path-canonical.js";
 
-function mapScenePaths(scene: VectorScene, formatPath: (data: string) => string): VectorScene {
-  let bytes = 0;
-  const visit = (items: readonly SceneElement[]): SceneElement[] => items.map((item) => {
-    if (item.type === "group") return { ...item, children: visit(item.children) };
-    if (item.type !== "path") return item;
-    const d = formatPath(item.d);
-    bytes += d.length;
-    if (bytes > 16_777_216) throw new RangeError("Canonical scene paths exceed 16 MiB.");
-    return { ...item, d };
-  });
-  return { ...scene, elements: visit(scene.elements), ...(scene.definitions ? { definitions: { ...scene.definitions, ...(scene.definitions.symbols ? { symbols: scene.definitions.symbols.map((symbol) => ({ ...symbol, elements: visit(symbol.elements) })) } : {}) } } : {}) };
-}
-
-function serializeScene(scene: VectorScene, fitInput = false): string {
-  const expanded = canonicalJsonStringify(scene);
+function serializeScene(
+  scene: VectorScene,
+  fitInput = false,
+  paths?: Pick<ReturnType<typeof validateSceneForOutput>, "formatPath" | "formatCompactPath">,
+): string {
+  const expanded = canonicalJsonStringify(paths === undefined ? scene : mapScenePaths(scene, paths.formatPath));
   if (fitInput && Buffer.byteLength(expanded, "utf8") > SCENE_LIMITS.maxInputBytes) {
-    return canonicalJsonStringify(mapScenePaths(scene, compactCanonicalPathData));
+    // Keep the smallest existing spelling so an interactive edit has room to grow.
+    const compact = paths?.formatCompactPath ?? ((path: string) => compactCanonicalPathOperands(compactCanonicalPathData(path)));
+    return canonicalJsonStringify(mapScenePaths(scene, compact));
   }
   return expanded;
 }
@@ -109,26 +101,24 @@ function sceneWarnings(scene: VectorScene): string[] {
 }
 
 export function canonicalizeScene(input: unknown, options?: { readonly fitInput?: boolean }): Result<string> {
-  const { result, formatPath } = validateSceneForOutput(input);
-  return serializeValidatedScene(result, formatPath, options?.fitInput);
+  return serializeValidatedScene(validateSceneForOutput(input), options?.fitInput);
 }
 
 export function canonicalizeSceneRevision(
   input: unknown,
   revise: (scene: VectorScene, metrics: SceneMetrics) => unknown,
 ): Result<string> {
-  const { result, formatPath } = validateSceneForOutput(input, revise);
-  return serializeValidatedScene(result, formatPath, true);
+  return serializeValidatedScene(validateSceneForOutput(input, revise), true);
 }
 
 function serializeValidatedScene(
-  result: SceneValidationResult,
-  formatPath: (d: string) => string,
+  validation: ReturnType<typeof validateSceneForOutput>,
   fitInput?: boolean,
 ): Result<string> {
+  const { result } = validation;
   if (!result.ok) return result;
   try {
-    return { ok: true, value: serializeScene(mapScenePaths(result.value.scene, formatPath), fitInput) };
+    return { ok: true, value: serializeScene(result.value.scene, fitInput, validation) };
   } catch { return { ok: false, diagnostics: [diagnostic({ operation: "validate", domain: "scene" }, "SCENE_CANONICAL_LIMIT", "Scene cannot be represented within canonical output limits.")] }; }
 }
 
@@ -402,14 +392,17 @@ export function compileScene(
  * Inspect a VectorScene, returning parsed scene, metrics, receipt, and warnings.
  * Accepts `unknown` input.
  */
-export function inspectScene(input: unknown): SceneInspectionResult {
+export function inspectScene(
+  input: unknown,
+  options?: Pick<SceneCompileOptions, "compactPaths">,
+): SceneInspectionResult {
   const ctx: DiagnosticContext = {
     operation: "check",
     domain: "scene" as any,
   };
 
   try {
-    const compileRes = compileScene(input);
+    const compileRes = compileScene(input, { compactPaths: options?.compactPaths ?? false });
     if (!compileRes.ok) {
       return { ok: false, diagnostics: compileRes.diagnostics };
     }
@@ -428,6 +421,7 @@ export function inspectScene(input: unknown): SceneInspectionResult {
         scene,
         metrics,
         receipt: compileRes.value.receipt,
+        svgBytes: Buffer.byteLength(compileRes.value.svg, "utf8"),
         warnings,
       },
     };

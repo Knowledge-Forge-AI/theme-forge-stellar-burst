@@ -126,6 +126,31 @@ existing elements. Use unique IDs for the group and any paths you want to revise
 The complete result must pass the existing scene validation and file limits.
 This operation does not extract regions from the existing paths.
 
+To replace a group in its current layer position, use `replaceGroup` with the
+existing group's ID and its complete replacement. To remove a group, use
+`removeGroup` with its ID. By default each operation targets the top-level
+layers. To target the direct children of a named top-level group, add
+`parentGroupId` alongside the operation:
+
+```json
+{
+  "parentGroupId": "trace-near-opaque",
+  "appendGroup": {
+    "type": "group",
+    "id": "metalwork-refinement",
+    "children": [
+      {"type": "path", "id": "ink-stroke", "d": "M 10 10 L 18 12"}
+    ]
+  }
+}
+```
+
+The child edit retains the enclosing group's presentation, transform and
+layer position. To reverse this example, use
+`{"parentGroupId":"trace-near-opaque","removeGroup":"metalwork-refinement"}`.
+Run `scene inspect` and supply `--expect-scene-digest` when an edit depends on
+a specific source revision.
+
 Use `tfsb scene trace-png source.png --output traced.scene.json` to trace an
 existing opaque illustration. Supply a metadata-free, noninterlaced 8-bit
 RGB or RGBA PNG of at most 4,194,304 pixels. For a WebP reference, decode it

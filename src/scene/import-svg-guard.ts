@@ -71,13 +71,15 @@ export function guardSvgXml(text: string): string | undefined {
       if (end < 0) return undefined;
       nodes++; position = end + 2;
     } else {
-      let quote = "", count = 0;
+      let count = 0;
       end = start + 1;
       for (; end < text.length; end++) {
         const c = text[end]!;
-        if (quote) { if (c === quote) quote = ""; }
-        else if (c === '"' || c === "'") quote = c;
-        else if (c === "=") count++;
+        if (c === '"' || c === "'") {
+          const close = text.indexOf(c, end + 1);
+          if (close < 0) return undefined; // The XML parser diagnoses unterminated values.
+          end = close;
+        } else if (c === "=") count++;
         else if (c === ">") break;
       }
       if (end === text.length) return undefined;

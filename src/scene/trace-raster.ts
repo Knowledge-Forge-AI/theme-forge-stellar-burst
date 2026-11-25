@@ -1,6 +1,7 @@
 import { RASTER_MAX_SVG_BYTES } from "../brand/raster-capability.js";
 import type { HexColor } from "../types.js";
 import { HIGH_DETAIL_SCENE_LIMITS, ILLUSTRATION_SCENE_LIMITS, PREVIOUS_NATIVE_SCENE_LIMITS, SCENE_COMPATIBILITY, SCENE_COMPILER_LEVEL, SCENE_LIMITS, SCENE_SCHEMA } from "./constants.js";
+import { compactCanonicalPathOperands, mapScenePaths } from "./path-canonical.js";
 import { serializeTransforms } from "./transforms.js";
 import type { PathElement, SceneElement, VectorScene } from "./types.js";
 
@@ -401,6 +402,7 @@ interface TraceSettings {
   segmentLimit?: number;
   maxSvgBytes?: number;
   implicitClose?: boolean;
+  fitColors?: boolean;
   excludeDetail?: readonly TracePoint[] | undefined;
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
@@ -416,15 +418,49 @@ function illustrationScene(source: PixelSource, cols: number, rows: number, elem
   };
 }
 
+function fitSourceColors(source: PixelSource, pixels: Uint16Array, colors: readonly HexColor[]): HexColor[] {
+  // Each source pixel votes for the fill of its unchanged trace cell.
+  const stride = 3 * 256;
+  const bins = new Uint32Array(colors.length * stride);
+  const counts = new Uint32Array(colors.length);
+  for (let i = 0; i < pixels.length; i++) {
+    const color = pixels[i]!;
+    if (color === 0) continue;
+    counts[color]!++;
+    for (let channel = 0; channel < 3; channel++) {
+      bins[color * stride + channel * 256 + source.rgba8[i * 4 + channel]!]!++;
+    }
+  }
+  return colors.map((color, index) => {
+    const count = counts[index]!;
+    if (count === 0) return color;
+    const rgb = [0, 1, 2].map((channel) => {
+      const center = Number.parseInt(color.slice(1 + 2 * channel, 3 + 2 * channel), 16);
+      const lowerVote = Math.ceil(count / 2);
+      const upperVote = Math.floor(count / 2) + 1;
+      let seen = 0;
+      let lower = -1;
+      for (let value = 0; value < 256; value++) {
+        seen += bins[index * stride + channel * 256 + value]!;
+        if (lower === -1 && seen >= lowerVote) lower = value;
+        if (seen >= upperVote) return Math.max(lower, Math.min(value, center));
+      }
+      return center;
+    });
+    return `#${rgb.map(value => value.toString(16).padStart(2, "0")).join("")}` as HexColor;
+  });
+}
+
 function traceSampledRaster(
   source: PixelSource,
   sampled: SampledRaster,
-  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled, implicitClose = false, excludeDetail }: TraceSettings,
+  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled, implicitClose = false, excludeDetail, fitColors = false }: TraceSettings,
   palette = quantize([...sampled.histogram.values()], paletteSize, sampled.bits),
 ): VectorScene {
   const { cols, rows, keys } = sampled;
-  const { indices, colors, centers } = palette;
+  const { indices, colors: originalColors, centers } = palette;
   const pixels = Uint16Array.from(keys, (key) => indices[key]!);
+  const colors = fitColors ? fitSourceColors(source, pixels, originalColors) : originalColors;
   const elements: PathElement[] = [];
   let coarsePaint: { grid: SampledRaster; data: Uint16Array; palette: readonly HexColor[] } | undefined;
   let totalSegments = 0;
@@ -546,7 +582,7 @@ function sampleAlphaCell(source: PixelSource, cols: number, rows: number, x: num
   };
 }
 
-function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number, inset: number) {
+function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number, inset: number, maxColors = 64) {
   const width = Math.ceil(cols / cell), height = Math.ceil(rows / cell);
   const samples = makeSamples(width, height, 6);
   const keep = new Uint8Array(width * height);
@@ -572,7 +608,7 @@ function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: num
     }
   }
   if (samples.histogram.size === 0) return undefined;
-  const { colors, indices } = quantize([...samples.histogram.values()], 64, samples.bits);
+  const { colors, indices } = quantize([...samples.histogram.values()], maxColors, samples.bits);
   const pixels = Uint16Array.from(samples.keys, (key, i) => keep[i] ? indices[key]! : colors.length);
   return { width, height, pixels, palette: colors.map(color => ({ color, fillOpacity: 1 })) };
 }
@@ -686,7 +722,9 @@ function traceTransparentRaster(source: PixelSource, maxEdge: number, paletteBud
 
       if (nativeLarge) {
         try {
-          const fine = interiorUnderpaint(source, alphas, cols, rows, 3, inset);
+          // Reserve an element for the near-opaque group before selecting fine paints.
+          const spare = SCENE_LIMITS.maxAuthoredElements - detail.elements.length - undercoat.elements.length - 1;
+          const fine = spare > 0 ? interiorUnderpaint(source, alphas, cols, rows, 3, inset, Math.min(64, spare)) : undefined;
           if (fine) {
             const sx = cols / fine.width, sy = rows / fine.height;
             const fineLayer = contoursForLayer("alpha-fine-underpaint", fine.pixels, fine.width, fine.height, fine.palette,
@@ -710,19 +748,26 @@ const HIGH_DETAIL_SVG_BUDGET = 12_000_000;
 /** Trace sRGB illustrations as editable contours. Alpha preservation is opt-in. */
 export function traceRasterScene(
   source: PixelSource,
-  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean; readonly excludeDetail?: unknown; readonly preserveAlpha?: boolean } = {},
+  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean; readonly fitSourceColors?: boolean; readonly excludeDetail?: unknown; readonly preserveAlpha?: boolean } = {},
 ): VectorScene {
   const grid = traceGrid(source);
+  if (options.fitSourceColors && (!options.nativeDetail || options.preserveAlpha)) {
+    throw new RangeError("Source color fitting requires an opaque native-detail trace.");
+  }
   if (options.preserveAlpha && options.excludeDetail !== undefined) {
     throw new RangeError("Transparent tracing does not support detail exclusion.");
   }
   if (options.preserveAlpha && source.rgba8.some((value, i) => (i & 3) === 3 && value !== 255)) {
     const presets = options.nativeDetail ? [NATIVE_TRANSPARENT_EDGE, 1152, 768, 576] : options.highDetail === false ? [576] : [1152, 768, 576];
     for (const edge of presets) {
-      try {
-        return traceTransparentRaster(source, edge, 1152);
-      } catch (error) {
-        if (!(error instanceof TraceContourLimitError)) throw error;
+      // Retry the established palette at the same resolution before accepting a coarser grid.
+      const paletteBudgets = edge === NATIVE_TRANSPARENT_EDGE ? [1408, 1152] : [1152];
+      for (const colors of paletteBudgets) {
+        try {
+          return traceTransparentRaster(source, edge, colors);
+        } catch (error) {
+          if (!(error instanceof TraceContourLimitError)) throw error;
+        }
       }
     }
     throw new RangeError("Transparent raster contours exceed the scene limits.");
@@ -732,6 +777,9 @@ export function traceRasterScene(
   if (excludeDetail && !options.nativeDetail) throw new RangeError("Detail exclusion requires native detail.");
   if (options.nativeDetail) {
     const nativeGrid = traceGrid(source, 768);
+    if (options.fitSourceColors && (nativeGrid.cols * 2 !== source.width || nativeGrid.rows * 2 !== source.height)) {
+      throw new RangeError("Source color fitting requires a native grid matching the source pixels.");
+    }
     if ((nativeGrid.cols > grid.cols || nativeGrid.rows > grid.rows)
         && nativeGrid.cols * 2 <= source.width && nativeGrid.rows * 2 <= source.height
         && nativeGrid.cols > 4 && nativeGrid.rows > 4) {
@@ -755,19 +803,29 @@ export function traceRasterScene(
         { edgeThreshold: 36, paletteSize: 640, underpaintColors: 96,
           segmentLimit: PREVIOUS_NATIVE_SCENE_LIMITS.maxAggregatePathSegments },
       ]) {
+        if (options.fitSourceColors && subdivision !== "directional") break;
         try {
           const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold, subdivision);
           // Keep palette search within the six-bit pass's maximum occupied-bin count.
           if (subdivision === "directional" && sampled.histogram.size > 2 ** 18) continue;
           const palette = quantize([...sampled.histogram.values()], traceSettings.paletteSize, sampled.bits, subdivision === "directional");
-          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource, excludeDetail }, palette);
-          if (excludeDetail || Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
+          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource, excludeDetail, fitColors: options.fitSourceColors === true }, palette);
+          if (excludeDetail) return scene;
+          const bytes = Buffer.byteLength(JSON.stringify(scene), "utf8");
+          if (bytes <= SCENE_LIMITS.maxInputBytes) return scene;
+          if (bytes <= SCENE_LIMITS.maxCanonicalPathsBytes) {
+            // Generated contour coordinates are integers. A minus sign already
+            // separates the next operand, so the preceding space is optional.
+            const compact = mapScenePaths(scene, compactCanonicalPathOperands);
+            if (Buffer.byteLength(JSON.stringify(compact), "utf8") <= SCENE_LIMITS.maxInputBytes) return compact;
+          }
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
         }
       }
     }
   }
+  if (options.fitSourceColors) throw new RangeError("Source color fitting requires a supported native trace within scene limits.");
   if (excludeDetail) throw new RangeError("Detail exclusion requires a supported native trace.");
   if ((options.highDetail !== false || options.nativeDetail) && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
       && grid.cols > 4 && grid.rows > 4) {

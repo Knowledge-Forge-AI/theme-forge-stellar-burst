@@ -346,6 +346,7 @@ export type SceneValidationResult = Result<{
 
 export type SceneInspectionResult = Result<{
   readonly scene: VectorScene;
+  readonly svgBytes: number;
   readonly metrics: SceneMetrics;
   readonly receipt: SceneReceipt;
   readonly warnings: readonly string[];

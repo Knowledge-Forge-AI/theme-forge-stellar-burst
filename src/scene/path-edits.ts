@@ -11,18 +11,26 @@ export function reviseScene(source: unknown, edits: unknown): Result<string> {
 }
 
 function applyEdits(scene: VectorScene, edits: unknown, authoredElementCount: number): unknown {
-  if (edits !== null && typeof edits === "object" && !Array.isArray(edits) && Object.hasOwn(edits, "appendGroup")) {
+  if (edits !== null && typeof edits === "object" && !Array.isArray(edits)) {
     const request = edits as Record<string, unknown>;
-    const group = request["appendGroup"];
-    if (Object.keys(request).length !== 1 || group === null || typeof group !== "object" || Array.isArray(group)) {
-      invalidEdits("Provide exactly one appendGroup object.");
+    const operations = ["removeGroup", "replaceGroup", "appendGroup"] as const;
+    const operation = operations.find(key => Object.hasOwn(request, key));
+    if (operation !== undefined) {
+      const hasParent = Object.hasOwn(request, "parentGroupId");
+      const parentId = request["parentGroupId"];
+      if (Object.keys(request).length !== (hasParent ? 2 : 1) || (hasParent && typeof parentId !== "string")) {
+        invalidEdits("Provide exactly one group operation with an optional parentGroupId.");
+      }
+      if (!hasParent) {
+        return { ...scene, elements: reviseGroups(scene.elements, operation, request[operation], "top-level") };
+      }
+      const parentIndex = scene.elements.findIndex(element => element.type === "group" && element.id === parentId);
+      const parent = scene.elements[parentIndex];
+      if (parent?.type !== "group") invalidEdits("The parentGroupId must name an existing top-level group.");
+      const elements: unknown[] = [...scene.elements];
+      elements[parentIndex] = { ...parent, children: reviseGroups(parent.children, operation, request[operation], "child") };
+      return { ...scene, elements };
     }
-    const record = group as Record<string, unknown>;
-    if (record["type"] !== "group" || typeof record["id"] !== "string" ||
-        !Array.isArray(record["children"]) || record["children"].length === 0) {
-      invalidEdits("An appended group must have an id and nonempty children.");
-    }
-    return { ...scene, elements: [...scene.elements, group] };
   }
 
   if (!Array.isArray(edits) || edits.length === 0 || edits.length > authoredElementCount) {
@@ -63,4 +71,35 @@ function applyEdits(scene: VectorScene, edits: unknown, authoredElementCount: nu
       };
   if (remaining.size !== 0) invalidEdits("Every edit must name an existing path element.");
   return { ...scene, elements, ...(definitions === undefined ? {} : { definitions }) };
+}
+
+function reviseGroups(
+  siblings: readonly SceneElement[],
+  operation: "removeGroup" | "replaceGroup" | "appendGroup",
+  value: unknown,
+  level: "top-level" | "child",
+): unknown[] {
+  if (operation === "removeGroup") {
+    if (typeof value !== "string") invalidEdits("Provide removeGroup with the id of an existing group.");
+    const index = siblings.findIndex(element => element.type === "group" && element.id === value);
+    if (index === -1) invalidEdits(`A group removal must name an existing ${level} group.`);
+    return [...siblings.slice(0, index), ...siblings.slice(index + 1)];
+  }
+
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    invalidEdits(`Provide exactly one ${operation} object.`);
+  }
+  const group = value as Record<string, unknown>;
+  if (group["type"] !== "group" || typeof group["id"] !== "string" ||
+      !Array.isArray(group["children"]) || group["children"].length === 0) {
+    invalidEdits(operation === "appendGroup"
+      ? "An appended group must have an id and nonempty children."
+      : "A replacement group must have an id and nonempty children.");
+  }
+  if (operation === "appendGroup") return [...siblings, value];
+  const index = siblings.findIndex(element => element.type === "group" && element.id === group["id"]);
+  if (index === -1) invalidEdits(`A replacement group must name an existing ${level} group.`);
+  const revised: unknown[] = [...siblings];
+  revised[index] = value;
+  return revised;
 }

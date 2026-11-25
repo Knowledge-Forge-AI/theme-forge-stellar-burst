@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { runSceneCli } from "../src/scene-cli.js";
+import { canonicalizeSceneRevision } from "../src/scene/compile.js";
+import { SCENE_LIMITS } from "../src/scene/constants.js";
 import { validateCanonicalSceneSvg } from "../src/scene/import-svg.js";
 import { canonicalPathData } from "../src/scene/path-canonical.js";
 import { canonicalizeScene, compileScene, traceRasterScene, validateScene } from "../src/scene/index.js";
@@ -148,6 +150,55 @@ test("binds the compile receipt to compact editable JSON while preserving the fu
   expect(original.value.receipt.sourceDigest).toBe("sha256:" + createHash("sha256").update(expanded.value).digest("hex"));
 });
 
+test("recovers room for a revision by compacting the existing validated paths", () => {
+  const d = "M0 0" + " ".repeat(60_000);
+  const scene = {
+    schema: "tfsb.vector-scene-v1", compatibility: 1, compilerLevel: 1,
+    profile: "diagram", artboard: { width: 10, height: 10, viewBox: [0, 0, 10, 10] },
+    accessibility: { mode: "decorative" },
+    elements: Array.from({ length: 138 }, () => ({ type: "path", d })),
+  };
+  const added = [
+    { type: "path", d, id: "new-first" },
+    { type: "path", d, id: "new-second" },
+  ];
+  expect(Buffer.byteLength(JSON.stringify(scene))).toBeLessThan(SCENE_LIMITS.maxInputBytes);
+  expect(Buffer.byteLength(JSON.stringify({ ...scene, elements: [...scene.elements, ...added] })))
+    .toBeGreaterThan(SCENE_LIMITS.maxInputBytes);
+  const revised = canonicalizeSceneRevision(scene, current => ({
+    ...current,
+    elements: [...current.elements, ...added],
+  }));
+  if (!revised.ok) throw new Error(revised.diagnostics[0]?.message);
+  const expected = compileScene({
+    ...scene, elements: [...scene.elements, ...added].map(element => ({ ...element, d: "M0 0" })),
+  });
+  expect(compileScene(JSON.parse(revised.value))).toEqual(expected);
+  expect(scene.elements[0]?.d).toBe(d);
+});
+
+test("retains room for a desktop edit when fitting a dense editable scene", () => {
+  const base = traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) });
+  const path = { type: "path", d: "M0 0" + "l1 -1l-1 1".repeat(2000) };
+  const elements = Array.from({ length: 410 }, () => path);
+  const additional = Array.from({ length: 10 }, () => path);
+  const scene = { ...base, elements };
+  const cap = 8 * 1024 * 1024;
+  expect(Buffer.byteLength(JSON.stringify(scene))).toBeLessThan(cap);
+  expect(Buffer.byteLength(JSON.stringify({ ...scene, elements: [...elements, ...additional] }))).toBeGreaterThan(cap);
+
+  const regular = compileScene(scene);
+  const fitted = compileScene(scene, { fitInput: true });
+  if (!regular.ok || !fitted.ok || !fitted.value.canonicalJson) throw new Error("Fixture did not compile");
+  expect(fitted.value.svg).toBe(regular.value.svg);
+  expect(fitted.value.receipt.sourceDigest).toBe("sha256:" + createHash("sha256").update(fitted.value.canonicalJson).digest("hex"));
+  const editable = JSON.parse(fitted.value.canonicalJson);
+  const draft = { ...editable, elements: [...editable.elements, ...additional] };
+  expect(Buffer.byteLength(JSON.stringify(draft))).toBeLessThanOrEqual(cap);
+  const compiled = compileScene(draft, { fitInput: true });
+  expect(compiled.ok).toBe(true);
+});
+
 test("uses fractional pixel coverage when the source does not divide into trace cells", () => {
   const rgba8 = new Uint8Array(1440 * 4);
   for (let x = 0; x < 1440; x += 1) {
@@ -280,7 +331,10 @@ test("the trace CLI requires explicit opt-in before publishing a transparent sou
     const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
     const args = ["trace-png", "source.png", "--output", "alpha.json", "--native-detail", "--json"];
     expect(await runSceneCli(args, cwd, io)).toBe(1);
-    expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    expect(JSON.parse(stdout).diagnostics[0]).toMatchObject({
+      code: "SCENE_RASTER_TRACE_REJECTED",
+      message: expect.stringContaining("use --preserve-alpha"),
+    });
     await expect(readFile(join(cwd, "alpha.json"))).rejects.toThrow();
     expect(await runSceneCli([...args, "--preserve-alpha", "--exclude-detail", "cut.json"], cwd, io)).toBe(1);
     expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
@@ -361,6 +415,54 @@ test("traces a supported PNG through the CLI, refuses overwrites and rejects non
     stdout = "";
     expect(await runSceneCli(["trace-png", "invalid.png", "--output", "out/invalid.json", "--json"], cwd, io)).toBe(1);
     expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    expect(JSON.parse(stdout).diagnostics[0].message).not.toContain("use --preserve-alpha");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("fits opaque native fills without changing the editable geometry", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tfsb-source-color-fit-"));
+  try {
+    const cwd = await realpath(directory);
+    const width = 32, height = 1536;
+    const rgba = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const band = ((x >> 1) + (y >> 1)) % 16;
+        const accent = (x & 1) && (y & 1) ? 3 : 0;
+        rgba.set([16 * band + accent, 40 + band, 70, 255], (y * width + x) * 4);
+      }
+    }
+    await writeFile(join(cwd, "source.png"), rgbaPng(width, height, rgba));
+    await writeFile(join(cwd, "small.png"), rgbaPng(4, 4, new Uint8Array(4 * 4 * 4).fill(255)));
+    let stdout = "";
+    const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
+    async function trace(file: string, output: string, ...flags: string[]) {
+      return runSceneCli(["trace-png", file, "--output", output, "--json", ...flags], cwd, io);
+    }
+    for (const flags of [
+      ["--fit-source-colors"],
+      ["--native-detail", "--fit-source-colors", "--fit-source-colors"],
+      ["--native-detail", "--fit-source-colors", "--preserve-alpha"],
+    ]) {
+      expect(await trace("source.png", "refused.json", ...flags)).toBe(1);
+      expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
+    }
+    expect(await trace("small.png", "refused.json", "--native-detail", "--fit-source-colors")).toBe(1);
+    expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    await expect(readFile(join(cwd, "refused.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await trace("source.png", "normal.json", "--native-detail"), stdout).toBe(0);
+    expect(JSON.parse(stdout).data.colorFit).toBeUndefined();
+    expect(await trace("source.png", "fitted.json", "--native-detail", "--fit-source-colors"), stdout).toBe(0);
+    expect(JSON.parse(stdout).data.colorFit).toBe("source-pixel-median-v1");
+
+    const before = await readFile(join(cwd, "normal.json"), "utf8");
+    const after = await readFile(join(cwd, "fitted.json"), "utf8");
+    expect(after).not.toBe(before);
+    const fills = /"type":"solid","color":"#[0-9a-fA-F]{6}"/gu;
+    expect(after.replace(fills, "")).toBe(before.replace(fills, ""));
+    expect(compileScene(JSON.parse(after)).ok).toBe(true);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

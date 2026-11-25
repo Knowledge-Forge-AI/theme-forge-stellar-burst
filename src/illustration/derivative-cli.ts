@@ -16,7 +16,7 @@ import {
   type DerivativeCapabilityStatus,
   type RasterDerivativeFailureCode,
   type RasterDerivativeOutputV1,
-  type RasterDerivativeRecipeV1,
+  type RasterDerivativeRecipe,
 } from "./derivative.js";
 
 const NOFOLLOW = constants.O_NOFOLLOW ?? 0;
@@ -36,7 +36,7 @@ export interface IllustrationDerivativeCliIo {
 /** Internal unit-test seam; normal routing uses the three-argument handler. */
 export interface IllustrationDerivativeCliRuntime {
   readonly probe?: () => Promise<DerivativeCapabilityStatus>;
-  readonly render?: (sourceBytes: Uint8Array, recipe: RasterDerivativeRecipeV1) => Promise<RasterDerivativeOutputV1>;
+  readonly render?: (sourceBytes: Uint8Array, recipe: RasterDerivativeRecipe) => Promise<RasterDerivativeOutputV1>;
 }
 
 export type IllustrationDerivativeCliReceiptV1 = RasterDerivativeReceiptV1;
@@ -295,7 +295,7 @@ function assertJsonDepth(source: string): void {
   }
 }
 
-async function readRecipe(path: string): Promise<RasterDerivativeRecipeV1> {
+async function readRecipe(path: string): Promise<RasterDerivativeRecipe> {
   const bytes = await readBoundedNoFollow(path, DERIVATIVE_LIMITS.recipeBytes, "RECIPE_INPUT_INVALID");
   if (hasUtf8Bom(bytes)) fail("RECIPE_INPUT_INVALID");
   let text: string;
@@ -421,7 +421,7 @@ function failureCode(error: unknown): CliFailureCode {
 }
 
 async function publishDerivative(
-  source: Uint8Array, recipe: RasterDerivativeRecipeV1, outputPath: string,
+  source: Uint8Array, recipe: RasterDerivativeRecipe, outputPath: string,
   render: NonNullable<IllustrationDerivativeCliRuntime["render"]>,
 ): Promise<IllustrationDerivativeCliReceiptV1> {
   await assertOutputAbsent(outputPath);
@@ -433,15 +433,15 @@ async function publishDerivative(
 
 /** Encode a reviewed scene's in-memory PNG with the standard illustration WebP recipe. */
 export async function exportSceneWebp(
-  source: Uint8Array, width: number, height: number, output: string, cwd: string,
+  source: Uint8Array, width: number, height: number, output: string, cwd: string, quality?: number, sharpChroma = false,
 ): Promise<
-  | { readonly ok: true; readonly recipe: RasterDerivativeRecipeV1; readonly receipt: IllustrationDerivativeCliReceiptV1 }
+  | { readonly ok: true; readonly recipe: RasterDerivativeRecipe; readonly receipt: IllustrationDerivativeCliReceiptV1 }
   | { readonly ok: false; readonly code: string }
 > {
   try {
     const outputPath = resolvedPath(cwd, output, "OUTPUT_TARGET_INVALID");
     await assertOutputAbsent(outputPath);
-    const { recipe, output: encoded, receipt } = await renderSceneWebp(source, width, height);
+    const { recipe, output: encoded, receipt } = await renderSceneWebp(source, width, height, quality, sharpChroma);
     await publishOutput(outputPath, encoded.bytes);
     return { ok: true, recipe, receipt };
   } catch (error) {

@@ -170,8 +170,10 @@ async function readSceneSnapshot(path: string, hooks: ReadSceneFileHooks, maxByt
 }
 
 export async function readSceneFile(path: string, hooks: ReadSceneFileHooks = {}): Promise<unknown> {
-  const bytes = await readSceneFileBytes(path, hooks);
+  return parseSceneFileBytes(await readSceneFileBytes(path, hooks));
+}
 
+export function parseSceneFileBytes(bytes: Uint8Array): unknown {
   let text: string;
   try {
     text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
