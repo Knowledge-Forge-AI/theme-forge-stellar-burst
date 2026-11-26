@@ -109,6 +109,14 @@ new paths. Keep the SVG and export receipt alongside the delivery file.
 Use `--output-width 512` with a new output path to export a narrower
 WebP. Its height must be a whole number of pixels at the source ratio.
 The option retains the same SVG and PNG digests in the export receipt.
+The resize filter defaults to Lanczos. With `--output-width`, use
+`--resize-filter Catrom` for Catmull–Rom or `--resize-filter Mitchell` for
+Mitchell. The receipt records the chosen filter in the replayable recipe.
+Filter selection requires `--output-width`, including with `--viewbox-size`.
+A width equal to the artboard width is allowed; filter selection does not
+require smaller output dimensions. With `--viewbox-size`, resizing
+uses the viewBox raster dimensions, so output wider than that raster is
+enlarged even when it fits within the artboard.
 Add `--quality 93 --sharp-chroma` to select the Compact Sharp recipe.
 Standard export defaults to quality 94 and recipe version 1. Sharp
 chroma uses recipe version 2. Retain that recipe with the matching PNG

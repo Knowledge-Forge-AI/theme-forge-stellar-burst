@@ -775,8 +775,10 @@ export function verifyRasterDerivativeOutput(
 }
 
 /** Encode an in-memory scene raster without accessing a destination. */
-export function renderSceneWebp(source: Uint8Array, width: number, height: number, quality?: number, sharpChroma = false) {
-  return encodeSceneWebp(source, width, height, runMagick, quality, sharpChroma);
+export function renderSceneWebp(
+  source: Uint8Array, width: number, height: number, quality?: number, sharpChroma = false, filter?: RasterDerivativeFilter,
+) {
+  return encodeSceneWebp(source, width, height, runMagick, quality, sharpChroma, filter);
 }
 
 /** Decode a bounded still WebP through the existing processor, preserving its canvas. */
@@ -818,7 +820,10 @@ export function renderSceneWebpWithNixMagick(
   return encodeSceneWebp(source, width, height, run);
 }
 
-async function encodeSceneWebp(source: Uint8Array, width: number, height: number, run: RunMagick, quality = 94, sharpChroma = false): Promise<{
+async function encodeSceneWebp(
+  source: Uint8Array, width: number, height: number, run: RunMagick,
+  quality = 94, sharpChroma = false, filter: RasterDerivativeFilter = "Lanczos",
+): Promise<{
   readonly recipe: RasterDerivativeRecipe;
   readonly output: RasterDerivativeOutputV1;
   readonly receipt: RasterDerivativeReceiptV1;
@@ -835,7 +840,7 @@ async function encodeSceneWebp(source: Uint8Array, width: number, height: number
     processor: capability.processor,
     output: {
       mime: "image/webp", width, height, fit: "contain-pad", colorSpace: "srgb",
-      metadata: "stripped", alpha: "preserve", quality, method: 6, filter: "Lanczos",
+      metadata: "stripped", alpha: "preserve", quality, method: 6, filter,
     },
   } as const;
   const draft = {

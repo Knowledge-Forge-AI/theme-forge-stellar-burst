@@ -92,6 +92,30 @@ function tinyPng(): Uint8Array {
   ]);
 }
 
+function patternedPng(): Uint8Array {
+  const width = 32, height = 24;
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  const scanlines = Buffer.alloc((width * 4 + 1) * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = y * (width * 4 + 1) + 1 + x * 4;
+      scanlines[offset] = (x * 37 + y * 17) % 256;
+      scanlines[offset + 1] = x < 13 ? 240 : 16;
+      scanlines[offset + 2] = (x + y) % 3 === 0 ? 255 : 0;
+      scanlines[offset + 3] = x < y ? 128 : 255;
+    }
+  }
+  return pngDocument([
+    { type: "IHDR", data: ihdr },
+    { type: "IDAT", data: deflateSync(scanlines) },
+    { type: "IEND", data: new Uint8Array() },
+  ]);
+}
+
 function webpChunk(type: string, data: Uint8Array): Buffer {
   const chunk = Buffer.alloc(8 + data.byteLength + (data.byteLength % 2));
   Buffer.from(type, "ascii").copy(chunk, 0);
@@ -428,6 +452,46 @@ describe("raster derivative capability", () => {
     );
     expect(computeSha256(source)).toBe(sourceDigest);
   }, 60_000);
+
+  for (const sharpChroma of [false, true]) {
+    it(`selects and replays every resize filter when downsampling (sharp chroma: ${sharpChroma})`, async ({ skip }) => {
+      const capability = await probeMagickDerivativeCapability();
+      if (!capability.available) { skip("Fixed ImageMagick capability unavailable on this runtime."); return; }
+      const source = patternedPng();
+      const sourceDigest = computeSha256(source);
+      expect(inspectRasterIllustrationSource(source, "image/png")).toMatchObject({ width: 32, height: 24 });
+      const defaultResult = await renderSceneWebp(source, 12, 9, 96, sharpChroma);
+      const recipeDigests = new Set<string>();
+      const outputDigests = new Set<string>();
+      for (const filter of ["Lanczos", "Catrom", "Mitchell"] as const) {
+        const selected = await renderSceneWebp(source, 12, 9, 96, sharpChroma, filter);
+        expect(selected.recipe).toMatchObject({
+          schemaVersion: sharpChroma ? 2 : 1, sourceSha256: sourceDigest,
+          output: { width: 12, height: 9, filter, quality: 96 },
+        });
+        if (selected.recipe.schemaVersion === 2) expect(selected.recipe.output.chroma).toBe("sharp-yuv");
+        else expect(selected.recipe.output).not.toHaveProperty("chroma");
+        expect(selected.output).toMatchObject({ width: 12, height: 9, mime: "image/webp" });
+        expect(selected.receipt).toMatchObject({
+          sourceSha256: sourceDigest, recipeDigest: selected.recipe.recipeDigest,
+          outputSha256: computeSha256(selected.output.bytes), width: 12, height: 9,
+        });
+        const replayed = await renderRasterDerivative(source, selected.recipe);
+        expect(replayed.bytes).toEqual(selected.output.bytes);
+        expect(verifyRasterDerivativeOutput(replayed, selected.recipe)).toEqual(selected.receipt);
+        if (filter === "Lanczos") {
+          expect(selected.recipe).toEqual(defaultResult.recipe);
+          expect(selected.output.bytes).toEqual(defaultResult.output.bytes);
+          expect(selected.receipt).toEqual(defaultResult.receipt);
+        }
+        recipeDigests.add(selected.recipe.recipeDigest);
+        outputDigests.add(selected.output.sha256);
+      }
+      expect(recipeDigests.size).toBe(3);
+      expect(outputDigests.size).toBe(3);
+      expect(computeSha256(source)).toBe(sourceDigest);
+    }, 60_000);
+  }
 
   it("writes WebP with processor dimension proof when the delegate is available", async ({ skip }) => {
     const capability = await probeMagickDerivativeCapability();

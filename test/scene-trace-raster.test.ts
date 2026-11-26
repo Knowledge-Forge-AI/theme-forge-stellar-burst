@@ -269,7 +269,7 @@ test("preserves transparent holes and translucent paint on the original artboard
   expect(compiled.value.svg).not.toContain("trace-base");
 });
 
-test("reserves scene elements only for transparent artwork", () => {
+test("preserves transparent artwork's element reservation behavior", () => {
   const rgba8 = Uint8Array.of(0, 0, 0, 0, 220, 40, 20, 128, 220, 40, 20, 255, 0, 0, 0, 0);
   const input = { width: 2, height: 2, rgba8 };
   const options = { preserveAlpha: true, nativeDetail: true };
@@ -387,6 +387,224 @@ test("refuses malformed, animated, or oversized WebP input before publishing", a
       expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_TRACE_WEBP_SOURCE_INVALID");
       await expect(readFile(join(cwd, "scene.json"))).rejects.toMatchObject({ code: "ENOENT" });
     }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects dense palettes outside opaque native tracing", () => {
+  const width = 32, height = 1536;
+  const source = { width, height, rgba8: new Uint8Array(width * height * 4).fill(255) };
+  for (const options of [
+    { densePalette: true },
+    { nativeDetail: true, densePalette: true, preserveAlpha: true },
+  ]) {
+    expect(() => traceRasterScene(source, options)).toThrow(/dense palette/i);
+  }
+  const translucent = source.rgba8.slice();
+  translucent[3] = 128;
+  expect(() => traceRasterScene({ ...source, rgba8: translucent }, { nativeDetail: true, densePalette: true }))
+    .toThrow(/opaque/);
+  expect(() => traceRasterScene({ width: 1, height: 1, rgba8: Uint8Array.of(0, 0, 0, 255) },
+    { nativeDetail: true, densePalette: true })).toThrow(/supported native trace/);
+});
+
+test("retains the native grid and reserves authored elements with a dense palette", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tfsb-dense-reserve-"));
+  try {
+    const cwd = await realpath(directory);
+    const width = 128, height = 1536;
+    const rgba = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const color = ((x >> 1) + (y >> 1) * (width >> 1)) % 2048;
+        rgba.set([16 * (color >> 7) + 4, 16 * ((color >> 3) & 15) + 4, 32 * (color & 7) + 4, 255],
+          (y * width + x) * 4);
+      }
+    }
+    await writeFile(join(cwd, "source.png"), rgbaPng(width, height, rgba));
+    let stdout = "";
+    const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
+    const trace = (output: string, ...options: string[]) => runSceneCli(
+      ["trace-png", "source.png", "--output", output, "--json", ...options], cwd, io);
+    for (const options of [
+      ["--dense-palette"],
+      ["--native-detail", "--dense-palette", "--preserve-alpha"],
+      ["--native-detail", "--dense-palette", "--dense-palette"],
+      ["--native-detail", "--reserve-elements", "125"],
+    ]) {
+      expect(await trace("refused.json", ...options)).toBe(1);
+      expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
+      await expect(readFile(join(cwd, "refused.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+    expect(await trace("default.json", "--native-detail"), stdout).toBe(0);
+    expect(await trace("dense.json", "--native-detail", "--dense-palette"), stdout).toBe(0);
+    expect(await trace("reserved.json", "--native-detail", "--dense-palette", "--reserve-elements", "125"), stdout).toBe(0);
+    const metrics = JSON.parse(stdout).data.metrics;
+    expect(metrics.authoredElementCount).toBeLessThanOrEqual(SCENE_LIMITS.maxAuthoredElements - 125);
+    async function load(name: string): Promise<ReturnType<typeof traceRasterScene>> {
+      return JSON.parse(await readFile(join(cwd, name), "utf8"));
+    }
+    const regular = await load("default.json");
+    const dense = await load("dense.json");
+    const reserved = await load("reserved.json");
+    const detailCount = (scene: typeof dense) => scene.elements.filter(
+      ({ id }) => id?.startsWith("trace-detail-")).length;
+    expect(detailCount(regular)).toBe(1664);
+    expect(detailCount(dense)).toBe(1856);
+    expect(detailCount(reserved)).toBe(1778);
+    const paint = (scene: typeof dense) => scene.elements.filter(
+      ({ id }) => id?.startsWith("trace-undercoat-"));
+    expect(paint(reserved)).toHaveLength(96);
+    for (const path of paint(reserved)) {
+      if (path.type !== "path") throw new Error("Expected an undercoat path");
+      expect(path.d).toMatch(/Z$/u);
+      expect(path.presentation).toMatchObject({
+        stroke: path.presentation?.fill,
+        strokeWidth: 0.125,
+        strokeLinejoin: "bevel",
+      });
+      expect(path.transform).toEqual([{ type: "scale", x: 4 }]);
+    }
+    expect([...paint(regular), ...paint(dense)].every(path => path.presentation?.stroke === undefined)).toBe(true);
+    expect(reserved.artboard).toEqual(dense.artboard);
+    expect(reserved.elements.length).toBe(metrics.authoredElementCount);
+
+    expect(await trace("repeated.json", "--native-detail", "--dense-palette", "--reserve-elements", "125"), stdout).toBe(0);
+    expect(await readFile(join(cwd, "repeated.json"), "utf8")).toBe(await readFile(join(cwd, "reserved.json"), "utf8"));
+    const compiled = compileScene(reserved);
+    if (!compiled.ok) throw new Error("Expected a compiled dense reserved scene");
+    const canonical = canonicalizeScene(reserved);
+    if (!canonical.ok) throw new Error("Expected a canonical dense reserved scene");
+    expect(compileScene(await load("repeated.json"))).toEqual(compiled);
+    expect(compileScene(JSON.parse(canonical.value))).toEqual(compiled);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("admits one dense detail color at the reserve cutoff and refuses an empty palette without output", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tfsb-dense-cutoff-"));
+  try {
+    const cwd = await realpath(directory);
+    const width = 32, height = 1536;
+    await writeFile(join(cwd, "source.png"), rgbaPng(width, height, new Uint8Array(width * height * 4).fill(255)));
+    let stdout = "";
+    const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
+    const trace = (reserve: number) => runSceneCli([
+      "trace-png", "source.png", "--output", `reserve-${reserve}.json`, "--native-detail", "--dense-palette",
+      "--reserve-elements", String(reserve), "--json",
+    ], cwd, io);
+    expect(await trace(1902), stdout).toBe(0);
+    const scene: ReturnType<typeof traceRasterScene> = JSON.parse(await readFile(join(cwd, "reserve-1902.json"), "utf8"));
+    expect(scene.artboard.viewBox).toEqual([0, 0, width, height]);
+    expect(scene.elements.filter(({ id }) => id?.startsWith("trace-detail-"))).toHaveLength(1);
+    expect(scene.elements.length).toBeLessThanOrEqual(SCENE_LIMITS.maxAuthoredElements - 1902);
+    expect(compileScene(scene).ok).toBe(true);
+    for (const reserve of [1903, 1999]) {
+      expect(await trace(reserve)).toBe(1);
+      expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+      await expect(readFile(join(cwd, `reserve-${reserve}.json`))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("counts the dense exclusion layer before assigning the remaining palette slots", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tfsb-dense-exclusion-"));
+  try {
+    const cwd = await realpath(directory);
+    const width = 32, height = 1536;
+    await writeFile(join(cwd, "source.png"), rgbaPng(width, height, new Uint8Array(width * height * 4).fill(255)));
+    await writeFile(join(cwd, "polygon.json"), JSON.stringify([[11, 9], [15, 9], [15, 12], [11, 12]]));
+    let stdout = "";
+    const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
+    const trace = (reserve: number, output: string) => runSceneCli([
+      "trace-png", "source.png", "--native-detail", "--dense-palette", "--exclude-detail", "polygon.json",
+      "--reserve-elements", String(reserve), "--output", output, "--json",
+    ], cwd, io);
+
+    expect(await trace(1996, "exact.json"), stdout).toBe(0);
+    const scene: ReturnType<typeof traceRasterScene> = JSON.parse(await readFile(join(cwd, "exact.json"), "utf8"));
+    expect(scene.artboard.viewBox).toEqual([0, 0, width, height]);
+    expect(scene.elements.map(element => element.id)).toEqual([
+      "trace-base", "trace-undercoat-0", "trace-detail-0", "trace-edit-underpaint-0",
+    ]);
+    expect(compileScene(scene).ok).toBe(true);
+    expect(await trace(1996, "repeat.json"), stdout).toBe(0);
+    expect(await readFile(join(cwd, "repeat.json"), "utf8")).toBe(await readFile(join(cwd, "exact.json"), "utf8"));
+
+    expect(await trace(1997, "refused.json")).toBe(1);
+    expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    await expect(readFile(join(cwd, "refused.json"))).rejects.toMatchObject({ code: "ENOENT" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test.each(["png", "webp"] as const)("budgets multicolor dense exclusions on unequal axes through trace-%s", async (format) => {
+  const directory = await mkdtemp(join(tmpdir(), "tfsb-dense-exclusion-colors-"));
+  try {
+    const cwd = await realpath(directory);
+    const width = 22, height = 1536;
+    const rgba8 = new Uint8Array(width * height * 4).fill(255);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < 4; x++) rgba8.set([208, 16, 16, 255], (y * width + x) * 4);
+    }
+    // Lossless WebP of the same 22 x 1536 red stripe on opaque white.
+    const webp = Buffer.from("UklGRiwAAABXRUJQVlA4TB8AAAAvFcB/AQ/wiP9H/z/if/7jAUICwgP/Z0si+h/C/tcHAA==", "base64");
+    const polygon = [[2, 9], [10, 9], [10, 12], [2, 12]];
+    await writeFile(join(cwd, `source.${format}`), format === "png" ? rgbaPng(width, height, rgba8) : webp);
+    await writeFile(join(cwd, "polygon.json"), JSON.stringify(polygon));
+    let stdout = "";
+    const io = { stdout: (text: string) => { stdout = text; }, stderr: () => {} };
+    const trace = (output: string, ...flags: string[]) => runSceneCli([
+      `trace-${format}`, `source.${format}`, "--native-detail", "--dense-palette", "--exclude-detail", "polygon.json",
+      "--output", output, "--json", ...flags,
+    ], cwd, io);
+    const load = async (output: string): Promise<ReturnType<typeof traceRasterScene>> =>
+      JSON.parse(await readFile(join(cwd, output), "utf8"));
+
+    // Three undercoat colors, all present in the polygon, leave one detail slot at B = 8.
+    expect(await trace("exact.json", "--reserve-elements", "1992"), stdout).toBe(0);
+    const scene = await load("exact.json");
+    expect(scene.artboard.viewBox).toEqual([0, 0, width, height]);
+    expect(scene.elements).toHaveLength(8);
+    const undercoat = scene.elements.filter(({ id }) => id?.startsWith("trace-undercoat-"));
+    expect(undercoat).toHaveLength(3);
+    for (const path of undercoat) expect(path.transform).toEqual([{ type: "scale", x: 22 / 6, y: 4 }]);
+    expect(scene.elements.filter(({ id }) => id?.startsWith("trace-detail-"))).toHaveLength(1);
+    const overlay = scene.elements.filter(({ id }) => id?.startsWith("trace-edit-underpaint-"));
+    expect(overlay).toHaveLength(3);
+    expect(overlay.map(path => path.type === "path" && path.d).sort()).toEqual([
+      "M2 9H4v3H2", "M4 9H7v3H4", "M7 9h3v3H7",
+    ]);
+    const exclusionOnly = traceRasterScene({ width, height, rgba8 }, { nativeDetail: true, excludeDetail: polygon });
+    expect(overlay).toEqual(exclusionOnly.elements.filter(({ id }) => id?.startsWith("trace-edit-underpaint-")));
+    const samePalette = traceRasterScene({ width, height, rgba8 }, {
+      nativeDetail: true, densePalette: true, reserveElements: 1902,
+    });
+    expect(scene.elements.slice(0, samePalette.elements.length)).toEqual(samePalette.elements);
+    expect(compileScene(scene).ok).toBe(true);
+    expect(await trace("repeat.json", "--reserve-elements", "1992"), stdout).toBe(0);
+    expect(await readFile(join(cwd, "repeat.json"), "utf8")).toBe(await readFile(join(cwd, "exact.json"), "utf8"));
+
+    expect(await trace("refused.json", "--reserve-elements", "1993")).toBe(1);
+    expect(JSON.parse(stdout).diagnostics[0].code).toBe("SCENE_RASTER_TRACE_REJECTED");
+    await expect(readFile(join(cwd, "refused.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    for (const flags of [
+      ["0"], ["-1"], ["1.5"], ["invalid"], ["2000"], ["125", "--reserve-elements", "125"],
+    ]) {
+      expect(await trace("invalid.json", "--reserve-elements", ...flags)).toBe(1);
+      expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
+      await expect(readFile(join(cwd, "invalid.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+    expect(await trace("unreserved.json"), stdout).toBe(0);
+    const unreserved = await load("unreserved.json");
+    const denseOnly = traceRasterScene({ width, height, rgba8 }, { nativeDetail: true, densePalette: true });
+    expect(unreserved.elements.slice(0, denseOnly.elements.length)).toEqual(denseOnly.elements);
+    expect(unreserved.elements.slice(denseOnly.elements.length)).toEqual(overlay);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

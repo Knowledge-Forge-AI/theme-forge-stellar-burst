@@ -7,8 +7,11 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli.js";
 import { runSceneCli } from "../src/scene-cli.js";
+import { loadRasterCapability } from "../src/brand/raster-capability.js";
+import { computeSha256 } from "../src/digests.js";
+import { probeMagickDerivativeCapability, renderRasterDerivative, verifyRasterDerivativeOutput } from "../src/illustration/derivative.js";
 import { resolvePreset } from "../src/scene/constants.js";
-import type { JsonResultEnvelope, SceneJsonData, SceneValidateJsonData } from "../src/json.js";
+import type { JsonResultEnvelope, SceneJsonData, SceneValidateJsonData, SceneWebpJsonData } from "../src/json.js";
 
 const roots: string[] = [];
 
@@ -146,6 +149,107 @@ const sampleInvalidScene = {
 };
 
 describe("tfsb scene CLI integration", () => {
+  it.each([
+    ["export-webp", ["--resize-filter", "Catrom", "--output-width", "512"], false],
+    ["export-webp", ["--output-width", "512", "--resize-filter", "Mitchell"], false],
+    ["export-webp", ["--output-width", "512", "--resize-filter", "Lanczos"], false],
+    ["export-webp", ["--resize-filter", "Catrom"], true],
+    ["export-webp", ["--viewbox-size", "--resize-filter", "Catrom"], true],
+    ["export-webp", ["--output-width", "512", "--resize-filter"], true],
+    ["export-webp", ["--output-width", "512", "--resize-filter", "Triangle"], true],
+    ["export-webp", ["--output-width", "512", "--resize-filter", "catrom"], true],
+    ["export-webp", ["--output-width", "512", "--resize-filter", "Catrom", "--resize-filter", "Lanczos"], true],
+    ["rasterize", ["--resize-filter", "Catrom"], true],
+    ["compile", ["--resize-filter", "Lanczos"], true],
+  ] as const)("validates a WebP resize filter (%s %j)", async (action, options, rejected) => {
+    const dir = await makeTestDir();
+    const run = capture();
+    expect(await runSceneCli([action, "missing.svg", ...options, "--expect-svg-digest", "sha256:" + "0".repeat(64),
+      "--output", "output.webp", "--json"], dir, run.io)).toBe(1);
+    const result = JSON.parse(run.stdout());
+    expect(result).toMatchObject({
+      data: null, diagnostics: [{ code: rejected ? "USAGE_ERROR" : "SCENE_FILE_INVALID" }],
+    });
+    if (rejected) expect(result.diagnostics[0].message).toContain("--resize-filter");
+  });
+
+  for (const sharpChroma of [false, true]) {
+    it(`exports reviewed SVG with every resize filter and bound receipts (sharp chroma: ${sharpChroma})`, async ({ skip }) => {
+      const raster = await loadRasterCapability();
+      const encoder = await probeMagickDerivativeCapability();
+      if (!raster.available || !encoder.available) { skip("Qualified rasterizer and ImageMagick required."); return; }
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify({
+        ...sampleValidScene,
+        artboard: { width: 48, height: 32, viewBox: [0, 0, 24, 16] },
+        elements: [
+          { ...sampleValidScene.elements[0], x: 1, y: 1, width: 11, height: 15 },
+          { id: "detail", type: "path", d: "M 0 2 L 23 14", presentation: { stroke: { type: "solid", color: "#E23040" }, strokeWidth: 1 } },
+        ],
+      }));
+      const compiled = capture();
+      expect(await runSceneCli(["compile", "scene.json", "--output", "source.svg", "--json"], dir, compiled.io)).toBe(0);
+      const { svgDigest } = JSON.parse(compiled.stdout()).data.receipt;
+      const rasterized = capture();
+      expect(await runSceneCli(["rasterize", "source.svg", "--svg-source", "--expect-svg-digest", svgDigest,
+        "--output", "source.png", "--json"], dir, rasterized.io)).toBe(0);
+      const png = await readFile(join(dir, "source.png"));
+      for (const filter of ["Lanczos", "Catrom", "Mitchell"]) {
+        const run = capture();
+        expect(await runSceneCli(["export-webp", "source.svg", "--expect-svg-digest", svgDigest,
+          "--output", `${filter}.webp`, "--output-width", "12", "--resize-filter", filter,
+          "--quality", "96", ...(sharpChroma ? ["--sharp-chroma"] : []), "--json"], dir, run.io)).toBe(0);
+        const data = JSON.parse(run.stdout()).data as SceneWebpJsonData;
+        const bytes = await readFile(join(dir, `${filter}.webp`));
+        expect(data).toMatchObject({
+          written: true, svgDigest, pngDigest: computeSha256(png), rasterWidth: 48, rasterHeight: 32,
+          recipe: { schemaVersion: sharpChroma ? 2 : 1, sourceSha256: computeSha256(png), output: { filter, width: 12, height: 8, quality: 96 } },
+          receipt: { sourceSha256: computeSha256(png), recipeDigest: data.recipe.recipeDigest,
+            outputSha256: computeSha256(bytes), byteLength: bytes.length, width: 12, height: 8 },
+        });
+        const replayed = await renderRasterDerivative(png, data.recipe);
+        expect(Buffer.from(replayed.bytes)).toEqual(bytes);
+        expect(verifyRasterDerivativeOutput(replayed, data.recipe)).toEqual(data.receipt);
+      }
+    }, 60_000);
+  }
+
+  for (const [viewBoxSize, outputWidth, rasterWidth, rasterHeight] of [
+    [false, 48, 48, 32],
+    [true, 36, 24, 16],
+  ] as const) {
+    it(`allows filter selection at artboard width or above the viewBox raster (${viewBoxSize} ${outputWidth})`, async ({ skip }) => {
+      const raster = await loadRasterCapability();
+      const encoder = await probeMagickDerivativeCapability();
+      if (!raster.available || !encoder.available) { skip("Qualified rasterizer and ImageMagick required."); return; }
+      const dir = await makeTestDir();
+      await writeFile(join(dir, "scene.json"), JSON.stringify({
+        ...sampleValidScene,
+        artboard: { width: 48, height: 32, viewBox: [0, 0, 24, 16] },
+        elements: [{ ...sampleValidScene.elements[0], x: 1, y: 1, width: 11, height: 15 }],
+      }));
+      const compiled = capture();
+      expect(await runSceneCli(["compile", "scene.json", "--output", "source.svg", "--json"], dir, compiled.io)).toBe(0);
+      const { svgDigest } = JSON.parse(compiled.stdout()).data.receipt;
+      const results: SceneWebpJsonData[] = [];
+      for (const filter of ["Lanczos", "Catrom"]) {
+        const run = capture();
+        expect(await runSceneCli(["export-webp", "source.svg", "--expect-svg-digest", svgDigest,
+          "--output", `${filter}.webp`, "--output-width", String(outputWidth), "--resize-filter", filter,
+          ...(viewBoxSize ? ["--viewbox-size"] : []), "--json"], dir, run.io)).toBe(0);
+        const data = JSON.parse(run.stdout()).data as SceneWebpJsonData;
+        expect(data).toMatchObject({
+          rasterWidth, rasterHeight,
+          recipe: { schemaVersion: 1, output: { filter, width: outputWidth, height: outputWidth * 2 / 3, quality: 94 } },
+          receipt: { outputSha256: computeSha256(await readFile(join(dir, `${filter}.webp`))) },
+        });
+        results.push(data);
+      }
+      expect(results[0]!.pngDigest).toBe(results[1]!.pngDigest);
+      expect(results[0]!.recipe.recipeDigest).not.toBe(results[1]!.recipe.recipeDigest);
+    }, 60_000);
+  }
+
   it.each([
     ["rasterize", "--output-width", "512"],
     ["export-webp", "--output-width", "0"],
