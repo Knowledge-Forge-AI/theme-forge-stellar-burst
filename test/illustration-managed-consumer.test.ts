@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { computeSha256 } from "../src/digests.js";
 import { createRasterIllustrationRecord } from "../src/illustration/v1.js";
-import { createRasterDerivativeRecipe } from "../src/illustration/derivative.js";
+import { createRasterDerivativeRecipe, probeMagickDerivativeCapability, renderRasterDerivative } from "../src/illustration/derivative.js";
+import { loadRasterCapability } from "../src/brand/raster-capability.js";
+import { compileScene } from "../src/scene/index.js";
 import { createIllustrationConsumerProfile, parseIllustrationConsumerLock, serializeIllustrationConsumerProfile } from "../src/illustration/carrier-v1.js";
 import { writeIllustrationCarrier } from "../src/illustration/carrier-write.js";
 import { disposeIllustrationSource, getIllustrationPayload, revalidateIllustrationSource, verifyIllustrationSource } from "../src/illustration/carrier-source.js";
@@ -47,6 +49,76 @@ async function fixture() {
 }
 
 describe("managed saved-raster consumer", () => {
+  it("replays canonical SVG and separates strict encoder identity from byte comparison", async ({ skip }) => {
+    const raster = await loadRasterCapability();
+    const encoder = await probeMagickDerivativeCapability();
+    if (!raster.available || !encoder.available) { skip("Qualified raster and encoder required."); return; }
+
+    const compiled = compileScene({
+      schema: "tfsb.vector-scene-v1", compatibility: 1, compilerLevel: 1, profile: "illustration",
+      artboard: { width: 16, height: 24, viewBox: [0, 0, 16, 24], policy: "contain" },
+      accessibility: { mode: "decorative" },
+      elements: [{ type: "path", id: "ink", d: "M 2 3 L 10 7 L 6 20 Z",
+        presentation: { fill: { type: "solid", color: "#336699" } } }],
+    }, { compactPaths: true });
+    if (!compiled.ok) throw new Error("Expected a canonical SVG fixture.");
+    const svg = Buffer.from(compiled.value.svg);
+    const png = await raster.adapter.renderSvg({
+      canonicalSvgBytes: svg, width: 16, height: 24,
+      backgroundRgba: null, alpha: "straight", fit: "contain-pad", colorSpace: "srgb",
+    });
+    const source = { sha256: computeSha256(png.pngBytes), mime: "image/png" as const,
+      byteLength: png.pngBytes.length, dimensions: { width: 16, height: 24 }, alpha: "straight" as const };
+    const output = { mime: "image/webp", width: 8, height: 12, fit: "contain-pad",
+      colorSpace: "srgb", metadata: "stripped", alpha: "preserve", quality: 88,
+      method: 6, filter: "Catrom" } as const;
+    const recipe = createRasterDerivativeRecipe({ recipeId: "hero-web", recipeRevision: 1,
+      sourceSha256: source.sha256, sourceMime: source.mime, output, processor: encoder.processor });
+    const exported = await renderRasterDerivative(png.pngBytes, recipe);
+    expect(exported.alpha).toBe("has-alpha");
+
+    const root = await temporary();
+    await writeFile(join(root, "reviewed.svg"), svg);
+    async function carrier(directory: string, saved: typeof recipe) {
+      const record = createRasterIllustrationRecord({ illustrationId: "synthetic-hero", revision: 1,
+        operation: "import", characters: [{ id: "synthetic", revision: 1 }],
+        style: { id: "fixture", revision: 1 }, provider: null, model: null, source,
+        references: [{ id: "reviewed-svg", sha256: computeSha256(svg) }], lineage: { parentDigest: null },
+        exportRecipes: [{ id: saved.recipeId, recipeSha256: saved.recipeDigest,
+          mime: "image/webp", width: 8, height: 12, alpha: "straight" }] });
+      await writeIllustrationCarrier({ directory: join(root, directory), packageId: "fixture-art", revision: 1,
+        record, derivatives: [{ recipe: saved, bytes: exported.bytes }] });
+    }
+    const differentEncoder = createRasterDerivativeRecipe({ recipeId: recipe.recipeId, recipeRevision: 1,
+      sourceSha256: source.sha256, sourceMime: source.mime, output,
+      processor: { ...encoder.processor, version: "0.0.0" } });
+    await carrier("matched", recipe);
+    await carrier("different", differentEncoder);
+
+    async function audit(directory: string, compare = false) {
+      let stdout = "";
+      const code = await runIllustrationConsumerCli(["carrier-verify-svg", "--directory", directory,
+        "--svg", "reviewed.svg", ...(compare ? ["--compare-local-encoder"] : []), "--json"],
+        root, { stdout: value => { stdout += value; }, stderr: () => {} });
+      return { code, ...JSON.parse(stdout) };
+    }
+    const derivative = { id: recipe.recipeId, sha256: exported.sha256, alpha: "has-alpha" };
+    expect(await audit("matched")).toMatchObject({ code: 0, state: "verified", data: {
+      svgDigest: computeSha256(svg), pngDigest: source.sha256, derivatives: [derivative], providerRequests: 0,
+    } });
+    expect(await audit("different")).toMatchObject({ code: 3, state: "failed",
+      data: { failureCode: "PROCESSOR_MISMATCH" } });
+    const before = await readFile(join(root, "different/derivatives/hero-web.webp"));
+    expect(await audit("different", true)).toMatchObject({ code: 0, state: "compared", data: {
+      derivatives: [derivative], localEncoderComparison: { recipes: [{
+        derivativeId: recipe.recipeId, savedRecipeDigest: differentEncoder.recipeDigest,
+        replayRecipeDigest: recipe.recipeDigest,
+      }] },
+    } });
+    expect(await readFile(join(root, "different/derivatives/hero-web.webp"))).toEqual(before);
+    expect(await readFile(join(root, "reviewed.svg"))).toEqual(svg);
+  }, 60_000);
+
   it("retains verified source authority and refuses same-byte inode substitution", async () => {
     const f = await fixture(); const source = await verifyIllustrationSource(f.carrier);
     try {
@@ -265,6 +337,14 @@ describe("managed saved-raster consumer", () => {
     expect(created.data.masterEntrySlot).toBe(false);
     expect(created.data).not.toHaveProperty("privateMastersIncluded");
     expect((await run(["carrier-inspect", "--directory", "cli-carrier"])).state).toBe("verified");
+    await writeFile(join(f.root, "reviewed.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    const svgCheck = ["carrier-verify-svg", "--directory", "cli-carrier", "--svg", "reviewed.svg"];
+    expect((await run(svgCheck, 3)).data.failureCode).toBe("ILLUSTRATION_SVG_REFERENCE_MISMATCH");
+    expect((await run([...svgCheck, "--compare-local-encoder"], 3)).data.failureCode)
+      .toBe("ILLUSTRATION_SVG_REFERENCE_MISMATCH");
+    expect((await run(["carrier-inspect", "--directory", "cli-carrier", "--compare-local-encoder"], 1)).state)
+      .toBe("invalid-arguments");
+    expect((await run([...svgCheck, "--root", f.site], 1)).state).toBe("invalid-arguments");
     await rm(join(f.site, ILLUSTRATION_PROFILE_FILENAME));
     const init = ["consumer-init", "--root", f.site, "--id", "fixture-site", "--package", "fixture-art", "--illustration", "synthetic-hero", "--mapping", "hero-web=public/hero.png"];
     expect((await run(init)).state).toBe("configured");

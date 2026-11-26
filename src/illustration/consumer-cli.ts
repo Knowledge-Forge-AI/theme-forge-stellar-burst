@@ -16,7 +16,7 @@ import {
 import { parseRasterIllustration } from "./v1.js";
 
 interface Io { stdout(text: string): void; stderr(text: string): void }
-const COMMANDS = new Set(["carrier-create", "carrier-inspect", "consumer-init", "consumer-plan", "install", "sync"]);
+const COMMANDS = new Set(["carrier-create", "carrier-inspect", "carrier-verify-svg", "consumer-init", "consumer-plan", "install", "sync"]);
 const ERROR_CODE = /^[A-Z][A-Z0-9_]{0,63}$/u;
 
 async function readInput(path: string, limit: number): Promise<Uint8Array> {
@@ -64,11 +64,13 @@ export async function runIllustrationConsumerCli(argv: readonly string[], cwd: s
     const parsed = parseArgs({ args: rest, strict: true, allowPositionals: false, options: {
       json: { type: "boolean" }, root: { type: "string" }, carrier: { type: "string" }, directory: { type: "string" },
       request: { type: "string" }, id: { type: "string" }, mapping: { type: "string", multiple: true }, operation: { type: "string" },
-      package: { type: "string" }, illustration: { type: "string" },
+      package: { type: "string" }, illustration: { type: "string" }, svg: { type: "string" }, "compact-paths": { type: "boolean" },
+      "compare-local-encoder": { type: "boolean" },
     } });
     values = parsed.values;
     const allowed: Record<string, readonly string[]> = {
       "carrier-create": ["json", "request", "directory"], "carrier-inspect": ["json", "directory"],
+      "carrier-verify-svg": ["json", "directory", "svg", "compact-paths", "compare-local-encoder"],
       "consumer-init": ["json", "root", "id", "package", "illustration", "mapping"], "consumer-plan": ["json", "root", "carrier", "operation"],
       install: ["json", "root", "carrier"], sync: ["json", "root", "carrier"],
     };
@@ -98,6 +100,13 @@ export async function runIllustrationConsumerCli(argv: readonly string[], cwd: s
       const source = await verifyIllustrationSource(path(values.directory));
       try { return reply("verified", 0, { manifest: source.manifest, recordDigest: source.record.digest, providerRequests: 0 }); }
       finally { await disposeIllustrationSource(source); }
+    }
+    if (command === "carrier-verify-svg") {
+      const { verifyIllustrationCarrierSvg } = await import("./carrier-svg.js");
+      const compare = values["compare-local-encoder"] === true;
+      const compactPaths = values["compact-paths"] === true ? true : undefined;
+      const proof = await verifyIllustrationCarrierSvg(path(values.directory), path(values.svg), compactPaths, compare);
+      return reply(compare ? "compared" : "verified", 0, { ...proof, providerRequests: 0 });
     }
     if (command === "consumer-init") {
       if (typeof values.id !== "string" || typeof values.package !== "string" || typeof values.illustration !== "string"

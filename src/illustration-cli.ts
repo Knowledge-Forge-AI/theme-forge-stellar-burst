@@ -17,6 +17,7 @@ const USAGE = `Usage:
   tfsb illustration export --recipe <recipe.json> --source <saved.png|webp> --output <new-file> [--json]
   tfsb illustration carrier-create --request <private.json> --directory <new-directory> [--json]
   tfsb illustration carrier-inspect --directory <carrier> [--json]
+  tfsb illustration carrier-verify-svg --directory <carrier> --svg <reviewed.svg> [--compact-paths] [--compare-local-encoder] [--json]
   tfsb illustration consumer-init --root <consumer> --id <profile-id> --package <package-id> --illustration <illustration-id> --mapping <derivative-id=public/file.webp> [--json]
   tfsb illustration consumer-plan --root <consumer> --carrier <carrier> [--operation install|sync] [--json]
   tfsb illustration install|sync --root <consumer> --carrier <carrier> [--json]
@@ -48,7 +49,7 @@ export async function runIllustrationCli(argv: readonly string[], cwd: string, i
     const { runIllustrationRecordCli } = await import("./illustration/record-cli.js");
     return runIllustrationRecordCli(argv, cwd, io);
   }
-  if (command && ["carrier-create", "carrier-inspect", "consumer-init", "consumer-plan", "install", "sync"].includes(command)) {
+  if (command && ["carrier-create", "carrier-inspect", "carrier-verify-svg", "consumer-init", "consumer-plan", "install", "sync"].includes(command)) {
     const { runIllustrationConsumerCli } = await import("./illustration/consumer-cli.js");
     return runIllustrationConsumerCli(argv, cwd, io);
   }

@@ -284,3 +284,19 @@ a process that can rename its ancestors. No native publication ABI is introduced
 Clips, masks, external-asset snapshots and raster vendoring are deferred. General
 text, images, filters, arbitrary XML/CSS/JS, animation and external resources are
 rejected. Examples are original first-party compositions, not dogfood copies.
+
+### Verify a delivery carrier against its SVG
+
+```sh
+tfsb illustration carrier-verify-svg --directory ./carrier --svg ./reviewed.svg --json
+```
+
+Set a reference with ID `reviewed-svg` and the exact SVG's SHA-256 in the
+illustration record before creating the carrier. The audit verifies that
+reference, checks the rendered PNG against the recorded master digest, length,
+and alpha, and replays each saved derivative recipe. The carrier files are
+read-only. Use
+`--compare-local-encoder` to replay the same output settings with the installed
+ImageMagick. The receipt records the saved and replay recipe digests, and each
+derivative must match the carrier's hash, byte length, and alpha status. The
+default mode requires the processor identity recorded in each saved recipe.
