@@ -52,8 +52,8 @@ export const SCENE_USAGE = `Usage:
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
   tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256>] [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
-  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
+  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
   tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
@@ -68,6 +68,7 @@ Options:
   --preserve-alpha      Trace transparency as editable paths with fill opacity
   --fine-alpha          Refine low alpha bands; requires --native-detail and --preserve-alpha
   --dense-palette       Allocate more colors to an opaque native-detail trace
+  --underpaint-overlap  Cover fine-line seams in a reserved dense trace without detail exclusion
   --reserve-elements    Leave room for authored edits in a transparent or dense-palette trace
   --exclude-detail <file>  Omit native detail cells inside a convex source-pixel polygon
   --compact-paths       Remove optional SVG path spacing when compiling
@@ -111,6 +112,7 @@ interface ParsedSceneArgs {
   readonly fineAlpha?: boolean;
   readonly reserveElements?: number;
   readonly densePalette?: boolean;
+  readonly underpaintOverlap?: boolean;
   readonly fitSourceColors?: boolean;
   readonly traceMode?: "regular" | "high-detail" | "native-detail";
   readonly dryRun: boolean;
@@ -184,6 +186,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let fineAlpha = false;
   let reserveElements: number | undefined;
   let densePalette = false;
+  let underpaintOverlap = false;
   let fitSourceColors = false;
   let traceMode: ParsedSceneArgs["traceMode"];
   const positionals: string[] = [];
@@ -245,6 +248,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "Use --dense-palette once with scene trace-png or trace-webp." };
       }
       densePalette = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--underpaint-overlap") {
+      if (!trace || underpaintOverlap) {
+        return { action, dryRun, json, error: "Use --underpaint-overlap once with scene trace-png or trace-webp." };
+      }
+      underpaintOverlap = true;
       i += 1;
       continue;
     }
@@ -524,6 +536,9 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   if (densePalette && (traceMode !== "native-detail" || preserveAlpha)) {
     return { action, dryRun, json, error: "--dense-palette requires --native-detail and an opaque raster." };
   }
+  if (underpaintOverlap && (!densePalette || reserveElements === undefined || excludeDetail !== undefined)) {
+    return { action, dryRun, json, error: "--underpaint-overlap requires --dense-palette and --reserve-elements without --exclude-detail." };
+  }
   if (reserveElements !== undefined && !preserveAlpha && !densePalette) {
     return { action, dryRun, json, error: "--reserve-elements requires --preserve-alpha or --dense-palette." };
   }
@@ -554,6 +569,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     fineAlpha,
     ...(reserveElements === undefined ? {} : { reserveElements }),
     densePalette,
+    underpaintOverlap,
     fitSourceColors,
     dryRun,
     json,
@@ -648,7 +664,7 @@ export async function runSceneCli(
     }
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fineAlpha = false, reserveElements, densePalette = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fineAlpha = false, reserveElements, densePalette = false, underpaintOverlap = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -902,7 +918,7 @@ export async function runSceneCli(
       try {
         pixels = decodeStrictPng(decodedWebp?.bytes ?? bytes);
         scene = traceRasterScene(pixels, {
-          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, fineAlpha, ...(reserveElements === undefined ? {} : { reserveElements }), densePalette, fitSourceColors,
+          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, fineAlpha, ...(reserveElements === undefined ? {} : { reserveElements }), densePalette, underpaintOverlap, fitSourceColors,
         });
       } catch {
         const requiresAlphaOptIn = !preserveAlpha && !densePalette && !fitSourceColors && excludeDetail === undefined
@@ -916,11 +932,13 @@ export async function runSceneCli(
             ? "Source color fitting requires an opaque native trace at the source grid within scene limits."
             : excludeDetail !== undefined
               ? `Detail exclusion requires a bounded opaque ${format}, a matching native grid, and a valid polygon within trace limits.`
-              : densePalette
-                ? "A dense palette requires an opaque raster and enough authored elements for native detail."
-                : preserveAlpha
-                  ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
-                  : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
+              : underpaintOverlap
+                ? "Underpaint overlap requires an opaque dense trace within scene byte, element, and segment limits. Try tracing without --underpaint-overlap."
+                : densePalette
+                  ? "A dense palette requires an opaque raster and enough authored elements for native detail."
+                  : preserveAlpha
+                    ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
+                    : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
         ));
       }
       const validation = validateScene(scene);

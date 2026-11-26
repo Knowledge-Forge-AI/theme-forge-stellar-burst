@@ -186,6 +186,14 @@ with `--exclude-detail`, the base, coarse underpaint and polygon's paint colors
 are counted before assigning the dense detail palette. Dense palettes require
 opaque input. The standard native palette remains the default.
 
+Add `--underpaint-overlap` to a dense trace with `--reserve-elements` to
+cover fine seams beneath the detail contours. It adds a matching bevel-joined
+stroke to the coarse undercoat at width 0.125 before transforms. On a
+1024 × 1536 native trace the 4× undercoat transform makes that 0.5 user units.
+The option is qualified for reserved dense traces. It uses closed undercoat
+paths and the existing byte and segment limits. It cannot be combined with
+`--exclude-detail`.
+
 High-detail tracing is the default for both input commands. On sufficiently large
 inputs, it subdivides cells at color transitions on a finer grid to retain
 thin strokes. It uses up to 1,152 detail colors with a separate 96-color
