@@ -7,14 +7,16 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli.js";
 import { runSceneCli } from "../src/scene-cli.js";
-import { loadRasterCapability } from "../src/brand/raster-capability.js";
+import { decodeStrictPng, loadRasterCapability } from "../src/brand/raster-capability.js";
 import { computeSha256 } from "../src/digests.js";
 import {
   canonicalRasterDerivativeRecipeJson, computeRasterDerivativeRecipeDigest, createRasterDerivativeRecipe,
-  probeMagickDerivativeCapability, renderRasterDerivative, validateRasterDerivativeRecipe, verifyRasterDerivativeOutput,
+  decodeWebpForTrace, probeMagickDerivativeCapability, renderRasterDerivative, validateRasterDerivativeRecipe, verifyRasterDerivativeOutput,
 } from "../src/illustration/derivative.js";
 import { resolvePreset } from "../src/scene/constants.js";
 import type { JsonResultEnvelope, SceneJsonData, SceneValidateJsonData, SceneWebpJsonData } from "../src/json.js";
+import { compileScene, traceRasterScene } from "../src/scene/index.js";
+import { rgbaPng } from "./brand/raster-test-helper.js";
 
 const roots: string[] = [];
 
@@ -44,6 +46,116 @@ function capture() {
     stderr: () => stderr,
   };
 }
+
+describe("fine-alpha trace admission", () => {
+  const required = ["--native-detail", "--preserve-alpha"];
+  const rejected = [
+    ...["trace-png", "trace-webp"].flatMap(action => [
+      ["--fine-alpha"],
+      ["--fine-alpha", "--native-detail"],
+      ["--fine-alpha", "--preserve-alpha"],
+      ["--fine-alpha", "--preserve-alpha", "--regular"],
+      ["--fine-alpha", "--preserve-alpha", "--high-detail"],
+      ["--fine-alpha", ...required, "--regular"],
+      ["--fine-alpha", ...required, "--high-detail"],
+      ["--fine-alpha", ...required, "--fine-alpha"],
+      ["--fine-alpha=true", ...required],
+      ["--fine-alpha=false", ...required],
+      ["--fine-alpha", "true", ...required],
+      ["--fine-alpha", ...required, "--dense-palette"],
+      ["--fine-alpha", ...required, "--fit-source-colors"],
+      ["--fine-alpha", ...required, "--exclude-detail", "missing.json"],
+      ["--fine-alpha", ...required, "--dry-run"],
+    ].map(flags => ({ action, flags }))),
+    ...["validate", "inspect", "compile", "rasterize", "export-webp", "revise", "import-svg"]
+      .map(action => ({ action, flags: ["--fine-alpha"] })),
+  ];
+  for (const json of [false, true]) {
+    it.each(rejected)(`rejects invalid fine-alpha arguments before file processing (json ${json}, %#)`, async ({ action, flags }) => {
+      const dir = await makeTestDir();
+      const run = capture();
+      expect(await runSceneCli([action, "missing.input", ...flags, "--output", "missing-parent/out.json",
+        ...(json ? ["--json"] : [])], dir, run.io)).toBe(1);
+      if (json) {
+        expect(JSON.parse(run.stdout())).toMatchObject({ status: "error", data: null, diagnostics: [{ code: "USAGE_ERROR" }] });
+        expect(run.stderr()).toBe("");
+      } else {
+        expect(run.stdout()).toBe("");
+        expect(run.stderr()).toContain("USAGE_ERROR:");
+      }
+      expect(await readdir(dir)).toEqual([]);
+    });
+  }
+
+  it.each(["trace-png", "trace-webp"])("admits explicit fine-alpha prerequisites in either order for %s", async action => {
+    const dir = await makeTestDir();
+    for (const flags of [["--fine-alpha", ...required], [...required, "--fine-alpha"],
+      ["--preserve-alpha", "--fine-alpha", "--native-detail"]]) {
+      const run = capture();
+      expect(await runSceneCli([action, "missing.input", ...flags, "--output", "out.json", "--json"], dir, run.io)).toBe(1);
+      expect(JSON.parse(run.stdout()).diagnostics[0].code).toBe("SCENE_FILE_INVALID");
+      expect(await readdir(dir)).toEqual([]);
+    }
+  });
+
+  for (const format of ["png", "webp"] as const) {
+    it(`decodes generated ${format} and publishes the fine-alpha scene through the CLI`, async ({ skip }) => {
+      const dir = await makeTestDir();
+      const png = rgbaPng(4, 1, Uint8Array.of(0, 255, 0, 0, 220, 40, 20, 8, 220, 40, 20, 12, 220, 40, 20, 255));
+      let bytes: Uint8Array = png;
+      let pixels = decodeStrictPng(png);
+      if (format === "webp") {
+        const encoder = await probeMagickDerivativeCapability();
+        if (!encoder.available) { skip("Qualified ImageMagick required for generated WebP decoding."); return; }
+        const recipe = createRasterDerivativeRecipe({
+          recipeId: "fine-alpha-test", recipeRevision: 1, sourceSha256: computeSha256(png), sourceMime: "image/png",
+          processor: encoder.processor,
+          output: { mime: "image/webp", width: 4, height: 1, fit: "contain-pad", colorSpace: "srgb", metadata: "stripped",
+            alpha: "preserve", quality: 100, method: 6, filter: "Lanczos" },
+        });
+        bytes = (await renderRasterDerivative(png, recipe)).bytes;
+        pixels = decodeStrictPng((await decodeWebpForTrace(bytes, 4_194_304)).bytes);
+      }
+      await writeFile(join(dir, `source.${format}`), bytes);
+      const args = [`trace-${format}`, `source.${format}`, "--fine-alpha", ...required,
+        "--reserve-elements", "1", "--output", "fine.json"];
+      const run = capture();
+      expect(await runSceneCli([...args, "--json"], dir, run.io), run.stdout()).toBe(0);
+      const report = JSON.parse(run.stdout());
+      expect(report).toMatchObject({ status: "ok", data: { action: `trace-${format}`, written: true } });
+      // The existing result schema reports the output digest and metrics; it does not echo trace flags.
+      expect(report.data.fineAlpha).toBeUndefined();
+      expect(report.data.sourceSha256).toBe(createHash("sha256").update(bytes).digest("hex"));
+      const serialized = await readFile(join(dir, "fine.json"), "utf8");
+      const scene = JSON.parse(serialized);
+      expect(report.data.outputSha256).toBe(createHash("sha256").update(serialized).digest("hex"));
+      expect(scene).toEqual(traceRasterScene(pixels, { nativeDetail: true, preserveAlpha: true, fineAlpha: true, reserveElements: 1 }));
+      expect(scene.elements.map((element: { presentation: { fillOpacity?: number } }) => element.presentation.fillOpacity ?? 1))
+        .toEqual([8 / 255, 12 / 255, 1]);
+      expect(compileScene(scene).ok).toBe(true);
+      if (format === "webp") expect(report.data.decodedPngSha256).toMatch(/^sha256:/);
+      const repeated = capture();
+      expect(await runSceneCli(args, dir, repeated.io)).toBe(1);
+      expect(repeated.stderr()).toContain("SCENE_PUBLISH_TARGET_EXISTS");
+      expect(await readFile(join(dir, "fine.json"), "utf8")).toBe(serialized);
+      const text = capture();
+      expect(await runSceneCli(args.map(arg => arg === "fine.json" ? "text.json" : arg), dir, text.io)).toBe(0);
+      expect(text.stdout()).toContain("Traced scene: text.json");
+    });
+  }
+
+  it("refuses an insufficient fine-alpha paint budget without publishing output", async () => {
+    const dir = await makeTestDir();
+    const width = 16, height = 16;
+    const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) => [220, 40, 20, 253][i % 4]!);
+    await writeFile(join(dir, "source.png"), rgbaPng(width, height, rgba8));
+    const run = capture();
+    expect(await runSceneCli(["trace-png", "source.png", "--fine-alpha", ...required, "--reserve-elements", "1999",
+      "--output", "refused.json", "--json"], dir, run.io)).toBe(1);
+    expect(JSON.parse(run.stdout())).toMatchObject({ data: null, diagnostics: [{ code: "SCENE_RASTER_TRACE_REJECTED" }] });
+    expect(await readdir(dir)).toEqual(["source.png"]);
+  });
+});
 
 const sampleValidScene = {
   schema: "tfsb.vector-scene-v1",

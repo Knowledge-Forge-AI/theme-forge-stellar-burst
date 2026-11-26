@@ -636,7 +636,7 @@ function sampleAlphaCell(source: PixelSource, cols: number, rows: number, x: num
   };
 }
 
-function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number, inset: number, maxColors = 64) {
+function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: number, rows: number, cell: number, inset: number, maxColors = 64, nearOpaqueBand = 16) {
   const width = Math.ceil(cols / cell), height = Math.ceil(rows / cell);
   const samples = makeSamples(width, height, 6);
   const keep = new Uint8Array(width * height);
@@ -649,7 +649,7 @@ function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: num
       let eligible = true;
       for (let row = top; row < bottom && eligible; row++) {
         for (let col = left; col < right; col++) {
-          if (coverage[row * cols + col] !== 16) {
+          if (coverage[row * cols + col] !== nearOpaqueBand) {
             eligible = false;
             break;
           }
@@ -669,19 +669,25 @@ function interiorUnderpaint(source: PixelSource, coverage: Uint8Array, cols: num
 
 function traceTransparentRaster(
   source: PixelSource, maxEdge: number, paletteBudget: number, authoredElementBudget: number,
+  fineAlpha = false, attemptedPalettes?: Set<number>,
 ): VectorScene {
   const { cols, rows } = traceGrid(source, maxEdge);
+  const nativeLarge = maxEdge === NATIVE_TRANSPARENT_EDGE && Math.max(cols, rows) > MAX_TRACE_EDGE;
+  const nearOpaqueBand = fineAlpha ? 24 : 16;
   const alphas = new Uint8Array(cols * rows);
   const colorKeys = new Uint32Array(cols * rows);
   const bits = 6 as const;
-  const bands = Array.from({ length: 17 }, () => ({
+  const bands = Array.from({ length: nearOpaqueBand + 1 }, () => ({
     bits, keys: colorKeys, histogram: new Map<number, Sample>(), count: 0, alphaSum: 0,
   }));
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const index = y * cols + x;
       const { alpha, rgb } = sampleAlphaCell(source, cols, rows, x, y);
-      const band = Math.round(alpha / 16);
+      if (fineAlpha && alpha < 8) continue;
+      const band = fineAlpha
+        ? alpha < 120 ? Math.round(alpha / 8) : Math.round(alpha / 16) + 8
+        : Math.round(alpha / 16);
       if (band === 0) continue;
       const bucket = bands[band]!;
       alphas[index] = band;
@@ -690,10 +696,26 @@ function traceTransparentRaster(
       recordColor(bucket, index, rgb);
     }
   }
+  // Determine eligibility independently for both grids before allocating detail colors.
+  const inset = nativeLarge ? 1 : 2;
+  const preparedPaint = fineAlpha ? interiorUnderpaint(source, alphas, cols, rows, 4, inset, 64, nearOpaqueBand) : undefined;
+  const preparedFine = fineAlpha && nativeLarge
+    ? interiorUnderpaint(source, alphas, cols, rows, 3, inset, 47, nearOpaqueBand) : undefined;
   const palette: { color: HexColor; fillOpacity: number }[] = [];
   const mappings = bands.map(({ count, alphaSum, histogram }, band) => {
     if (count === 0) return undefined;
-    const { colors, indices } = quantize([...histogram.values()], band === 16 ? paletteBudget : 32, bits);
+    let maxColors = band === nearOpaqueBand ? paletteBudget : fineAlpha && band <= 15 ? 14 : 32;
+    if (fineAlpha && band === nearOpaqueBand) {
+      // Native-large reserves 64 coarse paints, 47 fine paints and the opacity group.
+      // Reduced attempts must still leave room for eligible coarse paint and its group.
+      const paintReserve = nativeLarge ? 64 + 47 + 1 : preparedPaint ? 64 + 1 : 0;
+      maxColors = Math.min(maxColors, authoredElementBudget - palette.length - paintReserve);
+      if (maxColors <= 0 || attemptedPalettes?.has(maxColors)) {
+        throw new TraceContourLimitError("Transparent trace has no new palette within the paint reservation.");
+      }
+      attemptedPalettes?.add(maxColors);
+    }
+    const { colors, indices } = quantize([...histogram.values()], maxColors, bits);
     const offset = palette.length;
     palette.push(...colors.map(color => ({ color, fillOpacity: alphaSum / count / 255 })));
     return { indices, offset };
@@ -747,16 +769,17 @@ function traceTransparentRaster(
     return scene;
   }
   const detail = contoursForLayer("alpha", pixels, cols, rows, palette);
-  const nativeLarge = maxEdge === NATIVE_TRANSPARENT_EDGE && Math.max(cols, rows) > MAX_TRACE_EDGE;
   // Both bevel strokes extend at most one trace cell after scaling.
-  const inset = nativeLarge ? 1 : 2;
-  const paint = interiorUnderpaint(source, alphas, cols, rows, 4, inset);
-  const nearOpaque = mappings[16];
-  if (paint && nearOpaque) {
+  const paint = fineAlpha ? preparedPaint : interiorUnderpaint(source, alphas, cols, rows, 4, inset);
+  const nearOpaque = mappings[nearOpaqueBand];
+  if ((paint || preparedFine) && nearOpaque) {
     try {
-      const x = cols / paint.width, y = rows / paint.height;
-      const undercoat = contoursForLayer("alpha-underpaint", paint.pixels, paint.width, paint.height, paint.palette,
-        [{ type: "scale", x, ...(x === y ? {} : { y }) }], 0.5);
+      const paints: ReturnType<typeof contoursForLayer>[] = [];
+      if (paint) {
+        const x = cols / paint.width, y = rows / paint.height;
+        paints.push(contoursForLayer("alpha-underpaint", paint.pixels, paint.width, paint.height, paint.palette,
+          [{ type: "scale", x, ...(x === y ? {} : { y }) }], 0.5));
+      }
       const { fillOpacity } = palette[nearOpaque.offset]!;
       const lowerBands: PathElement[] = [];
       const nearOpaquePaths: PathElement[] = [];
@@ -779,21 +802,22 @@ function traceTransparentRaster(
       if (nativeLarge) {
         try {
           // Reserve an element for the near-opaque group before selecting fine paints.
-          const spare = authoredElementBudget - detail.elements.length - undercoat.elements.length - 1;
-          const fine = spare > 0 ? interiorUnderpaint(source, alphas, cols, rows, 3, inset, Math.min(64, spare)) : undefined;
+          const spare = authoredElementBudget - detail.elements.length - (paints[0]?.elements.length ?? 0) - 1;
+          const fine = fineAlpha ? preparedFine
+            : spare > 0 ? interiorUnderpaint(source, alphas, cols, rows, 3, inset, Math.min(64, spare)) : undefined;
           if (fine) {
             const sx = cols / fine.width, sy = rows / fine.height;
             const fineLayer = contoursForLayer("alpha-fine-underpaint", fine.pixels, fine.width, fine.height, fine.palette,
               [{ type: "scale", x: sx, ...(sx === sy ? {} : { y: sy }) }], 2 / 3);
-            return compose([undercoat, fineLayer]);
+            return compose([...paints, fineLayer]);
           }
         } catch (error) {
-          if (!(error instanceof TraceContourLimitError)) throw error;
+          if (fineAlpha || !(error instanceof TraceContourLimitError)) throw error;
         }
       }
-      return compose([undercoat]);
+      return compose(paints);
     } catch (error) {
-      if (!(error instanceof TraceContourLimitError)) throw error;
+      if (fineAlpha || !(error instanceof TraceContourLimitError)) throw error;
     }
   }
   return sceneWithinBudget([detail]);
@@ -813,10 +837,17 @@ export function traceRasterScene(
     readonly fitSourceColors?: boolean;
     readonly excludeDetail?: unknown;
     readonly preserveAlpha?: boolean;
+    readonly fineAlpha?: boolean;
     readonly reserveElements?: number;
   } = {},
 ): VectorScene {
   const grid = traceGrid(source);
+  if (options.fineAlpha !== undefined && typeof options.fineAlpha !== "boolean") {
+    throw new RangeError("Fine alpha must be a boolean.");
+  }
+  if (options.fineAlpha === true && (options.nativeDetail !== true || options.preserveAlpha !== true)) {
+    throw new RangeError("Fine alpha requires native detail and alpha preservation.");
+  }
   if (options.fitSourceColors && (!options.nativeDetail || options.preserveAlpha)) {
     throw new RangeError("Source color fitting requires an opaque native-detail trace.");
   }
@@ -839,9 +870,10 @@ export function traceRasterScene(
       // Retry the established palette at the same resolution before accepting a coarser grid.
       const palettePresets = edge === NATIVE_TRANSPARENT_EDGE ? [1408, 1152] : [1152];
       const paletteBudgets = new Set(palettePresets.flatMap(colors => [colors, Math.max(1, colors - reserve)]));
+      const attemptedPalettes = options.fineAlpha ? new Set<number>() : undefined;
       for (const colors of paletteBudgets) {
         try {
-          return traceTransparentRaster(source, edge, colors, authoredElementBudget);
+          return traceTransparentRaster(source, edge, colors, authoredElementBudget, options.fineAlpha, attemptedPalettes);
         } catch (error) {
           if (!(error instanceof TraceContourLimitError)) throw error;
         }
