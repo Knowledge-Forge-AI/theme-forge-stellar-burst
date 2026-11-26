@@ -4,11 +4,14 @@ import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { computeSha256 } from "../src/digests.js";
-import { createRasterIllustrationRecord } from "../src/illustration/v1.js";
+import { createRasterIllustrationRecord, serializeRasterIllustration } from "../src/illustration/v1.js";
 import { createRasterDerivativeRecipe, probeMagickDerivativeCapability, renderRasterDerivative } from "../src/illustration/derivative.js";
 import { loadRasterCapability } from "../src/brand/raster-capability.js";
 import { compileScene } from "../src/scene/index.js";
-import { createIllustrationConsumerProfile, parseIllustrationConsumerLock, serializeIllustrationConsumerProfile } from "../src/illustration/carrier-v1.js";
+import {
+  createIllustrationCarrierManifest, createIllustrationConsumerProfile, parseIllustrationCarrierManifest,
+  parseIllustrationConsumerLock, serializeIllustrationCarrierManifest, serializeIllustrationConsumerProfile,
+} from "../src/illustration/carrier-v1.js";
 import { writeIllustrationCarrier } from "../src/illustration/carrier-write.js";
 import { disposeIllustrationSource, getIllustrationPayload, revalidateIllustrationSource, verifyIllustrationSource } from "../src/illustration/carrier-source.js";
 import { disposeIllustrationPlan, executeIllustrationInstallPlan, ILLUSTRATION_LOCK_FILENAME, ILLUSTRATION_PROFILE_FILENAME, planIllustrationInstall } from "../src/illustration/consumer-plan.js";
@@ -141,6 +144,31 @@ describe("managed saved-raster consumer", () => {
     await expect(writeIllustrationCarrier({ directory: absent, packageId: "fixture-art", revision: 1, record: f.art.record,
       derivatives: [{ recipe: f.art.recipe, bytes: Uint8Array.of(1, 2, 3) }] })).rejects.toMatchObject({ code: "ILLUSTRATION_CARRIER_INPUT_INVALID" });
     await expect(lstat(absent)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("refuses an opaque record claim for a transparent saved derivative", async () => {
+    const f = await fixture();
+    const original = await verifyIllustrationSource(f.carrier);
+    await disposeIllustrationSource(original);
+    const manifestPath = join(f.carrier, "manifest.json");
+    const manifest = parseIllustrationCarrierManifest(await readFile(manifestPath));
+    expect(manifest.derivatives[0]?.alpha).toBe("has-alpha");
+    const record = createRasterIllustrationRecord({
+      ...f.art.record,
+      exportRecipes: f.art.record.exportRecipes.map(entry => ({ ...entry, alpha: "opaque" })),
+    });
+    const revised = createIllustrationCarrierManifest({
+      packageId: manifest.packageId, illustrationId: manifest.illustrationId, revision: manifest.revision,
+      derivatives: manifest.derivatives, recordDigest: record.digest,
+    });
+    await writeFile(join(f.carrier, "record.json"), serializeRasterIllustration(record));
+    await writeFile(manifestPath, serializeIllustrationCarrierManifest(revised));
+
+    await expect(verifyIllustrationSource(f.carrier).then(disposeIllustrationSource))
+      .rejects.toMatchObject({ code: "ILLUSTRATION_SOURCE_INVALID" });
+    await expect(planIllustrationInstall({ root: f.site, sourceDirectory: f.carrier }).then(disposeIllustrationPlan))
+      .rejects.toMatchObject({ code: "ILLUSTRATION_PLAN_INPUT_INVALID" });
+    expect((await readdir(f.site)).sort()).toEqual([ILLUSTRATION_PROFILE_FILENAME, "index.html"]);
   });
 
   it("installs exact bytes, preserves unmanaged content, and repeats as a zero-write no-op", async () => {

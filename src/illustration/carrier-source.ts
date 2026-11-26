@@ -114,7 +114,8 @@ export async function verifyIllustrationSource(directoryInput: string): Promise<
       const file = await retain(`derivatives/${item.id}.${extension}`, 32 * 1048576);
       if (file.bytes.byteLength !== item.byteLength || computeSha256(file.bytes) !== item.sha256) invalid();
       const inspected = inspectRasterDerivativePayload(file.bytes, item.mime);
-      if (inspected.width !== item.width || inspected.height !== item.height || inspected.alpha !== item.alpha) invalid();
+      if (inspected.width !== item.width || inspected.height !== item.height || inspected.alpha !== item.alpha
+          || (planned.alpha === "opaque" && inspected.alpha !== "opaque")) invalid();
       payloads.set(item.id, file.bytes); recipes.push(recipe);
     }
     for (const chain of directories) await verifyIllustrationDirectories(chain);
