@@ -79,6 +79,27 @@ Start with a static, metadata-free WebP or a PNG at the intended artboard
 size. Use `--native-detail` for fine artwork and add `--preserve-alpha`
 for a transparent reference. WebP tracing uses the qualified `magick`
 executable. For a PNG reference, use `scene trace-png`.
+Add `--fine-alpha` with both `--native-detail` and `--preserve-alpha`
+to use finer low-alpha grouping. Source alpha below 8 stays transparent;
+alpha from 8 through 119 uses 8-unit band rounding with up to 14 colors
+per band. Higher alpha retains 16-unit grouping with up to 32 colors per
+partially transparent band and the existing near-opaque threshold of 248.
+Occupied bands retain their mean source alpha. Default tracing is unchanged.
+
+The matched cross-character experiment retained the complete 1024 × 1536
+canvas, 1,746 detail paths, 64 coarse paints, and 47 fine paints. Native
+exported WebP mean alpha error fell by 3.6% for Orihime, 5.9% for Hikari,
+8.6% for Shiori, and 5.1% for Rei. These are experiment results; RGB and
+responsive-size gains varied. Finer alpha grouping can improve full-size
+transparency while changing color allocation and contour complexity.
+The native-large profile reserves room for 64 coarse paints, up to 47 fine
+paints, and their shared opacity group before assigning near-opaque detail
+colors. Limit-driven retries can reduce tracing resolution while retaining
+the complete canvas. Eligible paint is retained on each attempt; fine-alpha
+can reject a trace where default tracing would return detail-only.
+Small artworks and regions without eligible paint can still use detail-only.
+Full-size and responsive browser assessment remains parent-owned.
+
 Add `--fit-source-colors` to fit the existing opaque native contours'
 fill colors to their source pixels. It requires the directional trace
 at the exact source grid and fails if that trace exceeds the existing
@@ -89,6 +110,7 @@ WebP export apply the same cap.
 
 ```sh
 tfsb scene trace-webp reference.webp --native-detail --output artwork.scene.json
+tfsb scene trace-png transparent.png --native-detail --preserve-alpha --fine-alpha --output transparent.scene.json
 tfsb scene compile artwork.scene.json --illustration-source --output artwork.svg --json > compile.json
 ```
 

@@ -10,6 +10,237 @@ import { validateCanonicalSceneSvg } from "../src/scene/import-svg.js";
 import { canonicalPathData } from "../src/scene/path-canonical.js";
 import { canonicalizeScene, compileScene, traceRasterScene, validateScene } from "../src/scene/index.js";
 import { rgbaPng } from "./brand/raster-test-helper.js";
+import type { SceneElement } from "../src/scene/types.js";
+
+function allTraceElements(elements: readonly SceneElement[]): SceneElement[] {
+  return elements.flatMap(element => element.type === "group"
+    ? [element, ...allTraceElements(element.children)] : [element]);
+}
+
+const fineAlphaOptions = { nativeDetail: true, preserveAlpha: true, fineAlpha: true };
+
+test.each([
+  { name: "opaque", width: 4, height: 4, options: {}, json: "12b61a80810e39c86a3be4e576fc6a6e1033a672d9b97a45b36fc7c938a5a4d5", svg: "920397304b8b3220139cf95d04af9be0d53f8ae11595283243cacf18af7fac06" },
+  { name: "transparent", width: 4, height: 4, options: { preserveAlpha: true }, json: "65de70f9645d98b793a71d6eacadd453af2d48f7b9ac8a3da049cb7ac84df249", svg: "fa8660a04e4f951583a1c185b248423647d2c675ecbac93196f67d8a74c15df2" },
+  { name: "native underpaint", width: 16, height: 600, options: { preserveAlpha: true, nativeDetail: true }, json: "20f658379b5e483365e8ef729462257fe6f2e5e7f7f99a5dbbe29dc9fa4972a3", svg: "09bac630ed4c32206bcf603c4442c553ecb5dd8772da36fd52c54a5d4e3e1884" },
+  { name: "reservation", width: 4, height: 4, options: { preserveAlpha: true, nativeDetail: true, reserveElements: 1998 }, json: "65de70f9645d98b793a71d6eacadd453af2d48f7b9ac8a3da049cb7ac84df249", svg: "fa8660a04e4f951583a1c185b248423647d2c675ecbac93196f67d8a74c15df2" },
+])("pins pre-fine-alpha JSON and SVG bytes for $name", ({ width, height, options, json, svg }) => {
+  const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) =>
+    [220, 40, 20, options.preserveAlpha ? ((i >> 2) % width < width / 2 ? 128 : 253) : 255][i % 4]!);
+  const scene = traceRasterScene({ width, height, rgba8 }, options);
+  const compiled = compileScene(scene);
+  if (!compiled.ok) throw new Error("Expected baseline compilation");
+  const digest = (text: string) => createHash("sha256").update(text).digest("hex");
+  expect(digest(JSON.stringify(scene))).toBe(json);
+  expect(digest(compiled.value.svg)).toBe(svg);
+  const disabled = traceRasterScene({ width, height, rgba8 }, { ...options, fineAlpha: false });
+  expect(JSON.stringify(disabled)).toBe(JSON.stringify(scene));
+  expect(compileScene(disabled)).toEqual(compiled);
+});
+
+test("fine alpha requires explicit prerequisites and rejects non-boolean API values", () => {
+  const source = { width: 1, height: 1, rgba8: Uint8Array.of(10, 20, 30, 255) };
+  for (const options of [{ fineAlpha: true }, { fineAlpha: true, nativeDetail: true },
+    { fineAlpha: true, preserveAlpha: true }]) {
+    expect(() => traceRasterScene(source, options)).toThrow(/requires native detail and alpha preservation/);
+  }
+  for (const fineAlpha of [1, "true", null]) {
+    expect(() => traceRasterScene(source, { ...fineAlphaOptions, fineAlpha: fineAlpha as unknown as boolean }))
+      .toThrow(/must be a boolean/);
+  }
+  expect(traceRasterScene(source, { fineAlpha: false })).toEqual(traceRasterScene(source));
+  expect(traceRasterScene(source, fineAlphaOptions))
+    .toEqual(traceRasterScene(source, { nativeDetail: true, preserveAlpha: true }));
+  expect(() => traceRasterScene(source, { ...fineAlphaOptions, reserveElements: 1 })).toThrow(/requires transparent tracing/);
+  const opaque = { width: 32, height: 1536, rgba8: new Uint8Array(32 * 1536 * 4).fill(255) };
+  expect(traceRasterScene(opaque, fineAlphaOptions))
+    .toEqual(traceRasterScene(opaque, { nativeDetail: true, preserveAlpha: true }));
+});
+
+test("fine alpha separates low bands, skips alpha below eight and averages occupied bands", () => {
+  const alphas = [0, 4, 7, 8, 11, 12, 19, 20, 119, 120, 127, 128, 135, 247, 248, 255];
+  const rgba8 = Uint8Array.from(alphas.flatMap(alpha => [220, 40, 20, alpha]));
+  const original = rgba8.slice();
+  const source = { width: alphas.length, height: 1, rgba8 };
+  const scene = traceRasterScene(source, fineAlphaOptions);
+  expect(rgba8).toEqual(original);
+  expect(scene.elements.map(element => element.presentation?.fillOpacity ?? 1))
+    .toEqual([9.5, 15.5, 20, 119, 127.5, 247, 251.5].map(alpha => alpha / 255));
+  expect(scene.elements[0]).toMatchObject({ type: "path", d: "M3 0H5V1H3" });
+  const upper = { width: 7, height: 1, rgba8: rgba8.slice(9 * 4) };
+  expect(traceRasterScene(upper, fineAlphaOptions))
+    .toEqual(traceRasterScene(upper, { nativeDetail: true, preserveAlpha: true }));
+  rgba8.set([0, 0, 0, 0], 0);
+  expect(traceRasterScene(source, fineAlphaOptions)).toEqual(scene);
+  rgba8.set(original);
+  expect(rgba8).toEqual(original);
+  const repeated = traceRasterScene(source, fineAlphaOptions);
+  expect(JSON.stringify(repeated)).toBe(JSON.stringify(scene));
+  const compiled = compileScene(scene);
+  expect(compiled.ok).toBe(true);
+  expect(compileScene(repeated)).toEqual(compiled);
+  expect(rgba8).toEqual(original);
+});
+
+test("fine alpha caps low bands at fourteen colors and other partial bands at thirty-two", () => {
+  const width = 64, height = 2;
+  const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) => {
+    const x = (i >> 2) % width, y = Math.floor((i >> 2) / width);
+    return [x * 4, 128, 64, y === 0 ? 8 : 128][i % 4]!;
+  });
+  const scene = traceRasterScene({ width, height, rgba8 }, fineAlphaOptions);
+  expect(scene.elements.filter(element => element.presentation?.fillOpacity === 8 / 255)).toHaveLength(14);
+  expect(scene.elements.filter(element => element.presentation?.fillOpacity === 128 / 255)).toHaveLength(32);
+  expect(validateScene(scene).ok).toBe(true);
+  expect(compileScene(scene).ok).toBe(true);
+});
+
+test("fine alpha keeps premultiplied sampling independent of hidden RGB on a reduced grid", () => {
+  const width = 3072, height = 1;
+  const rgba8 = Uint8Array.from({ length: width * 4 }, (_, i) =>
+    ((i >> 2) % 2 === 0 ? [0, 255, 0, 0] : [220, 40, 20, 128])[i % 4]!);
+  const scene = traceRasterScene({ width, height, rgba8 }, fineAlphaOptions);
+  for (let x = 0; x < width; x += 2) rgba8.set([255, 0, 255, 0], x * 4);
+  expect(traceRasterScene({ width, height, rgba8 }, fineAlphaOptions)).toEqual(scene);
+  expect(scene.elements).toHaveLength(1);
+  expect(scene.elements[0]?.presentation).toEqual({ fill: { type: "solid", color: "#dc2814" }, fillOpacity: 64 / 255 });
+  expect(scene.artboard).toEqual({ width, height, viewBox: [0, 0, 1536, 1] });
+});
+
+test("fine alpha keeps an enclosed transparent hole in its editable compound path", () => {
+  const width = 5, height = 5;
+  const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) =>
+    [220, 40, 20, (i >> 2) === 12 ? 0 : 32][i % 4]!);
+  const source = { width, height, rgba8 };
+  const scene = traceRasterScene(source, fineAlphaOptions);
+  expect(scene.elements).toHaveLength(1);
+  const path = scene.elements[0];
+  if (path?.type !== "path") throw new Error("Expected compound path");
+  expect(path.d.match(/[Mm]/g)).toHaveLength(2);
+  expect(path.presentation?.fillOpacity).toBe(32 / 255);
+  rgba8.set([0, 255, 0, 0], 12 * 4);
+  expect(traceRasterScene(source, fineAlphaOptions)).toEqual(scene);
+  expect(compileScene(scene).ok).toBe(true);
+});
+
+test.each([253, 255])("fine alpha reserves paint and a group before native detail (near-opaque alpha %s)", alpha => {
+  const width = 64, height = 600, reserveElements = 500;
+  const rgba8 = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const color = ((x >> 1) + (y >> 1) * (width >> 1)) % 2048;
+      rgba8.set([16 * (color >> 7) + 4, 16 * ((color >> 3) & 15) + 4, 32 * (color & 7) + 4, y === 0 ? 8 : alpha], (y * width + x) * 4);
+    }
+  }
+  const source = { width, height, rgba8 };
+  const scene = traceRasterScene(source, { ...fineAlphaOptions, reserveElements });
+  const elements = allTraceElements(scene.elements);
+  const detail = elements.filter(element => /^trace-alpha-\d+$/.test(element.id ?? ""));
+  expect(detail).toHaveLength(1388);
+  expect(detail.filter(element => element.presentation?.fillOpacity === 8 / 255)).toHaveLength(14);
+  const coarse = elements.filter(element => element.id?.startsWith("trace-alpha-underpaint-"));
+  const fine = elements.filter(element => element.id?.startsWith("trace-alpha-fine-underpaint-"));
+  expect(coarse.length).toBeGreaterThan(0);
+  expect(coarse.length).toBeLessThanOrEqual(64);
+  expect(fine.length).toBeGreaterThan(0);
+  expect(fine.length).toBeLessThanOrEqual(47);
+  expect(elements.length).toBeLessThanOrEqual(2000 - reserveElements);
+  expect(scene.artboard).toEqual({ width, height, viewBox: [0, 0, width, height] });
+  const group = scene.elements.find(element => element.type === "group");
+  if (alpha === 255) expect(group).toBeUndefined();
+  else {
+    expect(group).toMatchObject({ id: "trace-near-opaque", presentation: { opacity: alpha / 255 } });
+    if (group?.type !== "group") throw new Error("Expected near-opaque group");
+    expect(group.children.every(element => element.presentation?.fillOpacity === undefined)).toBe(true);
+  }
+  const validation = validateScene(scene);
+  expect(validation.ok).toBe(true);
+  if (!validation.ok) throw new Error("Expected bounded fine alpha trace");
+  expect(validation.value.metrics.authoredElementCount).toBe(elements.length);
+  const compiled = compileScene(scene);
+  expect(compiled.ok).toBe(true);
+  if (!compiled.ok) throw new Error("Expected compiled fine alpha trace");
+  expect(Buffer.byteLength(compiled.value.svg)).toBeLessThanOrEqual(16_000_000);
+  expect(validateCanonicalSceneSvg(Buffer.from(compiled.value.svg), false).classification).toBe("SUPPORTED_IMPORT");
+});
+
+test("fine alpha retries a real reservation limit while retaining eligible coarse paint and the full canvas", () => {
+  const width = 32, height = 1536;
+  const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) => [220, 40, 20, 253][i % 4]!);
+  const source = { width, height, rgba8 };
+  const native = traceRasterScene(source, fineAlphaOptions);
+  expect(allTraceElements(native.elements).some(element => element.id?.startsWith("trace-alpha-fine-underpaint-"))).toBe(true);
+  // B=100 cannot hold the fixed native-large reserve of 112; B=65 can
+  // never hold the coarse reserve and one detail color at reduced sizes.
+  const retried = traceRasterScene(source, { ...fineAlphaOptions, reserveElements: 1900 });
+  expect(retried.artboard).toEqual({ width, height, viewBox: [0, 0, 24, 1152] });
+  expect(allTraceElements(retried.elements).some(element => element.id?.startsWith("trace-alpha-underpaint-"))).toBe(true);
+  expect(allTraceElements(retried.elements).length).toBeLessThanOrEqual(100);
+  expect(compileScene(retried).ok).toBe(true);
+  for (const reserveElements of [1935, 1999]) {
+    expect(() => traceRasterScene(source, { ...fineAlphaOptions, reserveElements })).toThrow(/scene limits/);
+  }
+  expect(traceRasterScene(source, { nativeDetail: true, preserveAlpha: true, reserveElements: 1999 }).elements)
+    .toHaveLength(1);
+});
+
+test("fine alpha checks fine-grid eligibility independently of coarse paint", () => {
+  const width = 8, height = 600;
+  const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) =>
+    [220, 40, 20, (i >> 2) % width === 0 || (i >> 2) % width === 7 ? 0 : 253][i % 4]!);
+  const scene = traceRasterScene({ width, height, rgba8 }, fineAlphaOptions);
+  const elements = allTraceElements(scene.elements);
+  expect(elements.some(element => element.id?.startsWith("trace-alpha-underpaint-"))).toBe(false);
+  expect(elements.some(element => element.id?.startsWith("trace-alpha-fine-underpaint-"))).toBe(true);
+  expect(compileScene(scene).ok).toBe(true);
+});
+
+test.each([3, 4])("fine alpha retries instead of discarding eligible %s-cell paint that exceeds the path limit", cell => {
+  const width = cell === 3 ? 96 : 192, height = 1536;
+  const rgba8 = new Uint8Array(width * height * 4);
+  let seed = 42;
+  const offset = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return (seed >>> 16) % 97 - 48;
+  };
+  for (let y = 0; y < height; y += cell) {
+    for (let x = 0; x < width; x += cell) {
+      const center = (x / cell + y / cell) % 2 === 0 ? 112 : 140;
+      // Tiles average to two alternating colors while distributing detail
+      // among many colors. Fine (3) or coarse (4) compound paint paths exceed
+      // 65,536 bytes even though the native detail fits.
+      const channels = Array.from({ length: 3 }, () => Array.from({ length: cell === 3 ? 3 : 8 }, () => {
+        const a = offset();
+        if (cell === 4) return [-a, a];
+        const b = offset();
+        return [-a, -b, a + b];
+      }).flat());
+      for (let i = 0; i < cell * cell; i++) {
+        rgba8.set([center + channels[0]![i]!, center + channels[1]![i]!, center + channels[2]![i]!, 253],
+          ((y + Math.floor(i / cell)) * width + x + i % cell) * 4);
+      }
+    }
+  }
+  const source = { width, height, rgba8 };
+  const legacy = traceRasterScene(source, { nativeDetail: true, preserveAlpha: true });
+  expect(legacy.artboard.viewBox).toEqual([0, 0, width, height]);
+  expect(allTraceElements(legacy.elements).some(element => element.id?.startsWith("trace-alpha-underpaint-"))).toBe(cell === 3);
+  expect(allTraceElements(legacy.elements).some(element => element.id?.startsWith("trace-alpha-fine-underpaint-"))).toBe(false);
+  const scene = traceRasterScene(source, fineAlphaOptions);
+  expect(scene.artboard).toEqual({ width, height, viewBox: [0, 0, width * 0.75, 1152] });
+  expect(allTraceElements(scene.elements).some(element => element.id?.startsWith("trace-alpha-underpaint-"))).toBe(true);
+  expect(compileScene(scene).ok).toBe(true);
+});
+
+test.each([2, 600])("fine alpha permits detail-only when paint is genuinely ineligible (height %s)", height => {
+  const width = 2;
+  const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) =>
+    [220, 40, 20, (i >> 2) % 2 === 0 ? 0 : 253][i % 4]!);
+  const scene = traceRasterScene({ width, height, rgba8 }, fineAlphaOptions);
+  expect(scene.elements).toHaveLength(1);
+  expect(scene.elements[0]?.id).toBe("trace-alpha-0");
+  expect(compileScene(scene).ok).toBe(true);
+});
 
 test("traces holes and point-touching contours into a deterministic editable scene", () => {
   const rows = ["1110", "1010", "1110", "0001"];

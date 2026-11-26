@@ -52,8 +52,8 @@ export const SCENE_USAGE = `Usage:
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
   tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256>] [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
-  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
+  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
   tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
@@ -66,6 +66,7 @@ Options:
   --native-detail       Prioritize fine artwork at the raster export size
   --fit-source-colors  Fit fills to source pixels on a matching opaque native grid
   --preserve-alpha      Trace transparency as editable paths with fill opacity
+  --fine-alpha          Refine low alpha bands; requires --native-detail and --preserve-alpha
   --dense-palette       Allocate more colors to an opaque native-detail trace
   --reserve-elements    Leave room for authored edits in a transparent or dense-palette trace
   --exclude-detail <file>  Omit native detail cells inside a convex source-pixel polygon
@@ -107,6 +108,7 @@ interface ParsedSceneArgs {
   readonly expectedSceneDigest?: string;
   readonly excludeDetail?: string;
   readonly preserveAlpha?: boolean;
+  readonly fineAlpha?: boolean;
   readonly reserveElements?: number;
   readonly densePalette?: boolean;
   readonly fitSourceColors?: boolean;
@@ -179,6 +181,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let illustrationSource = false;
   let excludeDetail: string | undefined;
   let preserveAlpha = false;
+  let fineAlpha = false;
   let reserveElements: number | undefined;
   let densePalette = false;
   let fitSourceColors = false;
@@ -262,6 +265,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "Use --preserve-alpha once with scene trace-png or trace-webp." };
       }
       preserveAlpha = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--fine-alpha") {
+      if (!trace || fineAlpha) {
+        return { action, dryRun, json, error: "Use --fine-alpha once with scene trace-png or trace-webp." };
+      }
+      fineAlpha = true;
       i += 1;
       continue;
     }
@@ -500,6 +512,9 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     return { action, dryRun, json, error: "--viewbox-size requires --svg-source." };
   }
 
+  if (fineAlpha && (traceMode !== "native-detail" || !preserveAlpha)) {
+    return { action, dryRun, json, error: "--fine-alpha requires --native-detail and --preserve-alpha." };
+  }
   if (fitSourceColors && (traceMode !== "native-detail" || preserveAlpha)) {
     return { action, dryRun, json, error: "--fit-source-colors requires --native-detail and an opaque raster." };
   }
@@ -536,6 +551,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     ...(excludeDetail === undefined ? {} : { excludeDetail }),
     ...(traceMode === undefined ? {} : { traceMode }),
     preserveAlpha,
+    fineAlpha,
     ...(reserveElements === undefined ? {} : { reserveElements }),
     densePalette,
     fitSourceColors,
@@ -632,7 +648,7 @@ export async function runSceneCli(
     }
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, reserveElements, densePalette = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fineAlpha = false, reserveElements, densePalette = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -886,7 +902,7 @@ export async function runSceneCli(
       try {
         pixels = decodeStrictPng(decodedWebp?.bytes ?? bytes);
         scene = traceRasterScene(pixels, {
-          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, ...(reserveElements === undefined ? {} : { reserveElements }), densePalette, fitSourceColors,
+          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, fineAlpha, ...(reserveElements === undefined ? {} : { reserveElements }), densePalette, fitSourceColors,
         });
       } catch {
         const requiresAlphaOptIn = !preserveAlpha && !densePalette && !fitSourceColors && excludeDetail === undefined
