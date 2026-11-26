@@ -65,7 +65,7 @@ test("Cloe dense-palette SVG keeps editable headroom without cropping", async ({
   expect(undercoat.every(path => !/ stroke=/u.test(path))).toBe(true);
 });
 
-test("Cloe underpaint overlap improves fine lines without cropping", async ({ page }, info) => {
+test("Cloe underpaint overlap improves fine lines without cropping", async ({ page, browserName }, info) => {
   test.setTimeout(60_000);
   const svg = await traceCloe(page, info, "--native-detail", ["--dense-palette", "--reserve-elements", "125", "--underpaint-overlap"]);
   expect(svg).toContain('viewBox="0 0 1024 1536"');
@@ -102,7 +102,28 @@ test("Cloe underpaint overlap improves fine lines without cropping", async ({ pa
   expect(similarity(painted)).toBeLessThan(similarity(unpainted));
   const nativeWithoutOverlap = await render(page, "/no-overlap.svg", 1024, 1536);
   const nativePainted = await render(page, "/cloe.svg", 1024, 1536);
-  expect(nativePainted.equals(nativeWithoutOverlap)).toBe(true);
+  if (browserName === "webkit" && process.platform === "linux") {
+    // Linux WebKit changes one RGB pixel when painting this fractional stroke.
+    expect(nativePainted.length).toBe(nativeWithoutOverlap.length);
+    let changedPixels = 0;
+    let largestChannelDelta = 0;
+    for (let offset = 0; offset < nativePainted.length; offset += 4) {
+      const delta = Math.max(
+        Math.abs(nativePainted[offset]! - nativeWithoutOverlap[offset]!),
+        Math.abs(nativePainted[offset + 1]! - nativeWithoutOverlap[offset + 1]!),
+        Math.abs(nativePainted[offset + 2]! - nativeWithoutOverlap[offset + 2]!),
+      );
+      if (delta !== 0) changedPixels += 1;
+      largestChannelDelta = Math.max(largestChannelDelta, delta);
+      if (nativePainted[offset + 3] !== nativeWithoutOverlap[offset + 3]) {
+        throw new Error("native-size underpaint changed alpha");
+      }
+    }
+    expect(changedPixels).toBeLessThanOrEqual(1);
+    expect(largestChannelDelta).toBeLessThanOrEqual(6);
+  } else {
+    expect(nativePainted.equals(nativeWithoutOverlap)).toBe(true);
+  }
   await info.attach("undercoat-errors-384.json", {
     body: JSON.stringify({ baseline, improved }), contentType: "application/json",
   });
