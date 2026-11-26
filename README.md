@@ -46,11 +46,10 @@ labels and bounded SVG import. See the [Scene contract](protocol/tfsb-scene-v1/R
 and [import contract](protocol/tfsb-scene-v1/import-svg.md). Existing 0.4 asset,
 installation and drift contracts remain supported.
 
-This version distributes SVG only. Clips, masks, embedded/external resource
-ingestion and distributed PNG output remain deferred. Raster capability is
-reported unavailable without a separately qualified renderer; no renderer is
-silently downloaded. `nova-social` is an SVG source artifact, with no promise
-of social-platform image compatibility.
+The registry release distributes SVG assets. Clips, masks, embedded or
+external resource ingestion, and distributed PNG output remain outside this
+delivery contract. The `nova-social` SVG does not guarantee compatibility
+with social-platform image uploaders.
 
 ## Release family and history
 
@@ -66,8 +65,14 @@ Each has its own artifacts, notices and qualification.
 
 ## Illustration authoring from SVG
 
-The current source candidate supports this workflow. Check the installed
-`tfsb scene` usage before using it with a registry release.
+The published npm 0.7.0 CLI supports scene compilation and SVG import.
+The registry release lacks `trace-png`, `trace-webp` and `export-webp`.
+Use a qualified engineering build, such as the exact Apple Silicon package
+and raster companion from [the PR #35 CI run][illustration-build].
+The workflow below uses that build's scene commands and requires the
+qualified encoder described below.
+
+[illustration-build]: https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/actions/runs/45819597663
 
 Keep the reviewed, full-artboard SVG as the illustration source. An
 editable scene JSON file lets you revise paths or append a named group
@@ -122,9 +127,10 @@ tfsb scene export-webp artwork.svg --expect-svg-digest "$svg_digest" \
   --output artwork.webp --json > export.json
 ```
 
-The export requires a separately qualified
-`@knowledge-forge-ai/tfsb-raster-resvg` companion and the
-qualified `magick` executable on the host. The export receipt binds the
+The export requires the separately qualified
+`@knowledge-forge-ai/tfsb-raster-resvg` companion and a
+qualified `magick` executable on the host. The companion binds the
+`@resvg/resvg-wasm` renderer in the verified engineering build. The export receipt binds the
 source SVG, renderer, PNG, recipe and WebP bytes. Output files must be
 new paths. Keep the SVG and export receipt alongside the delivery file.
 
