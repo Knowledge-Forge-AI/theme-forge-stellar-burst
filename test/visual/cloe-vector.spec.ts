@@ -5,14 +5,14 @@ import { runSceneCli } from "../../src/scene-cli.js";
 import { rgbaPng } from "../brand/raster-test-helper.js";
 import { alphaMeanError, cloeChalkboardBounds, cloeFaceContourBounds, compare, compareCloe, cloeHairSatchelBounds, cloeStylusBounds, cloeSupportingHandBounds, cloeTrouserShoeBounds, loadCloeReference, loadOrihimeReference, meanLineError, orihimeRegions, render } from "./cloe-visual-helpers.js";
 
-async function traceCloe(page: Page, info: TestInfo, detail?: "--regular" | "--native-detail") {
+async function traceCloe(page: Page, info: TestInfo, detail?: "--regular" | "--native-detail", traceOptions: readonly string[] = []) {
   await loadCloeReference(page);
   const input = await render(page, "/reference.webp", 1024, 1536);
   await mkdir(info.outputDir, { recursive: true });
   await writeFile(info.outputPath("reference.png"), rgbaPng(1024, 1536, input));
   let messages = "";
   const io = { stdout: (value: string) => { messages += value; }, stderr: (value: string) => { messages += value; } };
-  expect(await runSceneCli(["trace-png", "reference.png", "--output", "cloe.json", ...(detail ? [detail] : [])], info.outputDir, io), messages).toBe(0);
+  expect(await runSceneCli(["trace-png", "reference.png", "--output", "cloe.json", ...(detail ? [detail] : []), ...traceOptions], info.outputDir, io), messages).toBe(0);
   expect(await runSceneCli(["compile", "cloe.json", "--output", "cloe.svg", ...(detail === "--regular" ? ["--compact-paths"] : [])], info.outputDir, io), messages).toBe(0);
   const svg = await readFile(info.outputPath("cloe.svg"), "utf8");
   expect(svg).not.toMatch(/<(?:image|foreignObject|script)\b|\bhref\s*=/);
@@ -45,6 +45,24 @@ test("Cloe mascot traces into a visually faithful editable SVG", async ({ page, 
       expect(results[region].severe, `${width}px ${region} large-error rate`).toBeLessThan(severeLimit);
     }
   }
+});
+
+test("Cloe dense-palette SVG keeps editable headroom without cropping", async ({ page }, info) => {
+  test.setTimeout(60_000);
+  const svg = await traceCloe(page, info, "--native-detail", ["--dense-palette", "--reserve-elements", "125"]);
+  expect(svg).toContain('viewBox="0 0 1024 1536"');
+  const scene = JSON.parse(await readFile(info.outputPath("cloe.json"), "utf8"));
+  expect(scene.elements.length).toBeLessThanOrEqual(1_875);
+  const width = 512, height = 768;
+  const reference = await render(page, "/reference.webp", width, height);
+  const candidate = await render(page, "/cloe.svg", width, height);
+  const comparisons = compareCloe(reference, candidate, width, height);
+  expect(comparisons.full.mean).toBeLessThan(3.4);
+  expect(comparisons.face.mean).toBeLessThan(5.3);
+
+  const undercoat = svg.match(/<path id="trace-undercoat-\d+"[^>]*\/>/gu) ?? [];
+  expect(undercoat).toHaveLength(96);
+  expect(undercoat.every(path => !/ stroke=/u.test(path))).toBe(true);
 });
 
 test("Cloe high-detail SVG preserves sharp features when enlarged", async ({ page }, info) => {

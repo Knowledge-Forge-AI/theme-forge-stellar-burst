@@ -176,6 +176,16 @@ still has a 2,000-element limit and the illustration SVG still has a
 16,000,000-byte ceiling. A reservation does not guarantee space under other
 limits for any particular edit.
 
+For opaque artwork, use `--native-detail --dense-palette` with either trace
+command to try up to 1,856 detail colors on the native grid. Add
+`--reserve-elements 125` to keep at least 125 slots available for subsequent
+path and group edits. The tracer reduces the admitted palette as needed to
+respect the element budget. The byte and segment limits still apply. A dense
+trace that cannot fit the requested budget reports an error. When combined
+with `--exclude-detail`, the base, coarse underpaint and polygon's paint colors
+are counted before assigning the dense detail palette. Dense palettes require
+opaque input. The standard native palette remains the default.
+
 High-detail tracing is the default for both input commands. On sufficiently large
 inputs, it subdivides cells at color transitions on a finer grid to retain
 thin strokes. It uses up to 1,152 detail colors with a separate 96-color
@@ -212,7 +222,9 @@ whole-pixel vertices, in source coordinates with Y increasing down. The native
 grid must match the source dimensions. The tracer selects its preset on the
 original image and preserves every original path. It lays editable paths in
 underpaint colors over the selected cells. Hiding or removing those paths
-reveals the original detail. Add a named foreground group with `scene revise`
+reveals the original detail. Exclusion traces must fit the 8 MiB scene file
+limit without the path-operand compaction fallback, including when combined
+with `--dense-palette`. Add a named foreground group with `scene revise`
 to draw the replacement detail above the patch. Keep the source PNG,
 polygon, scene JSON, and reviewed SVG together to reproduce the edit.
 

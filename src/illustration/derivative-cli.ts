@@ -15,6 +15,7 @@ import {
   validateRasterDerivativeRecipe,
   type DerivativeCapabilityStatus,
   type RasterDerivativeFailureCode,
+  type RasterDerivativeFilter,
   type RasterDerivativeOutputV1,
   type RasterDerivativeRecipe,
 } from "./derivative.js";
@@ -433,7 +434,8 @@ async function publishDerivative(
 
 /** Encode a reviewed scene's in-memory PNG with the standard illustration WebP recipe. */
 export async function exportSceneWebp(
-  source: Uint8Array, width: number, height: number, output: string, cwd: string, quality?: number, sharpChroma = false,
+  source: Uint8Array, width: number, height: number, output: string, cwd: string,
+  quality?: number, sharpChroma = false, filter?: RasterDerivativeFilter,
 ): Promise<
   | { readonly ok: true; readonly recipe: RasterDerivativeRecipe; readonly receipt: IllustrationDerivativeCliReceiptV1 }
   | { readonly ok: false; readonly code: string }
@@ -441,7 +443,7 @@ export async function exportSceneWebp(
   try {
     const outputPath = resolvedPath(cwd, output, "OUTPUT_TARGET_INVALID");
     await assertOutputAbsent(outputPath);
-    const { recipe, output: encoded, receipt } = await renderSceneWebp(source, width, height, quality, sharpChroma);
+    const { recipe, output: encoded, receipt } = await renderSceneWebp(source, width, height, quality, sharpChroma, filter);
     await publishOutput(outputPath, encoded.bytes);
     return { ok: true, recipe, receipt };
   } catch (error) {

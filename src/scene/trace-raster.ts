@@ -396,14 +396,38 @@ function visitDetailExclusion(vertices: readonly TracePoint[], visit: (x: number
   if (omitted === 0) throw new RangeError("Detail exclusion does not cover a cell.");
 }
 
+function sampleCoarsePaint(grid: SampledRaster, colorLimit: number) {
+  const { colors, indices } = quantize([...grid.histogram.values()], colorLimit, grid.bits);
+  const data = Uint16Array.from(grid.keys, (key) => indices[key]!);
+  return { grid, data, palette: colors };
+}
+
+function sampleExclusionPaint(
+  undercoat: ReturnType<typeof sampleCoarsePaint>, cols: number, rows: number, vertices: readonly TracePoint[],
+) {
+  const { grid, data, palette } = undercoat;
+  const patch = new Uint16Array(cols * rows).fill(palette.length);
+  const colors = new Set<number>();
+  visitDetailExclusion(vertices, (x, y) => {
+    const paintX = Math.floor((x + 0.5) * grid.cols / cols);
+    const paintY = Math.floor((y + 0.5) * grid.rows / rows);
+    const index = data[paintY * grid.cols + paintX]!;
+    patch[y * cols + x] = index;
+    colors.add(index);
+  });
+  return { undercoat, cols, rows, patch, colorCount: colors.size };
+}
+
 interface TraceSettings {
   paletteSize: number;
   block?: 2 | 4;
   segmentLimit?: number;
   maxSvgBytes?: number;
+  authoredElementBudget?: number;
   implicitClose?: boolean;
   fitColors?: boolean;
   excludeDetail?: readonly TracePoint[] | undefined;
+  preparedExclusion?: ReturnType<typeof sampleExclusionPaint> | undefined;
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
 }
@@ -454,15 +478,20 @@ function fitSourceColors(source: PixelSource, pixels: Uint16Array, colors: reado
 function traceSampledRaster(
   source: PixelSource,
   sampled: SampledRaster,
-  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, underpaintColors, underpaintSource = sampled, implicitClose = false, excludeDetail, fitColors = false }: TraceSettings,
+  { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, authoredElementBudget = Infinity,
+    underpaintColors, underpaintSource = sampled,
+    implicitClose = false, excludeDetail, preparedExclusion, fitColors = false }: TraceSettings,
   palette = quantize([...sampled.histogram.values()], paletteSize, sampled.bits),
 ): VectorScene {
   const { cols, rows, keys } = sampled;
+  if (preparedExclusion && (preparedExclusion.cols !== cols || preparedExclusion.rows !== rows)) {
+    throw new RangeError("Detail exclusion requires prepared paint matching the native sample dimensions.");
+  }
   const { indices, colors: originalColors, centers } = palette;
   const pixels = Uint16Array.from(keys, (key) => indices[key]!);
   const colors = fitColors ? fitSourceColors(source, pixels, originalColors) : originalColors;
   const elements: PathElement[] = [];
-  let coarsePaint: { grid: SampledRaster; data: Uint16Array; palette: readonly HexColor[] } | undefined;
+  let coarsePaint: ReturnType<typeof sampleCoarsePaint> | undefined;
   let totalSegments = 0;
   let svgBytes = 1024; // Reserve the SVG header, accessibility title and base path.
   let svgLimit = maxSvgBytes;
@@ -470,7 +499,8 @@ function traceSampledRaster(
   const base = { type: "solid", color: colors[0]! } as const;
 
   function addLayer(
-    data: Uint16Array, width: number, height: number, name: string, scale: number, palette: readonly HexColor[] = colors, scaleY = scale,
+    data: Uint16Array, width: number, height: number, name: string, scale: number,
+    palette: readonly HexColor[] = colors, scaleY = scale,
   ) {
     const transform = scale === 1 && scaleY === 1 ? undefined : [
       { type: "scale" as const, x: scale, ...(scaleY === scale ? {} : { y: scaleY }) },
@@ -489,8 +519,12 @@ function traceSampledRaster(
         // short generated ID, tag, indentation and fixed paint syntax.
         svgBytes += d.length + 2 * segments - (implicitClose ? 0 : contours.length) + pathOverhead;
         if (svgBytes > svgLimit) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
+        if (elements.length >= authoredElementBudget) {
+          throw new TraceContourLimitError("Raster contours exceed the authored element budget.");
+        }
         elements.push({
-          type: "path", id: `trace-${name}-${index}`, d, presentation: { fill },
+          type: "path", id: `trace-${name}-${index}`, d,
+          presentation: { fill },
           ...(transform === undefined ? {} : { transform }),
         });
       }
@@ -501,12 +535,10 @@ function traceSampledRaster(
     totalSegments += 5; // One move, three sides, and close.
     elements.push({ type: "path", id: "trace-base", d: `M0 0H${cols}V${rows}H0Z`, presentation: { fill: base } });
     if (underpaintColors !== undefined) {
-      const paintGrid = underpaintSource;
-      const underpaint = quantize([...paintGrid.histogram.values()], underpaintColors, paintGrid.bits);
-      const paint = Uint16Array.from(paintGrid.keys, (key) => underpaint.indices[key]!);
-      coarsePaint = { grid: paintGrid, data: paint, palette: underpaint.colors };
-      addLayer(paint, paintGrid.cols, paintGrid.rows, "undercoat",
-        cols / paintGrid.cols, underpaint.colors, rows / paintGrid.rows);
+      coarsePaint = preparedExclusion?.undercoat ?? sampleCoarsePaint(underpaintSource, underpaintColors);
+      const { grid, data, palette } = coarsePaint;
+      addLayer(data, grid.cols, grid.rows, "undercoat",
+        cols / grid.cols, palette, rows / grid.rows);
     } else {
       const underCols = Math.ceil(cols / block);
       const underRows = Math.ceil(rows / block);
@@ -538,18 +570,12 @@ function traceSampledRaster(
     if (Buffer.byteLength(JSON.stringify(scene), "utf8") > SCENE_LIMITS.maxInputBytes) {
       throw new TraceContourLimitError("Native trace exceeds the editable scene size limit.");
     }
-    const { grid, data, palette } = coarsePaint;
-    const patch = new Uint16Array(cols * rows).fill(palette.length);
-    visitDetailExclusion(excludeDetail, (x, y) => {
-      const paintX = Math.floor((x + 0.5) * grid.cols / cols);
-      const paintY = Math.floor((y + 0.5) * grid.rows / rows);
-      patch[y * cols + x] = data[paintY * grid.cols + paintX]!;
-    });
+    const { patch } = preparedExclusion ?? sampleExclusionPaint(coarsePaint, cols, rows, excludeDetail);
     // Keeping the original compound paths intact confines browser paint to
     // the selected region, even when an affected detail color spans the page.
     svgLimit = RASTER_MAX_SVG_BYTES;
     try {
-      addLayer(patch, cols, rows, "edit-underpaint", 1, palette);
+      addLayer(patch, cols, rows, "edit-underpaint", 1, coarsePaint.palette);
       if (Buffer.byteLength(JSON.stringify(scene), "utf8") <= SCENE_LIMITS.maxInputBytes) return scene;
     } catch (error) {
       if (!(error instanceof TraceContourLimitError)) throw error;
@@ -746,27 +772,40 @@ function traceTransparentRaster(
 }
 
 const HIGH_DETAIL_SVG_BUDGET = 12_000_000;
+const DENSE_PALETTE_COLOR_LIMIT = 1856;
+const NATIVE_UNDERPAINT_COLORS = 96;
 
 /** Trace sRGB illustrations as editable contours. Alpha preservation is opt-in. */
 export function traceRasterScene(
   source: PixelSource,
-  options: { readonly highDetail?: boolean; readonly nativeDetail?: boolean; readonly fitSourceColors?: boolean; readonly excludeDetail?: unknown; readonly preserveAlpha?: boolean; readonly reserveElements?: number } = {},
+  options: {
+    readonly highDetail?: boolean;
+    readonly nativeDetail?: boolean;
+    readonly densePalette?: boolean;
+    readonly fitSourceColors?: boolean;
+    readonly excludeDetail?: unknown;
+    readonly preserveAlpha?: boolean;
+    readonly reserveElements?: number;
+  } = {},
 ): VectorScene {
   const grid = traceGrid(source);
   if (options.fitSourceColors && (!options.nativeDetail || options.preserveAlpha)) {
     throw new RangeError("Source color fitting requires an opaque native-detail trace.");
+  }
+  if (options.densePalette && (!options.nativeDetail || options.preserveAlpha)) {
+    throw new RangeError("A dense palette requires an opaque native-detail trace.");
   }
   if (options.preserveAlpha && options.excludeDetail !== undefined) {
     throw new RangeError("Transparent tracing does not support detail exclusion.");
   }
   const transparent = options.preserveAlpha && source.rgba8.some((value, i) => (i & 3) === 3 && value !== 255);
   const reserve = options.reserveElements ?? 0;
-  if (options.reserveElements !== undefined && (!transparent || !Number.isInteger(reserve)
+  if (options.reserveElements !== undefined && ((!transparent && !options.densePalette) || !Number.isInteger(reserve)
       || reserve < 1 || reserve >= SCENE_LIMITS.maxAuthoredElements)) {
-    throw new RangeError("Element reservation requires transparent tracing and a positive count below the scene limit.");
+    throw new RangeError("Element reservation requires transparent tracing or a dense palette and a positive count below the scene limit.");
   }
+  const authoredElementBudget = SCENE_LIMITS.maxAuthoredElements - reserve;
   if (transparent) {
-    const authoredElementBudget = SCENE_LIMITS.maxAuthoredElements - reserve;
     const presets = options.nativeDetail ? [NATIVE_TRANSPARENT_EDGE, 1152, 768, 576] : options.highDetail === false ? [576] : [1152, 768, 576];
     for (const edge of presets) {
       // Retry the established palette at the same resolution before accepting a coarser grid.
@@ -786,6 +825,11 @@ export function traceRasterScene(
   const excludeDetail = options.excludeDetail === undefined ? undefined : readDetailExclusion(options.excludeDetail, source.width, source.height);
   if (excludeDetail && !options.nativeDetail) throw new RangeError("Detail exclusion requires native detail.");
   if (options.nativeDetail) {
+    // Leave one element for the base and one per underpaint color.
+    const defaultDenseColors = Math.min(DENSE_PALETTE_COLOR_LIMIT, authoredElementBudget - NATIVE_UNDERPAINT_COLORS - 1);
+    if (options.densePalette && !excludeDetail && defaultDenseColors < 1) {
+      throw new RangeError("The element reservation leaves no room for native detail.");
+    }
     const nativeGrid = traceGrid(source, 768);
     if (options.fitSourceColors && (nativeGrid.cols * 2 !== source.width || nativeGrid.rows * 2 !== source.height)) {
       throw new RangeError("Source color fitting requires a native grid matching the source pixels.");
@@ -799,8 +843,22 @@ export function traceRasterScene(
       const underpaintSource = sampleRaster(source, 6, {
         cols: Math.ceil(nativeGrid.cols / 2), rows: Math.ceil(nativeGrid.rows / 2),
       });
+      // Dense tracing only runs the directional preset below, with this source
+      // and color limit. Any future dense fallback must prepare its own paint.
+      const preparedExclusion = options.densePalette && excludeDetail
+        ? sampleExclusionPaint(sampleCoarsePaint(underpaintSource, NATIVE_UNDERPAINT_COLORS),
+          nativeGrid.cols * 2, nativeGrid.rows * 2, excludeDetail)
+        : undefined;
+      // The edit underpaint emits one authored path for each color present inside the polygon.
+      const denseColors = preparedExclusion
+        ? Math.min(DENSE_PALETTE_COLOR_LIMIT, authoredElementBudget - 1
+          - preparedExclusion.undercoat.palette.length - preparedExclusion.colorCount)
+        : defaultDenseColors;
+      if (preparedExclusion && denseColors < 1) {
+        throw new RangeError("The element reservation leaves no room for native detail.");
+      }
       for (const { edgeThreshold, subdivision, ...traceSettings } of [
-        { edgeThreshold: 2.625, subdivision: "directional" as const, paletteSize: 1664, underpaintColors: 96, implicitClose: true,
+        { edgeThreshold: 2.625, subdivision: "directional" as const, paletteSize: options.densePalette ? denseColors : 1664, underpaintColors: NATIVE_UNDERPAINT_COLORS, implicitClose: true,
           segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
         { edgeThreshold: 4, subdivision: "mean-error" as const, paletteSize: 1536, underpaintColors: 96, implicitClose: true,
           segmentLimit: ILLUSTRATION_SCENE_LIMITS.maxAggregatePathSegments, maxSvgBytes: RASTER_MAX_SVG_BYTES },
@@ -813,13 +871,16 @@ export function traceRasterScene(
         { edgeThreshold: 36, paletteSize: 640, underpaintColors: 96,
           segmentLimit: PREVIOUS_NATIVE_SCENE_LIMITS.maxAggregatePathSegments },
       ]) {
-        if (options.fitSourceColors && subdivision !== "directional") break;
+        if ((options.densePalette || options.fitSourceColors) && subdivision !== "directional") break;
         try {
           const sampled = sampleAdaptiveRaster(source, nativeGrid, edgeThreshold, subdivision);
           // Keep palette search within the six-bit pass's maximum occupied-bin count.
           if (subdivision === "directional" && sampled.histogram.size > 2 ** 18) continue;
           const palette = quantize([...sampled.histogram.values()], traceSettings.paletteSize, sampled.bits, subdivision === "directional");
-          const scene = traceSampledRaster(source, sampled, { ...traceSettings, underpaintSource, excludeDetail, fitColors: options.fitSourceColors === true }, palette);
+          const scene = traceSampledRaster(source, sampled, {
+            ...traceSettings, underpaintSource, excludeDetail, preparedExclusion, fitColors: options.fitSourceColors === true,
+            ...(options.densePalette ? { authoredElementBudget } : {}),
+          }, palette);
           if (excludeDetail) return scene;
           const bytes = Buffer.byteLength(JSON.stringify(scene), "utf8");
           if (bytes <= SCENE_LIMITS.maxInputBytes) return scene;
@@ -836,6 +897,7 @@ export function traceRasterScene(
     }
   }
   if (options.fitSourceColors) throw new RangeError("Source color fitting requires a supported native trace within scene limits.");
+  if (options.densePalette) throw new RangeError("A dense palette requires a supported native trace within scene limits.");
   if (excludeDetail) throw new RangeError("Detail exclusion requires a supported native trace.");
   if ((options.highDetail !== false || options.nativeDetail) && grid.cols * 2 <= source.width && grid.rows * 2 <= source.height
       && grid.cols > 4 && grid.rows > 4) {

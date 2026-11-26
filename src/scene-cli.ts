@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 
 import { assertRasterSvgIsSelfContained, decodeStrictPng, loadRasterCapability, RASTER_MAX_SVG_BYTES } from "./brand/raster-capability.js";
 import { DiagnosticError, diagnostic, type Diagnostic } from "./diagnostics.js";
+import type { RasterDerivativeFilter } from "./illustration/derivative.js";
 import {
   createJsonEnvelope,
   mapMachineDiagnostic,
@@ -49,10 +50,10 @@ export const SCENE_USAGE = `Usage:
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]
   tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
-  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--output-width <pixels>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
+  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--output-width <pixels>] [--resize-filter <filter>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256>] [--dry-run] [--json]
-  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | --exclude-detail <json>] [--fit-source-colors] [--json]
-  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | --exclude-detail <json>] [--fit-source-colors] [--json]
+  tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
+  tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count>]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
   tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
@@ -65,7 +66,8 @@ Options:
   --native-detail       Prioritize fine artwork at the raster export size
   --fit-source-colors  Fit fills to source pixels on a matching opaque native grid
   --preserve-alpha      Trace transparency as editable paths with fill opacity
-  --reserve-elements    Leave room for authored edits in a transparent trace
+  --dense-palette       Allocate more colors to an opaque native-detail trace
+  --reserve-elements    Leave room for authored edits in a transparent or dense-palette trace
   --exclude-detail <file>  Omit native detail cells inside a convex source-pixel polygon
   --compact-paths       Remove optional SVG path spacing when compiling
   --illustration-source  Limit compiled SVG for illustration export to 16,000,000 bytes
@@ -73,6 +75,7 @@ Options:
   --viewbox-size        Rasterize reviewed SVG at its whole-pixel viewBox size
   --output-width        Set WebP width in pixels without changing the artboard ratio
   --quality <0-100>     Set WebP encoder quality (default 94)
+  --resize-filter      Use Lanczos (default), Catrom, or Mitchell with --output-width
   --sharp-chroma       Use the versioned sharp WebP color conversion
   --expect-svg-digest <sha256>  Require the SVG digest to match before rendering or importing
   --expect-scene-digest <sha256>  Match the input JSON digest reported by scene inspect
@@ -95,6 +98,7 @@ interface ParsedSceneArgs {
   readonly svgSource?: boolean;
   readonly viewBoxSize?: boolean;
   readonly outputWidth?: number;
+  readonly resizeFilter?: RasterDerivativeFilter;
   readonly quality?: number;
   readonly sharpChroma?: boolean;
   readonly expectedSvgDigest?: string;
@@ -102,6 +106,7 @@ interface ParsedSceneArgs {
   readonly excludeDetail?: string;
   readonly preserveAlpha?: boolean;
   readonly reserveElements?: number;
+  readonly densePalette?: boolean;
   readonly fitSourceColors?: boolean;
   readonly traceMode?: "regular" | "high-detail" | "native-detail";
   readonly dryRun: boolean;
@@ -160,6 +165,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let svgSource = false;
   let viewBoxSize = false;
   let outputWidth: number | undefined;
+  let resizeFilter: RasterDerivativeFilter | undefined;
   let quality: number | undefined;
   let sharpChroma = false;
   let expectedSvgDigest: string | undefined;
@@ -171,6 +177,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let excludeDetail: string | undefined;
   let preserveAlpha = false;
   let reserveElements: number | undefined;
+  let densePalette = false;
   let fitSourceColors = false;
   let traceMode: ParsedSceneArgs["traceMode"];
   const positionals: string[] = [];
@@ -223,6 +230,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "Use --fit-source-colors once with scene trace-png or trace-webp." };
       }
       fitSourceColors = true;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--dense-palette") {
+      if (!trace || densePalette) {
+        return { action, dryRun, json, error: "Use --dense-palette once with scene trace-png or trace-webp." };
+      }
+      densePalette = true;
       i += 1;
       continue;
     }
@@ -282,6 +298,17 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
         return { action, dryRun, json, error: "Use --output-width <positive integer> once with scene export-webp." };
       }
       outputWidth = Number(next);
+      i += 2;
+      continue;
+    }
+
+    if (arg === "--resize-filter") {
+      const next = rest[i + 1];
+      if (action !== "export-webp" || resizeFilter !== undefined
+          || (next !== "Lanczos" && next !== "Catrom" && next !== "Mitchell")) {
+        return { action, dryRun, json, error: "Use --resize-filter <Lanczos|Catrom|Mitchell> once with scene export-webp." };
+      }
+      resizeFilter = next;
       i += 2;
       continue;
     }
@@ -422,6 +449,10 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     return { action, dryRun, json, error: "scene rasterize requires --output <absent.png>." };
   }
 
+  if (resizeFilter !== undefined && outputWidth === undefined) {
+    return { action, dryRun, json, error: "--resize-filter requires --output-width." };
+  }
+
   if (action === "export-webp" && (output === undefined || expectedSvgDigest === undefined)) {
     return { action, dryRun, json, error: "scene export-webp requires --output <absent.webp> and --expect-svg-digest." };
   }
@@ -460,8 +491,11 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   if (excludeDetail !== undefined && traceMode !== "native-detail") {
     return { action, dryRun, json, error: "--exclude-detail requires --native-detail." };
   }
-  if (reserveElements !== undefined && !preserveAlpha) {
-    return { action, dryRun, json, error: "--reserve-elements requires --preserve-alpha." };
+  if (densePalette && (traceMode !== "native-detail" || preserveAlpha)) {
+    return { action, dryRun, json, error: "--dense-palette requires --native-detail and an opaque raster." };
+  }
+  if (reserveElements !== undefined && !preserveAlpha && !densePalette) {
+    return { action, dryRun, json, error: "--reserve-elements requires --preserve-alpha or --dense-palette." };
   }
   if (excludeDetail !== undefined && preserveAlpha) {
     return { action, dryRun, json, error: "--exclude-detail cannot be combined with --preserve-alpha." };
@@ -478,6 +512,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     svgSource,
     viewBoxSize,
     ...(outputWidth === undefined ? {} : { outputWidth }),
+    ...(resizeFilter === undefined ? {} : { resizeFilter }),
     ...(quality === undefined ? {} : { quality }),
     ...(sharpChroma ? { sharpChroma } : {}),
     ...(expectedSvgDigest === undefined ? {} : { expectedSvgDigest }),
@@ -486,6 +521,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     ...(traceMode === undefined ? {} : { traceMode }),
     preserveAlpha,
     ...(reserveElements === undefined ? {} : { reserveElements }),
+    densePalette,
     fitSourceColors,
     dryRun,
     json,
@@ -570,7 +606,7 @@ export async function runSceneCli(
     return usage(parsed.error);
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, quality, sharpChroma, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, reserveElements, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, quality, sharpChroma, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, reserveElements, densePalette = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -651,7 +687,7 @@ export async function runSceneCli(
       }
       const { pngBytes, pngDigest, rendererBuildDigest } = await renderSvgPng(bytes, rasterWidth, rasterHeight);
       const { exportSceneWebp } = await import("./illustration/derivative-cli.js");
-      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd, quality, sharpChroma);
+      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd, quality, sharpChroma, resizeFilter);
       if (!derivative.ok) {
         throw new DiagnosticError(diagnostic(ctx, `SCENE_WEBP_${derivative.code}`, "Scene WebP export refused."));
       }
@@ -824,10 +860,10 @@ export async function runSceneCli(
       try {
         pixels = decodeStrictPng(decodedWebp?.bytes ?? bytes);
         scene = traceRasterScene(pixels, {
-          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, ...(reserveElements === undefined ? {} : { reserveElements }), fitSourceColors,
+          highDetail: traceMode !== "regular", nativeDetail: traceMode === "native-detail", excludeDetail: polygon, preserveAlpha, ...(reserveElements === undefined ? {} : { reserveElements }), densePalette, fitSourceColors,
         });
       } catch {
-        const requiresAlphaOptIn = !preserveAlpha && !fitSourceColors && excludeDetail === undefined
+        const requiresAlphaOptIn = !preserveAlpha && !densePalette && !fitSourceColors && excludeDetail === undefined
           && pixels?.rgba8.some((channel, index) => index % 4 === 3 && channel !== 255);
         throw new DiagnosticError(diagnostic(
           { operation: "import", domain: "scene" },
@@ -838,7 +874,9 @@ export async function runSceneCli(
             ? "Source color fitting requires an opaque native trace at the source grid within scene limits."
             : excludeDetail !== undefined
               ? `Detail exclusion requires a bounded opaque ${format}, a matching native grid, and a valid polygon within trace limits.`
-              : preserveAlpha
+              : densePalette
+                ? "A dense palette requires an opaque raster and enough authored elements for native detail."
+                : preserveAlpha
                   ? `Transparent trace requires a bounded ${traceSource} and contours within scene limits.`
                   : `Trace requires a bounded opaque ${traceSource} and contours within scene limits.`,
         ));
