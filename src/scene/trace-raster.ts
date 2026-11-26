@@ -305,7 +305,14 @@ function traceContours(
 ) {
   const stride = width + 1;
   const steps = [1, stride, -1, -stride];
-  const edges = Array.from({ length: count }, () => new Set<number>());
+  // Each directed edge belongs to the cell on its right. Store the
+  // color plus one so zero can mark both absent and consumed edges.
+  const owners = new Uint16Array(4 * stride * (height + 1));
+  const edges = Array.from({ length: count }, (): number[] => []);
+  function add(boundary: number[], owner: number, edge: number): void {
+    owners[edge] = owner;
+    boundary.push(edge);
+  }
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const i = y * width + x;
@@ -313,17 +320,20 @@ function traceContours(
       if (color === count) continue; // Reserved index for omitted cells.
       const corner = y * stride + x;
       const boundary = edges[color]!;
-      if (y === 0 || pixels[i - width] !== color) boundary.add(4 * corner);
-      if (x === width - 1 || pixels[i + 1] !== color) boundary.add(4 * (corner + 1) + 1);
-      if (y === height - 1 || pixels[i + width] !== color) boundary.add(4 * (corner + stride + 1) + 2);
-      if (x === 0 || pixels[i - 1] !== color) boundary.add(4 * (corner + stride) + 3);
+      const owner = color + 1;
+      if (y === 0 || pixels[i - width] !== color) add(boundary, owner, 4 * corner);
+      if (x === width - 1 || pixels[i + 1] !== color) add(boundary, owner, 4 * (corner + 1) + 1);
+      if (y === height - 1 || pixels[i + width] !== color) add(boundary, owner, 4 * (corner + stride + 1) + 2);
+      if (x === 0 || pixels[i - 1] !== color) add(boundary, owner, 4 * (corner + stride) + 3);
     }
   }
-  return edges.map((boundary) => {
+  return edges.map((boundary, color) => {
+    const owner = color + 1;
     const contours: string[] = [];
     let segments = 0;
     let previousPosition: number | undefined;
     for (const first of boundary) {
+      if (owners[first] !== owner) continue;
       const start = Math.floor(first / 4);
       let direction = first % 4, vertex = start;
       let path = `M${vertex % stride} ${Math.floor(vertex / stride)}`;
@@ -337,7 +347,7 @@ function traceContours(
       let lastCorner = start;
       segments += implicitClose ? 1 : 2; // Move and optional close command.
       do {
-        boundary.delete(vertex * 4 + direction);
+        owners[vertex * 4 + direction] = 0;
         vertex += steps[direction]!;
         if (vertex === start) break;
         // Clockwise edges keep the filled region on their right. Prefer a
@@ -345,9 +355,9 @@ function traceContours(
         const right = (direction + 1) % 4, left = (direction + 3) % 4;
         const corner = vertex * 4;
         let next: number;
-        if (boundary.has(corner + right)) next = right;
-        else if (boundary.has(corner + direction)) next = direction;
-        else if (boundary.has(corner + left)) next = left;
+        if (owners[corner + right] === owner) next = right;
+        else if (owners[corner + direction] === owner) next = direction;
+        else if (owners[corner + left] === owner) next = left;
         else throw new Error("Raster contour did not close.");
         if (direction !== next) {
           const horizontal = direction % 2 === 0;
