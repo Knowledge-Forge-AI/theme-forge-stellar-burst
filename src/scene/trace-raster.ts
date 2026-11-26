@@ -44,6 +44,12 @@ function makeSamples(cols: number, rows: number, bits: ChannelBits): SampledRast
 
 function sampleCell(source: PixelSource, cols: number, rows: number, x: number, y: number): Color {
   const { width, height, rgba8 } = source;
+  if (cols === width && rows === height) {
+    // On a native grid the cell covers exactly one source pixel.
+    const index = (y * width + x) * 4;
+    if (rgba8[index + 3] !== 255) throw new RangeError("Raster tracing requires opaque pixels.");
+    return [rgba8[index]!, rgba8[index + 1]!, rgba8[index + 2]!];
+  }
   const left = x * width, right = (x + 1) * width;
   const top = y * height, bottom = (y + 1) * height;
   const sum: Color = [0, 0, 0];
@@ -97,6 +103,14 @@ function averagePair(a: Color, b: Color): Color {
   ];
 }
 
+function averageQuad([a, b, c, d]: [Color, Color, Color, Color]): Color {
+  return [
+    Math.round((a[0] + b[0] + c[0] + d[0]) / 4),
+    Math.round((a[1] + b[1] + c[1] + d[1]) / 4),
+    Math.round((a[2] + b[2] + c[2] + d[2]) / 4),
+  ];
+}
+
 function splitAlongEdge(
   [topLeft, topRight, bottomLeft, bottomRight]: [Color, Color, Color, Color],
   errorLimit: number,
@@ -119,6 +133,7 @@ function sampleAdaptiveRaster(
   subdivision: "span" | "mean-error" | "directional" = "span",
 ): SampledRaster {
   const cols = coarse.cols * 2, rows = coarse.rows * 2;
+  const nativeGrid = cols === source.width && rows === source.height;
   const sampled = makeSamples(cols, rows, subdivision === "directional" ? 7 : 6);
   for (let y = 0; y < coarse.rows; y += 1) {
     for (let x = 0; x < coarse.cols; x += 1) {
@@ -129,7 +144,9 @@ function sampleAdaptiveRaster(
         sampleCell(source, cols, rows, left, top + 1),
         sampleCell(source, cols, rows, left + 1, top + 1),
       ];
-      const center = subdivision === "span" ? undefined : sampleCell(source, coarse.cols, coarse.rows, x, y);
+      // On an exact grid the four subcells already hold every covered pixel.
+      const center = subdivision === "span" ? undefined
+        : nativeGrid ? averageQuad(subcells) : sampleCell(source, coarse.cols, coarse.rows, x, y);
       const resolveEdge = center === undefined
         ? [0, 1, 2].some((channel) => {
             const values = subcells.map((rgb) => rgb[channel]!);
@@ -137,7 +154,8 @@ function sampleAdaptiveRaster(
           })
         : subcells.reduce((error, color) => error + colorDifference(color, center), 0)
           >= edgeThreshold * subcells.length * 3;
-      const shared = resolveEdge ? undefined : center ?? sampleCell(source, coarse.cols, coarse.rows, x, y);
+      const shared = resolveEdge ? undefined
+        : center ?? (nativeGrid ? averageQuad(subcells) : sampleCell(source, coarse.cols, coarse.rows, x, y));
       const pairs = resolveEdge && subdivision === "directional"
         ? splitAlongEdge(subcells, edgeThreshold * subcells.length * 3) : undefined;
       subcells.forEach((color, offset) => {
