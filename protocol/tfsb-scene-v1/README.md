@@ -184,11 +184,7 @@ respect the element budget. The byte and segment limits still apply. A dense
 trace that cannot fit the requested budget reports an error. When combined
 with `--exclude-detail`, the base, coarse underpaint and polygon's paint colors
 are counted before assigning the dense detail palette. Dense palettes require
-opaque input. The standard native palette remains the default. Only a dense
-trace with an element reservation adds a matching underpaint stroke to cover
-seams: its width is 0.125 in undercoat coordinates, multiplied by the undercoat
-transform. On a 1024 × 1536 native trace, the 4× transform gives a width of
-0.5 user units.
+opaque input. The standard native palette remains the default.
 
 High-detail tracing is the default for both input commands. On sufficiently large
 inputs, it subdivides cells at color transitions on a finer grid to retain

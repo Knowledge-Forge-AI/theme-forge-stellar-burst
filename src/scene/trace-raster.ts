@@ -430,7 +430,6 @@ interface TraceSettings {
   preparedExclusion?: ReturnType<typeof sampleExclusionPaint> | undefined;
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
-  underpaintStroke?: number;
 }
 
 function illustrationScene(source: PixelSource, cols: number, rows: number, elements: SceneElement[]): VectorScene {
@@ -480,7 +479,7 @@ function traceSampledRaster(
   source: PixelSource,
   sampled: SampledRaster,
   { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, authoredElementBudget = Infinity,
-    underpaintColors, underpaintSource = sampled, underpaintStroke,
+    underpaintColors, underpaintSource = sampled,
     implicitClose = false, excludeDetail, preparedExclusion, fitColors = false }: TraceSettings,
   palette = quantize([...sampled.histogram.values()], paletteSize, sampled.bits),
 ): VectorScene {
@@ -501,14 +500,13 @@ function traceSampledRaster(
 
   function addLayer(
     data: Uint16Array, width: number, height: number, name: string, scale: number,
-    palette: readonly HexColor[] = colors, scaleY = scale, strokeWidth?: number,
+    palette: readonly HexColor[] = colors, scaleY = scale,
   ) {
     const transform = scale === 1 && scaleY === 1 ? undefined : [
       { type: "scale" as const, x: scale, ...(scaleY === scale ? {} : { y: scaleY }) },
     ];
-    const omitClose = strokeWidth === undefined && implicitClose;
-    const pathOverhead = 128 + (strokeWidth === undefined ? 0 : 64) + (serializeTransforms(transform)?.length ?? 0);
-    const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined, omitClose);
+    const pathOverhead = 128 + (serializeTransforms(transform)?.length ?? 0);
+    const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined, implicitClose);
     shapes.forEach(({ contours, segments }, index) => {
       totalSegments += segments;
       if (totalSegments > segmentLimit) throw new TraceContourLimitError("Raster contours exceed the scene path segment limit.");
@@ -519,17 +517,14 @@ function traceSampledRaster(
         // ASCII path data gains a separator before each command and after each
         // non-close command in the spaced SVG. The remaining reserve covers the
         // short generated ID, tag, indentation and fixed paint syntax.
-        svgBytes += d.length + 2 * segments - (omitClose ? 0 : contours.length) + pathOverhead;
+        svgBytes += d.length + 2 * segments - (implicitClose ? 0 : contours.length) + pathOverhead;
         if (svgBytes > svgLimit) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
         if (elements.length >= authoredElementBudget) {
           throw new TraceContourLimitError("Raster contours exceed the authored element budget.");
         }
         elements.push({
           type: "path", id: `trace-${name}-${index}`, d,
-          presentation: {
-            fill,
-            ...(strokeWidth === undefined ? {} : { stroke: fill, strokeWidth, strokeLinejoin: "bevel" as const }),
-          },
+          presentation: { fill },
           ...(transform === undefined ? {} : { transform }),
         });
       }
@@ -543,7 +538,7 @@ function traceSampledRaster(
       coarsePaint = preparedExclusion?.undercoat ?? sampleCoarsePaint(underpaintSource, underpaintColors);
       const { grid, data, palette } = coarsePaint;
       addLayer(data, grid.cols, grid.rows, "undercoat",
-        cols / grid.cols, palette, rows / grid.rows, underpaintStroke);
+        cols / grid.cols, palette, rows / grid.rows);
     } else {
       const underCols = Math.ceil(cols / block);
       const underRows = Math.ceil(rows / block);
@@ -885,9 +880,6 @@ export function traceRasterScene(
           const scene = traceSampledRaster(source, sampled, {
             ...traceSettings, underpaintSource, excludeDetail, preparedExclusion, fitColors: options.fitSourceColors === true,
             ...(options.densePalette ? { authoredElementBudget } : {}),
-            // Cover seams beneath the detail contours. The undercoat transform
-            // scales this 0.125 width (typically 4x, to 0.5 user units).
-            ...(options.densePalette && reserve > 0 ? { underpaintStroke: 0.125 } : {}),
           }, palette);
           if (excludeDetail) return scene;
           const bytes = Buffer.byteLength(JSON.stringify(scene), "utf8");

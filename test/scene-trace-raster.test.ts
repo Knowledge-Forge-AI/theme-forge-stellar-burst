@@ -458,12 +458,7 @@ test("retains the native grid and reserves authored elements with a dense palett
     expect(paint(reserved)).toHaveLength(96);
     for (const path of paint(reserved)) {
       if (path.type !== "path") throw new Error("Expected an undercoat path");
-      expect(path.d).toMatch(/Z$/u);
-      expect(path.presentation).toMatchObject({
-        stroke: path.presentation?.fill,
-        strokeWidth: 0.125,
-        strokeLinejoin: "bevel",
-      });
+      expect(path.presentation?.stroke).toBeUndefined();
       expect(path.transform).toEqual([{ type: "scale", x: 4 }]);
     }
     expect([...paint(regular), ...paint(dense)].every(path => path.presentation?.stroke === undefined)).toBe(true);
