@@ -9,7 +9,10 @@ import { runCli } from "../src/cli.js";
 import { runSceneCli } from "../src/scene-cli.js";
 import { loadRasterCapability } from "../src/brand/raster-capability.js";
 import { computeSha256 } from "../src/digests.js";
-import { probeMagickDerivativeCapability, renderRasterDerivative, verifyRasterDerivativeOutput } from "../src/illustration/derivative.js";
+import {
+  canonicalRasterDerivativeRecipeJson, computeRasterDerivativeRecipeDigest, createRasterDerivativeRecipe,
+  probeMagickDerivativeCapability, renderRasterDerivative, validateRasterDerivativeRecipe, verifyRasterDerivativeOutput,
+} from "../src/illustration/derivative.js";
 import { resolvePreset } from "../src/scene/constants.js";
 import type { JsonResultEnvelope, SceneJsonData, SceneValidateJsonData, SceneWebpJsonData } from "../src/json.js";
 
@@ -149,6 +152,69 @@ const sampleInvalidScene = {
 };
 
 describe("tfsb scene CLI integration", () => {
+  describe("export-webp recipe identifiers", () => {
+    it.each(["artwork", "artwork-full", "artwork.responsive", "artwork_full", "artwork-2.v3_full", "a".repeat(128)])(
+      "accepts an authored identifier before reading the input (%#)", async (recipeId) => {
+        const dir = await makeTestDir();
+        const run = capture();
+        expect(await runSceneCli([
+          "export-webp", "missing.svg", "--expect-svg-digest", "sha256:" + "0".repeat(64),
+          "--output", "missing-parent/output.webp", "--recipe-id", recipeId, "--json",
+        ], dir, run.io)).toBe(1);
+        expect(JSON.parse(run.stdout())).toMatchObject({ data: null, diagnostics: [{ code: "SCENE_FILE_INVALID" }] });
+        expect(await readdir(dir)).toEqual([]);
+      },
+    );
+
+    const malformedIds = [
+      "a".repeat(129), "Artwork-fixture", "2artwork-fixture", "-artwork-fixture", "artwork-fixture-",
+      "artwork--fixture", "artwork._fixture", "artwork/fixture", "artwork:fixture",
+      " artwork-fixture", "artwork-fixture ", "artwork fixture", "artwork\tfixture", "artwork\nfixture",
+      "artwork\u0000fixture", "artwork\u007ffixture", "artwork\ud800fixture", "artwork\udffffixture",
+      "artwork-é", "artwork-e\u0301", "artwork-😀",
+      "sk-fixture", "pk-fixture", "rk-fixture", "token-fixture", "secret-fixture", "bearer-fixture", "api-key-fixture",
+      "artwork-sk-" + "a".repeat(20), "artwork-ghp_" + "a".repeat(20), "artwork-github_pat_" + "a".repeat(20),
+    ];
+    const rejectedArgs = [
+      ...malformedIds.map((value) => ({ action: "export-webp", flags: ["--recipe-id", value], values: [value] })),
+      { action: "export-webp", flags: ["--recipe-id"], values: [] },
+      { action: "export-webp", flags: ["--recipe-id", ""], values: [] },
+      { action: "export-webp", flags: ["--recipe-id", "--sharp-chroma"], values: [] },
+      { action: "export-webp", flags: ["--recipe-id", "artwork-first", "--recipe-id", "artwork-second"], values: ["artwork-first", "artwork-second"] },
+      { action: "export-webp", flags: ["--recipe-id=secret-fixture"], values: ["secret-fixture"] },
+      ...["validate", "inspect", "compile", "rasterize", "revise", "import-svg", "trace-png", "trace-webp"].flatMap((action) => [
+        { action, flags: ["--recipe-id", "artwork-wrong-action"], values: ["artwork-wrong-action"] },
+        { action, flags: ["--recipe-id=secret-fixture"], values: ["secret-fixture"] },
+      ]),
+    ];
+    for (const json of [false, true]) {
+      it.each(rejectedArgs)(`rejects recipe ID arguments before file processing without disclosure (json: ${json}, %#)`, async ({ action, flags, values }) => {
+        const dir = await makeTestDir();
+        const run = capture();
+        expect(await runSceneCli([
+          action, "missing.svg", ...flags, "--expect-svg-digest", "sha256:" + "0".repeat(64),
+          "--output", "missing-parent/output.webp", ...(json ? ["--json"] : []),
+        ], dir, run.io)).toBe(1);
+        if (json) {
+          expect(JSON.parse(run.stdout())).toMatchObject({ data: null, diagnostics: [{ code: "USAGE_ERROR", message: expect.stringContaining("--recipe-id") }] });
+          expect(run.stderr()).toBe("");
+        } else {
+          expect(run.stdout()).toBe("");
+          expect(run.stderr()).toContain("USAGE_ERROR:");
+        }
+        for (const value of values) {
+          for (const stream of [run.stdout(), run.stderr()]) {
+            expect(stream).not.toContain(value);
+            expect(stream).not.toContain(JSON.stringify(value).slice(1, -1));
+          }
+        }
+        // Both the input and destination parent are absent: argument rejection
+        // must win over file/renderer errors and must create no output state.
+        expect(await readdir(dir)).toEqual([]);
+      });
+    }
+  });
+
   it.each([
     ["export-webp", ["--resize-filter", "Catrom", "--output-width", "512"], false],
     ["export-webp", ["--output-width", "512", "--resize-filter", "Mitchell"], false],
@@ -210,6 +276,72 @@ describe("tfsb scene CLI integration", () => {
         const replayed = await renderRasterDerivative(png, data.recipe);
         expect(Buffer.from(replayed.bytes)).toEqual(bytes);
         expect(verifyRasterDerivativeOutput(replayed, data.recipe)).toEqual(data.receipt);
+      }
+
+      for (const responsive of [false, true]) {
+        const name = responsive ? "responsive" : "full";
+        const recipeId = `artwork-${name}`;
+        const width = responsive ? 12 : 48;
+        const height = responsive ? 8 : 32;
+        const results: SceneWebpJsonData[] = [];
+        const buffers: Buffer[] = [];
+        for (const [suffix, id] of [["default", undefined], ["explicit", "scene-webp"], ["custom", recipeId]] as const) {
+          const output = `${name}-${suffix}.webp`;
+          const run = capture();
+          expect(await runSceneCli([
+            "export-webp", "source.svg", "--expect-svg-digest", svgDigest, "--output", output,
+            ...(responsive ? ["--output-width", "12", "--resize-filter", "Catrom", "--quality", "96"] : []),
+            ...(sharpChroma ? ["--sharp-chroma"] : []), ...(id === undefined ? [] : ["--recipe-id", id]), "--json",
+          ], dir, run.io)).toBe(0);
+          expect(run.stderr()).toBe("");
+          const data = JSON.parse(run.stdout()).data as SceneWebpJsonData;
+          const bytes = await readFile(join(dir, output));
+          expect(data).toMatchObject({
+            written: true, svgDigest, pngDigest: computeSha256(png), rasterWidth: 48, rasterHeight: 32,
+            recipe: {
+              recipeId: id ?? "scene-webp", recipeRevision: 1, schemaVersion: sharpChroma ? 2 : 1,
+              sourceSha256: computeSha256(png), sourceMime: "image/png", processor: encoder.processor,
+              output: { mime: "image/webp", width, height, fit: "contain-pad", colorSpace: "srgb", metadata: "stripped",
+                alpha: "preserve", quality: responsive ? 96 : 94, method: 6, filter: responsive ? "Catrom" : "Lanczos" },
+            },
+            receipt: { sourceSha256: computeSha256(png), recipeDigest: data.recipe.recipeDigest,
+              outputSha256: computeSha256(bytes), byteLength: bytes.length, width, height, alpha: "has-alpha" },
+          });
+          expect(data.recipe.recipeDigest).toBe(computeRasterDerivativeRecipeDigest(data.recipe));
+          results.push(data);
+          buffers.push(bytes);
+        }
+        const [omitted, explicit, custom] = results as [SceneWebpJsonData, SceneWebpJsonData, SceneWebpJsonData];
+        expect(buffers[1]).toEqual(buffers[0]);
+        expect(buffers[2]).toEqual(buffers[0]);
+        expect(canonicalRasterDerivativeRecipeJson(explicit.recipe)).toBe(canonicalRasterDerivativeRecipeJson(omitted.recipe));
+        expect(JSON.stringify(explicit.receipt)).toBe(JSON.stringify(omitted.receipt));
+        expect(custom.recipe.recipeDigest).not.toBe(omitted.recipe.recipeDigest);
+        expect(custom.receipt.recipeDigest).toBe(custom.recipe.recipeDigest);
+        expect(custom.receipt.receiptDigest).not.toBe(omitted.receipt.receiptDigest);
+        expect({ ...custom.recipe, recipeId: omitted.recipe.recipeId, recipeDigest: omitted.recipe.recipeDigest }).toEqual(omitted.recipe);
+        expect({ ...custom.receipt, recipeDigest: omitted.receipt.recipeDigest, receiptDigest: omitted.receipt.receiptDigest }).toEqual(omitted.receipt);
+        const replayed = await renderRasterDerivative(png, custom.recipe);
+        expect(Buffer.from(replayed.bytes)).toEqual(buffers[2]);
+        expect(verifyRasterDerivativeOutput(replayed, custom.recipe)).toEqual(custom.receipt);
+
+        // Reconstruct the pre-option recipe definition through the canonical API,
+        // independently of the recipe returned by the CLI.
+        const originalBase = {
+          recipeId: "scene-webp", recipeRevision: 1, sourceSha256: computeSha256(png), sourceMime: "image/png",
+          processor: encoder.processor,
+          output: { mime: "image/webp", width, height, fit: "contain-pad", colorSpace: "srgb", metadata: "stripped",
+            alpha: "preserve", quality: responsive ? 96 : 94, method: 6, filter: responsive ? "Catrom" : "Lanczos" },
+        } as const;
+        const originalDraft = { schema: "tfsb.raster-derivative-recipe", schemaVersion: 2, ...originalBase,
+          output: { ...originalBase.output, chroma: "sharp-yuv" } };
+        const originalRecipe = sharpChroma
+          ? validateRasterDerivativeRecipe({ ...originalDraft, recipeDigest: computeRasterDerivativeRecipeDigest(originalDraft) })
+          : createRasterDerivativeRecipe(originalBase);
+        expect(canonicalRasterDerivativeRecipeJson(omitted.recipe)).toBe(canonicalRasterDerivativeRecipeJson(originalRecipe));
+        const originalOutput = await renderRasterDerivative(png, originalRecipe);
+        expect(Buffer.from(originalOutput.bytes)).toEqual(buffers[0]);
+        expect(JSON.stringify(omitted.receipt)).toBe(JSON.stringify(verifyRasterDerivativeOutput(originalOutput, originalRecipe)));
       }
     }, 60_000);
   }

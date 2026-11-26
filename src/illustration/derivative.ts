@@ -193,7 +193,7 @@ function text(value: unknown, maximum: number): string {
   return value;
 }
 
-function identifier(value: unknown): string {
+export function validateRasterDerivativeRecipeId(value: unknown): string {
   const result = text(value, DERIVATIVE_LIMITS.idBytes);
   if (!ID.test(result) || hasIllustrationPrivateTokenPrefix(result) || hasIllustrationCredentialToken(result)) invalid();
   return result;
@@ -252,7 +252,7 @@ function normalizeRecipe(value: unknown, requireDigest: boolean): { readonly bas
   const rawOutput = own(record, "output");
   const output = normalizeOutput(rawOutput, version === 2);
   const common = {
-    schema: DERIVATIVE_RECIPE_SCHEMA_ID, recipeId: identifier(own(record, "recipeId")),
+    schema: DERIVATIVE_RECIPE_SCHEMA_ID, recipeId: validateRasterDerivativeRecipeId(own(record, "recipeId")),
     recipeRevision: integer(own(record, "recipeRevision"), 1, 1_000_000),
     sourceSha256: digest(own(record, "sourceSha256")), sourceMime: enumeration(own(record, "sourceMime"), MIMES),
     processor: normalizeProcessor(own(record, "processor")),
@@ -776,9 +776,9 @@ export function verifyRasterDerivativeOutput(
 
 /** Encode an in-memory scene raster without accessing a destination. */
 export function renderSceneWebp(
-  source: Uint8Array, width: number, height: number, quality?: number, sharpChroma = false, filter?: RasterDerivativeFilter,
+  source: Uint8Array, width: number, height: number, quality?: number, sharpChroma = false, filter?: RasterDerivativeFilter, recipeId?: string,
 ) {
-  return encodeSceneWebp(source, width, height, runMagick, quality, sharpChroma, filter);
+  return encodeSceneWebp(source, width, height, runMagick, quality, sharpChroma, filter, recipeId);
 }
 
 /** Decode a bounded still WebP through the existing processor, preserving its canvas. */
@@ -822,7 +822,7 @@ export function renderSceneWebpWithNixMagick(
 
 async function encodeSceneWebp(
   source: Uint8Array, width: number, height: number, run: RunMagick,
-  quality = 94, sharpChroma = false, filter: RasterDerivativeFilter = "Lanczos",
+  quality = 94, sharpChroma = false, filter: RasterDerivativeFilter = "Lanczos", recipeId = "scene-webp",
 ): Promise<{
   readonly recipe: RasterDerivativeRecipe;
   readonly output: RasterDerivativeOutputV1;
@@ -835,7 +835,7 @@ async function encodeSceneWebp(
   const capability = await probeMagick(run);
   if (!capability.available) throw new RasterDerivativeError("PROCESSOR_UNAVAILABLE");
   const base = {
-    recipeId: "scene-webp", recipeRevision: 1,
+    recipeId, recipeRevision: 1,
     sourceSha256: computeSha256(snapshot), sourceMime: "image/png",
     processor: capability.processor,
     output: {

@@ -258,6 +258,33 @@ SVG, use the existing import and compile workflow, then review the emitted
 canonical SVG and record its digest. The maintained illustration exporter
 can encode the PNG as WebP with a source-bound recipe.
 
+Use `scene export-webp` to render a reviewed SVG and publish a WebP in one
+command. Each export defaults to the recipe identifier `scene-webp`. Supply
+`--recipe-id <id>` to author distinct identifiers for full and responsive
+derivatives, using the reviewed SVG's digest in both commands:
+
+```sh
+tfsb scene export-webp reviewed.svg --expect-svg-digest <digest> --output artwork-full.webp --recipe-id artwork-full --json
+tfsb scene export-webp reviewed.svg --expect-svg-digest <digest> --output artwork-responsive.webp --output-width 512 --recipe-id artwork-responsive --json
+```
+
+Identifiers must be nonempty, already NFC-normalized strings of at most 128
+UTF-8 bytes matching `^[a-z][a-z0-9]*(?:[-._][a-z0-9]+)*$`. Control characters,
+surrogates, recognizable credential tokens, and the existing private prefixes
+(`sk`, `pk`, `rk`, `token`, `secret`, `bearer`, and `api-key`/`api_key`, followed
+by a hyphen, underscore, or end of string) are refused. Values are never
+trimmed, lowercased, or normalized. The option accepts one space-separated
+value, only on `scene export-webp`. Missing, invalid, repeated, equals-form,
+and wrong-action uses return `USAGE_ERROR` without echoing the value, before
+reading the SVG, loading the rasterizer, or accessing the destination.
+
+Changing only the identifier changes the canonical recipe digest and the
+receipt's `recipeDigest` and `receiptDigest`, while preserving encoded WebP
+bytes and all encode settings. The receipt binds the identifier through the
+recipe digest; it does not contain a recipe ID field. Omitting the option
+preserves the existing recipe, receipt, and output bytes. Consumers and
+carriers remain responsible for sorting recipe IDs and requiring uniqueness.
+
 To reopen the same reviewed SVG as an editable scene, use
 `scene import-svg reviewed.svg --svg-source --expect-svg-digest <digest>
 --output reopened.scene.json --json`. Supply `--compact-paths` for a compact
