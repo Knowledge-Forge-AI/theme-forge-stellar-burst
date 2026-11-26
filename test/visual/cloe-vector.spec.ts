@@ -65,6 +65,49 @@ test("Cloe dense-palette SVG keeps editable headroom without cropping", async ({
   expect(undercoat.every(path => !/ stroke=/u.test(path))).toBe(true);
 });
 
+test("Cloe underpaint overlap improves fine lines without cropping", async ({ page }, info) => {
+  test.setTimeout(60_000);
+  const svg = await traceCloe(page, info, "--native-detail", ["--dense-palette", "--reserve-elements", "125", "--underpaint-overlap"]);
+  expect(svg).toContain('viewBox="0 0 1024 1536"');
+  const scene = JSON.parse(await readFile(info.outputPath("cloe.json"), "utf8"));
+  expect(scene.elements.length).toBeLessThanOrEqual(1_875);
+  const width = 512, height = 768;
+  const reference = await render(page, "/reference.webp", width, height);
+  const candidate = await render(page, "/cloe.svg", width, height);
+  const comparisons = compareCloe(reference, candidate, width, height);
+  expect(comparisons.full.mean).toBeLessThan(3.4);
+  expect(comparisons.face.mean).toBeLessThan(5.3);
+
+  // Use the same closed geometry and palette as the candidate, removing only the overlap paint.
+  let undercoatPaths = 0;
+  const withoutOverlap = svg.replace(/<path id="trace-undercoat-\d+"[^>]*\/>/gu, (path) => {
+    const stripped = path.replace(/ stroke="#[0-9A-F]{6}" stroke-width="0\.125" stroke-linejoin="bevel"/u, "");
+    expect(stripped).not.toBe(path);
+    undercoatPaths++;
+    return stripped;
+  });
+  expect(undercoatPaths).toBe(96);
+  await page.route("http://cloe.test/no-overlap.svg", route =>
+    route.fulfill({ contentType: "image/svg+xml", body: withoutOverlap }));
+  const smallWidth = 384, smallHeight = 576;
+  const smallReference = await render(page, "/reference.webp", smallWidth, smallHeight);
+  const unpainted = await render(page, "/no-overlap.svg", smallWidth, smallHeight);
+  const painted = await render(page, "/cloe.svg", smallWidth, smallHeight);
+  const baseline = compareCloe(smallReference, unpainted, smallWidth, smallHeight);
+  const improved = compareCloe(smallReference, painted, smallWidth, smallHeight);
+  expect(improved.full.mean).toBeLessThan(baseline.full.mean - 0.25);
+  expect(improved.face.mean).toBeLessThan(baseline.face.mean - 0.4);
+  const fringeBounds = [124, 5, 262, 54] as const;
+  const similarity = (after: Buffer) => meanLineError(smallReference, after, smallWidth, fringeBounds);
+  expect(similarity(painted)).toBeLessThan(similarity(unpainted));
+  const nativeWithoutOverlap = await render(page, "/no-overlap.svg", 1024, 1536);
+  const nativePainted = await render(page, "/cloe.svg", 1024, 1536);
+  expect(nativePainted.equals(nativeWithoutOverlap)).toBe(true);
+  await info.attach("undercoat-errors-384.json", {
+    body: JSON.stringify({ baseline, improved }), contentType: "application/json",
+  });
+});
+
 test("Cloe high-detail SVG preserves sharp features when enlarged", async ({ page }, info) => {
   test.setTimeout(60_000);
   const svg = await traceCloe(page, info);

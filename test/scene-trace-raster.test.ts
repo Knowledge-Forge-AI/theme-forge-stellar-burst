@@ -632,6 +632,13 @@ test("rejects dense palettes outside opaque native tracing", () => {
   ]) {
     expect(() => traceRasterScene(source, options)).toThrow(/dense palette/i);
   }
+  for (const options of [
+    { nativeDetail: true, reserveElements: 125 },
+    { nativeDetail: true, densePalette: true },
+    { nativeDetail: true, densePalette: true, reserveElements: 125, excludeDetail: {} },
+  ]) {
+    expect(() => traceRasterScene(source, { ...options, underpaintOverlap: true })).toThrow(/underpaint overlap/i);
+  }
   const translucent = source.rgba8.slice();
   translucent[3] = 128;
   expect(() => traceRasterScene({ ...source, rgba8: translucent }, { nativeDetail: true, densePalette: true }))
@@ -663,6 +670,10 @@ test("retains the native grid and reserves authored elements with a dense palett
       ["--native-detail", "--dense-palette", "--preserve-alpha"],
       ["--native-detail", "--dense-palette", "--dense-palette"],
       ["--native-detail", "--reserve-elements", "125"],
+      ["--native-detail", "--underpaint-overlap"],
+      ["--native-detail", "--dense-palette", "--underpaint-overlap"],
+      ["--native-detail", "--dense-palette", "--reserve-elements", "125", "--underpaint-overlap", "--underpaint-overlap"],
+      ["--native-detail", "--dense-palette", "--reserve-elements", "125", "--underpaint-overlap", "--exclude-detail", "unused.json"],
     ]) {
       expect(await trace("refused.json", ...options)).toBe(1);
       expect(JSON.parse(stdout).diagnostics[0].code).toBe("USAGE_ERROR");
@@ -698,6 +709,23 @@ test("retains the native grid and reserves authored elements with a dense palett
 
     expect(await trace("repeated.json", "--native-detail", "--dense-palette", "--reserve-elements", "125"), stdout).toBe(0);
     expect(await readFile(join(cwd, "repeated.json"), "utf8")).toBe(await readFile(join(cwd, "reserved.json"), "utf8"));
+    expect(await trace("overlap.json", "--native-detail", "--dense-palette", "--reserve-elements", "125", "--underpaint-overlap"), stdout).toBe(0);
+    const overlap = await load("overlap.json");
+    expect(overlap.artboard).toEqual(reserved.artboard);
+    expect(overlap.elements.map(({ id }) => id)).toEqual(reserved.elements.map(({ id }) => id));
+    expect(paint(overlap)).toHaveLength(96);
+    for (const path of paint(overlap)) {
+      if (path.type !== "path") throw new Error("Expected an undercoat path");
+      expect(path.presentation?.stroke).toEqual(path.presentation?.fill);
+      expect(path.presentation?.strokeWidth).toBe(0.125);
+      expect(path.presentation?.strokeLinejoin).toBe("bevel");
+      expect(path.d).toMatch(/^(?:[Mm][^MmZ]*Z)+$/u);
+      expect(path.transform).toEqual([{ type: "scale", x: 4 }]);
+    }
+    const compiledOverlap = compileScene(overlap);
+    if (!compiledOverlap.ok) throw new Error("Expected a compiled dense overlap scene");
+    expect(Buffer.byteLength(compiledOverlap.value.svg)).toBeLessThanOrEqual(16_000_000);
+
     const compiled = compileScene(reserved);
     if (!compiled.ok) throw new Error("Expected a compiled dense reserved scene");
     const canonical = canonicalizeScene(reserved);

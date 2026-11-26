@@ -458,6 +458,7 @@ interface TraceSettings {
   preparedExclusion?: ReturnType<typeof sampleExclusionPaint> | undefined;
   underpaintColors?: number;
   underpaintSource?: SampledRaster;
+  underpaintStroke?: number;
 }
 
 function illustrationScene(source: PixelSource, cols: number, rows: number, elements: SceneElement[]): VectorScene {
@@ -507,7 +508,7 @@ function traceSampledRaster(
   source: PixelSource,
   sampled: SampledRaster,
   { paletteSize, block = 2, segmentLimit = Infinity, maxSvgBytes = Infinity, authoredElementBudget = Infinity,
-    underpaintColors, underpaintSource = sampled,
+    underpaintColors, underpaintSource = sampled, underpaintStroke,
     implicitClose = false, excludeDetail, preparedExclusion, fitColors = false }: TraceSettings,
   palette = quantize([...sampled.histogram.values()], paletteSize, sampled.bits),
 ): VectorScene {
@@ -528,13 +529,14 @@ function traceSampledRaster(
 
   function addLayer(
     data: Uint16Array, width: number, height: number, name: string, scale: number,
-    palette: readonly HexColor[] = colors, scaleY = scale,
+    palette: readonly HexColor[] = colors, scaleY = scale, strokeWidth?: number,
   ) {
     const transform = scale === 1 && scaleY === 1 ? undefined : [
       { type: "scale" as const, x: scale, ...(scaleY === scale ? {} : { y: scaleY }) },
     ];
-    const pathOverhead = 128 + (serializeTransforms(transform)?.length ?? 0);
-    const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined, implicitClose);
+    const omitClose = strokeWidth === undefined && implicitClose;
+    const pathOverhead = 128 + (strokeWidth === undefined ? 0 : 64) + (serializeTransforms(transform)?.length ?? 0);
+    const shapes = traceContours(data, width, height, palette.length, underpaintColors !== undefined, omitClose);
     shapes.forEach(({ contours, segments }, index) => {
       totalSegments += segments;
       if (totalSegments > segmentLimit) throw new TraceContourLimitError("Raster contours exceed the scene path segment limit.");
@@ -545,14 +547,17 @@ function traceSampledRaster(
         // ASCII path data gains a separator before each command and after each
         // non-close command in the spaced SVG. The remaining reserve covers the
         // short generated ID, tag, indentation and fixed paint syntax.
-        svgBytes += d.length + 2 * segments - (implicitClose ? 0 : contours.length) + pathOverhead;
+        svgBytes += d.length + 2 * segments - (omitClose ? 0 : contours.length) + pathOverhead;
         if (svgBytes > svgLimit) throw new TraceContourLimitError("Raster contours exceed the SVG byte budget.");
         if (elements.length >= authoredElementBudget) {
           throw new TraceContourLimitError("Raster contours exceed the authored element budget.");
         }
         elements.push({
           type: "path", id: `trace-${name}-${index}`, d,
-          presentation: { fill },
+          presentation: {
+            fill,
+            ...(strokeWidth === undefined ? {} : { stroke: fill, strokeWidth, strokeLinejoin: "bevel" as const }),
+          },
           ...(transform === undefined ? {} : { transform }),
         });
       }
@@ -566,7 +571,7 @@ function traceSampledRaster(
       coarsePaint = preparedExclusion?.undercoat ?? sampleCoarsePaint(underpaintSource, underpaintColors);
       const { grid, data, palette } = coarsePaint;
       addLayer(data, grid.cols, grid.rows, "undercoat",
-        cols / grid.cols, palette, rows / grid.rows);
+        cols / grid.cols, palette, rows / grid.rows, underpaintStroke);
     } else {
       const underCols = Math.ceil(cols / block);
       const underRows = Math.ceil(rows / block);
@@ -834,6 +839,7 @@ export function traceRasterScene(
     readonly highDetail?: boolean;
     readonly nativeDetail?: boolean;
     readonly densePalette?: boolean;
+    readonly underpaintOverlap?: boolean;
     readonly fitSourceColors?: boolean;
     readonly excludeDetail?: unknown;
     readonly preserveAlpha?: boolean;
@@ -853,6 +859,12 @@ export function traceRasterScene(
   }
   if (options.densePalette && (!options.nativeDetail || options.preserveAlpha)) {
     throw new RangeError("A dense palette requires an opaque native-detail trace.");
+  }
+  if (options.underpaintOverlap !== undefined && typeof options.underpaintOverlap !== "boolean") {
+    throw new RangeError("Underpaint overlap must be a boolean.");
+  }
+  if (options.underpaintOverlap && (!options.densePalette || options.reserveElements === undefined || options.excludeDetail !== undefined)) {
+    throw new RangeError("Underpaint overlap requires a reserved dense palette without detail exclusion.");
   }
   if (options.preserveAlpha && options.excludeDetail !== undefined) {
     throw new RangeError("Transparent tracing does not support detail exclusion.");
@@ -940,6 +952,8 @@ export function traceRasterScene(
           const scene = traceSampledRaster(source, sampled, {
             ...traceSettings, underpaintSource, excludeDetail, preparedExclusion, fitColors: options.fitSourceColors === true,
             ...(options.densePalette ? { authoredElementBudget } : {}),
+            // The undercoat transform scales this 0.125 width to 0.5 user units at 4x.
+            ...(options.underpaintOverlap ? { underpaintStroke: 0.125 } : {}),
           }, palette);
           if (excludeDetail) return scene;
           const bytes = Buffer.byteLength(JSON.stringify(scene), "utf8");
