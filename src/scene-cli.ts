@@ -48,13 +48,13 @@ export const SCENE_USAGE = `Usage:
   tfsb scene validate <json> [--json]
   tfsb scene inspect <json> [--compact-paths] [--json]
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]
-  tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
-  tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256>] [--json]
-  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
-  tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256>] [--dry-run] [--json]
+  tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256:hex> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
+  tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256:hex>] [--json]
+  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256:hex> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
+  tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256:hex>] [--dry-run] [--json]
   tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
   tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
-  tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256> --output <absent-scene.json> [--compact-paths] [--json]
+  tfsb scene import-svg <reviewed.svg> --svg-source --expect-svg-digest <sha256:hex> --output <absent-scene.json> [--compact-paths] [--json]
   tfsb scene import-svg <svg> --output <absent-scene.json> [--json]
 
 Options:
@@ -80,8 +80,8 @@ Options:
   --resize-filter      Use Lanczos (default), Catrom, Mitchell, or Box with --output-width
   --sharp-chroma       Use the versioned sharp WebP color conversion
   --recipe-id <id>     Set the export-webp recipe identifier (default scene-webp)
-  --expect-svg-digest <sha256>  Require the SVG digest to match before rendering or importing
-  --expect-scene-digest <sha256>  Match the input JSON digest reported by scene inspect
+  --expect-svg-digest <sha256:hex>  Require the SVG digest to match before rendering or importing
+  --expect-scene-digest <sha256:hex>  Match the input JSON digest reported by scene inspect
   --dry-run             Validate and plan compilation or revision without writing output
   --json                Emit one versioned machine-result envelope`;
 
