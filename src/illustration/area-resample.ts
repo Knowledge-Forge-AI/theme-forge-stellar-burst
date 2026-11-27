@@ -70,3 +70,33 @@ export function downsampleArea(source: RgbaRaster, width: number, height: number
   }
   return output;
 }
+
+/** Reduce RGB to six bits in an owned, row-aligned sRGB raster. */
+const rgb6Levels = 63;
+// This mapping is fixed by rgb6-vp8l-v1. A change requires a new encoding ID.
+const channelToRgb6 = Uint8Array.from({ length: 256 }, (_, value) => {
+  const index = Math.round(value * rgb6Levels / 255);
+  return Math.round(index * 255 / rgb6Levels);
+});
+
+export function quantizeAreaRgb6(
+  rgba: Uint8Array,
+  width: number,
+  height: number,
+  checkBudget: () => void,
+): void {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+      || width < 1 || height < 1 || rgba.length !== width * height * 4) {
+    throw new RangeError("RGB precision requires a complete RGBA raster.");
+  }
+  const stride = width * 4;
+  for (let row = 0; row < height; row += 1) {
+    checkBudget();
+    const end = (row + 1) * stride;
+    for (let offset = row * stride; offset < end; offset += 4) {
+      rgba[offset] = channelToRgb6[rgba[offset]!]!;
+      rgba[offset + 1] = channelToRgb6[rgba[offset + 1]!]!;
+      rgba[offset + 2] = channelToRgb6[rgba[offset + 2]!]!;
+    }
+  }
+}

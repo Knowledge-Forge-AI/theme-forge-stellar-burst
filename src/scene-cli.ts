@@ -50,7 +50,7 @@ export const SCENE_USAGE = `Usage:
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]
   tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256:hex> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256:hex>] [--json]
-  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256:hex> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter> | --resample area] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
+  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256:hex> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter> | --resample area] [--quality <0-100> | --rgb6] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256:hex>] [--dry-run] [--json]
   tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
   tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
@@ -79,6 +79,7 @@ Options:
   --quality <0-100>     Set WebP encoder quality (default 94)
   --resize-filter      Use Lanczos (default), Catrom, Mitchell, or Box with --output-width
   --resample area      Use alpha-weighted full-canvas downsampling and sharp WebP chroma
+  --rgb6               Use six-bit RGB with exact alpha and lossless WebP encoding (Area only)
   --sharp-chroma       Use the versioned sharp WebP color conversion
   --recipe-id <id>     Set the export-webp recipe identifier (default scene-webp)
   --expect-svg-digest <sha256:hex>  Require the SVG digest to match before rendering or importing
@@ -104,6 +105,7 @@ interface ParsedSceneArgs {
   readonly outputWidth?: number;
   readonly resizeFilter?: RasterDerivativeFilter;
   readonly areaResample?: boolean;
+  readonly rgb6?: boolean;
   readonly quality?: number;
   readonly sharpChroma?: boolean;
   readonly recipeId?: string;
@@ -175,6 +177,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let outputWidth: number | undefined;
   let resizeFilter: RasterDerivativeFilter | undefined;
   let areaResample = false;
+  let rgb6 = false;
   let quality: number | undefined;
   let sharpChroma = false;
   let recipeId: string | undefined;
@@ -352,6 +355,14 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       continue;
     }
 
+    if (arg === "--rgb6") {
+      if (action !== "export-webp" || rgb6) {
+        return { action, dryRun, json, error: "Use --rgb6 once with scene export-webp." };
+      }
+      rgb6 = true;
+      i += 1;
+      continue;
+    }
     if (arg === "--sharp-chroma") {
       if (action !== "export-webp" || sharpChroma) {
         return { action, dryRun, json, error: "Use --sharp-chroma once with scene export-webp." };
@@ -500,6 +511,9 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     return { action, dryRun, json, error: "scene rasterize requires --output <absent.png>." };
   }
 
+  if (rgb6 && (!areaResample || quality !== undefined || sharpChroma)) {
+    return { action, dryRun, json, error: "--rgb6 requires --resample area and excludes --quality and --sharp-chroma." };
+  }
   if (areaResample && (outputWidth === undefined || resizeFilter !== undefined)) {
     return { action, dryRun, json, error: "--resample area requires --output-width and excludes --resize-filter." };
   }
@@ -574,6 +588,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     ...(outputWidth === undefined ? {} : { outputWidth }),
     ...(resizeFilter === undefined ? {} : { resizeFilter }),
     ...(areaResample ? { areaResample } : {}),
+    ...(rgb6 ? { rgb6 } : {}),
     ...(quality === undefined ? {} : { quality }),
     ...(sharpChroma ? { sharpChroma } : {}),
     ...(recipeId === undefined ? {} : { recipeId }),
@@ -680,7 +695,7 @@ export async function runSceneCli(
     }
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, areaResample, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fineAlpha = false, reserveElements, densePalette = false, underpaintOverlap = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, areaResample, rgb6, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fineAlpha = false, reserveElements, densePalette = false, underpaintOverlap = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -765,7 +780,7 @@ export async function runSceneCli(
       }
       const { pngBytes, pngDigest, rendererBuildDigest } = await renderSvgPng(bytes, rasterWidth, rasterHeight);
       const { exportSceneWebp } = await import("./illustration/derivative-cli.js");
-      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd, quality, sharpChroma, resizeFilter, recipeId, areaResample);
+      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd, quality, sharpChroma, resizeFilter, recipeId, areaResample, rgb6);
       if (!derivative.ok) {
         throw new DiagnosticError(diagnostic(ctx, `SCENE_WEBP_${derivative.code}`, "Scene WebP export refused."));
       }

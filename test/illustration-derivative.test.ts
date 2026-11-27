@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 
 import { describe, expect, it, vi } from "vitest";
 
+import { quantizeAreaRgb6 } from "../src/illustration/area-resample.js";
+
 import { decodeStrictPng } from "../src/brand/raster-capability.js";
 import { computeSha256 } from "../src/digests.js";
 import {
@@ -26,6 +28,9 @@ import {
   supportsImageMagickFormat,
   validateRasterDerivativeRecipe,
   validateRasterDerivativeAreaRecipe,
+  validateCarrierDerivativeRecipe,
+  bindCarrierComparisonProcessor,
+  renderCarrierDerivative,
   type ImageMagickProcessorDescriptorV1,
   type RasterDerivativeRecipeWithoutDigestV1,
 } from "../src/illustration/derivative.js";
@@ -577,6 +582,36 @@ describe("exact-area recipe conformance", () => {
     expect(() => validateRasterDerivativeAreaRecipe(seal(draft, 2))).toThrow();
   });
 
+  it("pins the complete RGB6 mapping and preserves every alpha value", () => {
+    const rgba = Uint8Array.from({ length: 1024 }, (_, offset) => offset >>> 2);
+    quantizeAreaRgb6(rgba, 256, 1, () => {});
+    const lookup = Uint8Array.from({ length: 256 }, (_, index) => rgba[index * 4]!);
+    expect(computeSha256(lookup)).toBe("sha256:68fe4c69b2fef449d1c6a1086b9808d27481d7babf10861433548eaa04726d51");
+    for (let index = 0; index < 256; index += 1) {
+      expect(rgba.slice(index * 4, index * 4 + 4)).toEqual(Uint8Array.of(lookup[index]!, lookup[index]!, lookup[index]!, index));
+    }
+  });
+
+  it("admits only the exact RGB6 transform under the v4 digest", () => {
+    const area = v3();
+    const output = { ...area.output, quality: 100, encoding: "rgb6-vp8l-v1" };
+    const draft = { ...area, schemaVersion: 4, output };
+    const recipe = validateCarrierDerivativeRecipe(seal(draft, 4));
+    expect(recipe.schemaVersion).toBe(4);
+    expect(bindCarrierComparisonProcessor(recipe, recipe.processor)).toEqual(recipe);
+    const rebound = bindCarrierComparisonProcessor(recipe, { ...recipe.processor, version: "7.1.2-next" });
+    expect(validateCarrierDerivativeRecipe(rebound)).toEqual(rebound);
+    expect(rebound.recipeDigest).not.toBe(recipe.recipeDigest);
+    expect(() => validateCarrierDerivativeRecipe(seal({ ...area, schemaVersion: 4 }, 4))).toThrow();
+    expect(() => validateCarrierDerivativeRecipe(seal(area, 4))).toThrow();
+    expect(() => validateRasterDerivativeAreaRecipe(recipe)).toThrow();
+    expect(() => validateCarrierDerivativeRecipe(seal(draft, 3))).toThrow();
+    expect(() => validateCarrierDerivativeRecipe(seal({ ...area, output }))).toThrow();
+    for (const extra of [{ encoding: "other" }, { quality: 99 }, { method: 5 }, { alpha: "discard" }]) {
+      expect(() => validateCarrierDerivativeRecipe(seal({ ...draft, output: { ...output, ...extra } }, 4))).toThrow();
+    }
+  });
+
   it("enforces width-anchored rounding and both axis bounds", () => {
     expect(validateRasterDerivativeAreaRecipe(seal(v3())).output.height).toBe(590);
     expect(validateRasterDerivativeAreaRecipe(seal(v3(4, 2, 3, 2))).output.height).toBe(2);
@@ -659,6 +694,34 @@ describe("versioned WebP process boundary", () => {
       ]);
       expect(decodeStrictPng(await readFile(join(directory, "capture.png")), 1, 1).rgba8)
         .toEqual(Uint8Array.of(240, 32, 16, 128));
+    });
+  });
+
+  it("uses the RGB6 handoff on export and replay, and refuses lossy VP8", async () => {
+    await withPngTransportProbe(async directory => {
+      const source = tinyPng();
+      await writeFile(join(directory, "argv.log"), "");
+      await expect(renderSceneWebpArea(source, { width: 1, height: 1, rgb6: true, quality: 100 }))
+        .rejects.toMatchObject({ code: "INVALID_RECIPE" });
+      expect(await readFile(join(directory, "argv.log"), "utf8")).toBe("");
+      const rgb6 = await renderSceneWebpArea(source, { width: 1, height: 1, rgb6: true });
+      expect(rgb6.recipe).toMatchObject({
+        schemaVersion: 4, recipeId: "scene-webp-area-rgb6",
+        output: { encoding: "rgb6-vp8l-v1", quality: 100 },
+      });
+      expect(await readFile(join(directory, "argv.log"), "utf8")).toContain(
+        "-quality 100 -define webp:method=6 -define webp:use-sharp-yuv=true -define webp:lossless=true",
+      );
+      expect(decodeStrictPng(await readFile(join(directory, "capture.png")), 1, 1).rgba8)
+        .toEqual(Uint8Array.of(239, 32, 16, 128));
+      expect(await renderCarrierDerivative(source, rgb6.recipe)).toEqual(rgb6.output);
+      const lossy = webpDocument([{ type: "VP8 ", data: Uint8Array.of(0, 0, 0, 0x9d, 1, 0x2a, 1, 0, 1, 0) }]);
+      await writeFile(join(directory, "image.webp"), lossy);
+      expect(inspectRasterDerivativePayload(lossy, "image/webp").width).toBe(1);
+      expect(() => inspectRasterDerivativePayload(lossy, "image/webp", true)).toThrow();
+      expect(() => verifyRasterDerivativeOutput({ ...rgb6.output, bytes: lossy,
+        sha256: computeSha256(lossy), byteLength: lossy.length }, rgb6.recipe)).toThrow();
+      await expect(renderCarrierDerivative(source, rgb6.recipe)).rejects.toMatchObject({ code: "OUTPUT_INVALID" });
     });
   });
 

@@ -88,6 +88,24 @@ test("transparent editable SVG preserves alpha in Standard and Sharp WebP", asyn
   const areaPixels = await render(page, "/area.webp", 40, 60, null);
   expect(alpha(areaPixels)).toEqual(expectedAreaAlpha);
 
+  const rgb6 = await scene([
+    "export-webp", "source.svg", "--expect-svg-digest", svgDigest,
+    "--output-width", "40", "--resample", "area", "--rgb6", "--output", "area-rgb6.webp",
+  ]);
+  const rgb6Webp = await readFile(info.outputPath("area-rgb6.webp"));
+  expect(rgb6).toMatchObject({
+    svgDigest, pngDigest: raster.pngDigest,
+    recipe: { schemaVersion: 4, output: { width: 40, height: 60, encoding: "rgb6-vp8l-v1" } },
+    receipt: { alpha: "has-alpha", outputSha256: `sha256:${createHash("sha256").update(rgb6Webp).digest("hex")}` },
+  });
+  expect(rgb6Webp.toString("ascii", 12, 16)).toBe("VP8L");
+  await page.route("http://alpha.test/area-rgb6.webp", route =>
+    route.fulfill({ contentType: "image/webp", body: rgb6Webp }));
+  const rgb6Pixels = await render(page, "/area-rgb6.webp", 40, 60, null);
+  expect(alpha(rgb6Pixels)).toEqual(expectedAreaAlpha);
+  const flatBandOffset = (24 * 40 + 30) * 4;
+  expect(Array.from(rgb6Pixels.subarray(flatBandOffset, flatBandOffset + 4))).toEqual([223, 97, 49, 255]);
+
   const lossless = await scene([
     "export-webp", "source.svg", "--expect-svg-digest", svgDigest,
     "--output-width", "38", "--resample", "area", "--quality", "100", "--output", "area-lossless.webp",

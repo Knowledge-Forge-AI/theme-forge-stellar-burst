@@ -278,6 +278,24 @@ describe("tfsb scene CLI integration", () => {
       },
     );
 
+    it.each([
+      ["--rgb6"],
+      ["--resample", "area", "--rgb6", "--quality", "100"],
+      ["--resample", "area", "--rgb6", "--sharp-chroma"],
+      ["--resample", "area", "--rgb6", "--rgb6"],
+    ].map(flags => ({ flags })))("rejects incompatible RGB6 options before file processing (%#)", async ({ flags }) => {
+      const dir = await makeTestDir();
+      const run = capture();
+      expect(await runSceneCli([
+        "export-webp", "missing.svg", ...flags, "--output-width", "384",
+        "--expect-svg-digest", "sha256:" + "0".repeat(64), "--output", "image.webp", "--json",
+      ], dir, run.io)).toBe(1);
+      expect(JSON.parse(run.stdout())).toMatchObject({
+        data: null, diagnostics: [{ code: "USAGE_ERROR", message: expect.stringContaining("--rgb6") }],
+      });
+      expect(await readdir(dir)).toEqual([]);
+    });
+
     const malformedIds = [
       "a".repeat(129), "Artwork-fixture", "2artwork-fixture", "-artwork-fixture", "artwork-fixture-",
       "artwork--fixture", "artwork._fixture", "artwork/fixture", "artwork:fixture",
@@ -1620,6 +1638,33 @@ describe("exact-area WebP scene export", () => {
     expect(JSON.parse(run.stdout())).toMatchObject({ diagnostics: [{ code: "USAGE_ERROR" }] });
     expect(await readdir(dir)).toEqual([]);
   });
+
+  for (const [fillOpacity, alpha] of [[1, "opaque"], [0.5, "has-alpha"]] as const) {
+    it(`reports real RGB6 lossless alpha for fill opacity ${fillOpacity}`, async ({ skip }) => {
+      const raster = await loadRasterCapability();
+      const encoder = await probeMagickDerivativeCapability();
+      if (!raster.available || !encoder.available) { skip("Qualified rasterizer and ImageMagick required."); return; }
+      const dir = await makeTestDir();
+      const compiled = compileScene({
+        ...sampleValidScene,
+        artboard: { width: 16, height: 16, viewBox: [0, 0, 16, 16] },
+        elements: [{ type: "rect", id: "cover", x: 0, y: 0, width: 16, height: 16,
+          presentation: { fill: { type: "solid", color: "#234567" }, fillOpacity } }],
+      });
+      if (!compiled.ok) throw new Error("Expected canonical scene.");
+      const svg = Buffer.from(compiled.value.svg);
+      await writeFile(join(dir, "canvas.svg"), svg);
+      const run = capture();
+      expect(await runSceneCli(["export-webp", "canvas.svg", "--expect-svg-digest", computeSha256(svg),
+        "--output-width", "8", "--output", "out.webp", "--resample", "area", "--rgb6", "--json"],
+      dir, run.io), run.stdout()).toBe(0);
+      const { data } = JSON.parse(run.stdout()) as { data: SceneWebpJsonData };
+      const output = await readFile(join(dir, "out.webp"));
+      expect(data.receipt).toMatchObject({ alpha, width: 8, height: 8, outputSha256: computeSha256(output) });
+      expect(output.toString("ascii", 12, 16)).toBe("VP8L");
+      expect(Boolean(output.readUInt32LE(21) & (1 << 28))).toBe(alpha === "has-alpha");
+    });
+  }
 
   it("binds source and output dimensions to a separate recipe and preserves the legacy size rule", async ({ skip }) => {
     const raster = await loadRasterCapability();
