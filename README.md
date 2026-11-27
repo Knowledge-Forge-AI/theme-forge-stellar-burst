@@ -132,10 +132,12 @@ for a transparent reference. WebP tracing uses the qualified `magick`
 executable. For a PNG reference, use `scene trace-png`.
 Add `--fine-alpha` with both `--native-detail` and `--preserve-alpha`
 to use finer low-alpha grouping. Source alpha below 8 stays transparent;
-alpha from 8 through 119 uses 8-unit band rounding with up to 14 colors
-per band. Higher alpha retains 16-unit grouping with up to 32 colors per
-partially transparent band and the existing near-opaque threshold of 248.
-Occupied bands retain their mean source alpha. Default tracing is unchanged.
+alpha from 8 through 115 is grouped in 8-unit increments, with up to
+14 colors per band. Alpha from 116 through 125 shares the transition
+band, also with up to 14 colors. Alpha from 126 through 245 uses
+12-unit bands with up to 32 colors per band. The
+near-opaque band begins at 246. Occupied bands retain their mean source
+alpha. Default tracing uses the existing bands.
 
 The matched cross-character experiment retained the complete 1024 × 1536
 canvas, 1,746 detail paths, 64 coarse paints, and 47 fine paints. Native

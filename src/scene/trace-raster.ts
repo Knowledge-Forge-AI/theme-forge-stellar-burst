@@ -678,7 +678,7 @@ function traceTransparentRaster(
 ): VectorScene {
   const { cols, rows } = traceGrid(source, maxEdge);
   const nativeLarge = maxEdge === NATIVE_TRANSPARENT_EDGE && Math.max(cols, rows) > MAX_TRACE_EDGE;
-  const nearOpaqueBand = fineAlpha ? 24 : 16;
+  const nearOpaqueBand = fineAlpha ? 26 : 16;
   const alphas = new Uint8Array(cols * rows);
   const colorKeys = new Uint32Array(cols * rows);
   const bits = 6 as const;
@@ -691,7 +691,7 @@ function traceTransparentRaster(
       const { alpha, rgb } = sampleAlphaCell(source, cols, rows, x, y);
       if (fineAlpha && alpha < 8) continue;
       const band = fineAlpha
-        ? alpha < 120 ? Math.round(alpha / 8) : Math.round(alpha / 16) + 8
+        ? alpha < 120 ? Math.round(alpha / 8) : Math.round((alpha - 120) / 12) + 15
         : Math.round(alpha / 16);
       if (band === 0) continue;
       const bucket = bands[band]!;

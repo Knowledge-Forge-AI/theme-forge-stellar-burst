@@ -57,19 +57,17 @@ test("fine alpha requires explicit prerequisites and rejects non-boolean API val
     .toEqual(traceRasterScene(opaque, { nativeDetail: true, preserveAlpha: true }));
 });
 
-test("fine alpha separates low bands, skips alpha below eight and averages occupied bands", () => {
-  const alphas = [0, 4, 7, 8, 11, 12, 19, 20, 119, 120, 127, 128, 135, 247, 248, 255];
+test("fine alpha averages occupied bands across the low and near-opaque boundaries", () => {
+  const alphas = [0, 4, 7, 8, 11, 12, 19, 20, 119, 120, 125, 126, 127, 128, 135,
+    245, 246, 247, 248, 255];
   const rgba8 = Uint8Array.from(alphas.flatMap(alpha => [220, 40, 20, alpha]));
   const original = rgba8.slice();
   const source = { width: alphas.length, height: 1, rgba8 };
   const scene = traceRasterScene(source, fineAlphaOptions);
   expect(rgba8).toEqual(original);
   expect(scene.elements.map(element => element.presentation?.fillOpacity ?? 1))
-    .toEqual([9.5, 15.5, 20, 119, 127.5, 247, 251.5].map(alpha => alpha / 255));
+    .toEqual([9.5, 15.5, 20, (119 + 120 + 125) / 3, 129, 245, 249].map(alpha => alpha / 255));
   expect(scene.elements[0]).toMatchObject({ type: "path", d: "M3 0H5V1H3" });
-  const upper = { width: 7, height: 1, rgba8: rgba8.slice(9 * 4) };
-  expect(traceRasterScene(upper, fineAlphaOptions))
-    .toEqual(traceRasterScene(upper, { nativeDetail: true, preserveAlpha: true }));
   rgba8.set([0, 0, 0, 0], 0);
   expect(traceRasterScene(source, fineAlphaOptions)).toEqual(scene);
   rgba8.set(original);
@@ -82,15 +80,17 @@ test("fine alpha separates low bands, skips alpha below eight and averages occup
   expect(rgba8).toEqual(original);
 });
 
-test("fine alpha caps low bands at fourteen colors and other partial bands at thirty-two", () => {
-  const width = 64, height = 2;
+test("fine alpha uses fourteen colors through alpha 125 and thirty-two from alpha 126", () => {
+  const width = 64, height = 3;
+  const alphas = [8, 125, 126];
   const rgba8 = Uint8Array.from({ length: width * height * 4 }, (_, i) => {
     const x = (i >> 2) % width, y = Math.floor((i >> 2) / width);
-    return [x * 4, 128, 64, y === 0 ? 8 : 128][i % 4]!;
+    return [x * 4, 128, 64, alphas[y]!][i % 4]!;
   });
   const scene = traceRasterScene({ width, height, rgba8 }, fineAlphaOptions);
   expect(scene.elements.filter(element => element.presentation?.fillOpacity === 8 / 255)).toHaveLength(14);
-  expect(scene.elements.filter(element => element.presentation?.fillOpacity === 128 / 255)).toHaveLength(32);
+  expect(scene.elements.filter(element => element.presentation?.fillOpacity === 125 / 255)).toHaveLength(14);
+  expect(scene.elements.filter(element => element.presentation?.fillOpacity === 126 / 255)).toHaveLength(32);
   expect(validateScene(scene).ok).toBe(true);
   expect(compileScene(scene).ok).toBe(true);
 });
