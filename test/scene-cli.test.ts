@@ -11,7 +11,7 @@ import { decodeStrictPng, loadRasterCapability } from "../src/brand/raster-capab
 import { computeSha256 } from "../src/digests.js";
 import {
   canonicalRasterDerivativeRecipeJson, computeRasterDerivativeRecipeDigest, createRasterDerivativeRecipe,
-  decodeWebpForTrace, probeMagickDerivativeCapability, renderRasterDerivative, validateRasterDerivativeRecipe, verifyRasterDerivativeOutput,
+  decodeWebpForTrace, probeMagickDerivativeCapability, renderRasterDerivative, validateRasterDerivativeAreaRecipe, validateRasterDerivativeRecipe, verifyRasterDerivativeOutput,
 } from "../src/illustration/derivative.js";
 import { resolvePreset } from "../src/scene/constants.js";
 import type { JsonResultEnvelope, SceneJsonData, SceneValidateJsonData, SceneWebpJsonData } from "../src/json.js";
@@ -1601,5 +1601,61 @@ describe("tfsb scene CLI integration", () => {
       expect(cap.stdout()).toContain("tfsb scene inspect <json> [--compact-paths] [--json]");
       expect(cap.stdout()).toContain("tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]");
     });
+  });
+});
+
+describe("exact-area WebP scene export", () => {
+  it.each([
+    ["compile", ["--resample", "area", "--output-width", "4"]],
+    ["export-webp", ["--resample", "area"]],
+    ["export-webp", ["--resample", "Area", "--output-width", "4"]],
+    ["export-webp", ["--resample", "area", "--output-width", "4", "--resample", "area"]],
+    ["export-webp", ["--resample", "area", "--output-width", "4", "--resize-filter", "Box"]],
+    ["export-webp", ["--resize-filter", "Box", "--output-width", "4", "--resample", "area"]],
+  ] as const)("refuses ambiguous or unsupported area options before IO (%s %j)", async (action, flags) => {
+    const dir = await makeTestDir();
+    const run = capture();
+    expect(await runSceneCli([action, "missing.svg", ...flags, "--expect-svg-digest", "sha256:" + "0".repeat(64),
+      "--output", "absent.webp", "--json"], dir, run.io)).toBe(1);
+    expect(JSON.parse(run.stdout())).toMatchObject({ diagnostics: [{ code: "USAGE_ERROR" }] });
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it("binds source and output dimensions to a separate recipe and preserves the legacy size rule", async ({ skip }) => {
+    const raster = await loadRasterCapability();
+    const encoder = await probeMagickDerivativeCapability();
+    if (!raster.available || !encoder.available) { skip("Qualified rasterizer and ImageMagick required."); return; }
+    const dir = await makeTestDir();
+    const png = rgbaPng(8, 6, Uint8Array.from({ length: 8 * 6 * 4 }, (_, index) =>
+      [32, 80, 193, 160][index % 4]!));
+    const scene = traceRasterScene(decodeStrictPng(png), { nativeDetail: true, preserveAlpha: true });
+    const compiled = compileScene(scene);
+    if (!compiled.ok) throw new Error("Expected canonical scene.");
+    const bytes = Buffer.from(compiled.value.svg);
+    await writeFile(join(dir, "art.svg"), bytes);
+    const args = ["export-webp", "art.svg", "--expect-svg-digest", computeSha256(bytes), "--viewbox-size",
+      "--output-width", "5", "--output", "out.webp", "--json"];
+    const legacy = capture();
+    expect(await runSceneCli(args, dir, legacy.io)).toBe(1);
+    expect(JSON.parse(legacy.stdout())).toMatchObject({ diagnostics: [{ code: "SCENE_WEBP_SIZE_INVALID" }] });
+
+    const run = capture();
+    expect(await runSceneCli([...args, "--resample", "area"], dir, run.io), run.stdout()).toBe(0);
+    const { data } = JSON.parse(run.stdout()) as { data: SceneWebpJsonData };
+    expect(data.recipe).toMatchObject({
+      schemaVersion: 3, sourceWidth: 8, sourceHeight: 6, sourceSha256: data.pngDigest,
+      output: { width: 5, height: 4, chroma: "sharp-yuv", resample: "area-srgb-alpha-weighted-v1" },
+    });
+    expect(data.receipt).toMatchObject({ width: 5, height: 4, recipeDigest: data.recipe.recipeDigest });
+    expect(data.receipt.outputSha256).toBe(computeSha256(await readFile(join(dir, "out.webp"))));
+    expect(validateRasterDerivativeAreaRecipe(data.recipe)).toEqual(data.recipe);
+    expect(() => validateRasterDerivativeRecipe(data.recipe)).toThrow();
+    expect(() => validateRasterDerivativeAreaRecipe({ ...data.recipe, sourceWidth: 9 })).toThrow();
+    expect(() => validateRasterDerivativeAreaRecipe({ ...data.recipe,
+      output: { ...data.recipe.output, filter: "Box" },
+    })).toThrow();
+    const collision = capture();
+    expect(await runSceneCli([...args, "--resample", "area"], dir, collision.io)).toBe(1);
+    expect(data.receipt.outputSha256).toBe(computeSha256(await readFile(join(dir, "out.webp"))));
   });
 });

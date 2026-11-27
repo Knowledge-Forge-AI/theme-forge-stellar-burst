@@ -50,7 +50,7 @@ export const SCENE_USAGE = `Usage:
   tfsb scene compile <json> --output <absent.svg> [--palette <json>] [--compact-paths] [--illustration-source] [--dry-run] [--json]
   tfsb scene rasterize <reviewed.svg> --svg-source --expect-svg-digest <sha256:hex> --output <absent.png> [--compact-paths] [--viewbox-size] [--json]
   tfsb scene rasterize <json> --output <absent.png> [--palette <json>] [--compact-paths] [--expect-svg-digest <sha256:hex>] [--json]
-  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256:hex> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter>] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
+  tfsb scene export-webp <reviewed.svg> --expect-svg-digest <sha256:hex> --output <absent.webp> [--recipe-id <id>] [--output-width <pixels>] [--resize-filter <filter> | --resample area] [--quality <0-100>] [--sharp-chroma] [--compact-paths] [--viewbox-size] [--json]
   tfsb scene revise <json> --edits <json> --output <absent-scene.json> [--expect-scene-digest <sha256:hex>] [--dry-run] [--json]
   tfsb scene trace-png <png> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
   tfsb scene trace-webp <webp> --output <absent-scene.json> [--regular | --high-detail | --native-detail] [--preserve-alpha [--fine-alpha] [--reserve-elements <count>] | [--dense-palette [--reserve-elements <count> [--underpaint-overlap]]] [--exclude-detail <json>]] [--fit-source-colors] [--json]
@@ -78,6 +78,7 @@ Options:
   --output-width        Set WebP width in pixels without changing the artboard ratio
   --quality <0-100>     Set WebP encoder quality (default 94)
   --resize-filter      Use Lanczos (default), Catrom, Mitchell, or Box with --output-width
+  --resample area      Use alpha-weighted full-canvas downsampling and sharp WebP chroma
   --sharp-chroma       Use the versioned sharp WebP color conversion
   --recipe-id <id>     Set the export-webp recipe identifier (default scene-webp)
   --expect-svg-digest <sha256:hex>  Require the SVG digest to match before rendering or importing
@@ -102,6 +103,7 @@ interface ParsedSceneArgs {
   readonly viewBoxSize?: boolean;
   readonly outputWidth?: number;
   readonly resizeFilter?: RasterDerivativeFilter;
+  readonly areaResample?: boolean;
   readonly quality?: number;
   readonly sharpChroma?: boolean;
   readonly recipeId?: string;
@@ -172,6 +174,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
   let viewBoxSize = false;
   let outputWidth: number | undefined;
   let resizeFilter: RasterDerivativeFilter | undefined;
+  let areaResample = false;
   let quality: number | undefined;
   let sharpChroma = false;
   let recipeId: string | undefined;
@@ -340,6 +343,15 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
       continue;
     }
 
+    if (arg === "--resample") {
+      if (action !== "export-webp" || areaResample || rest[i + 1] !== "area") {
+        return { action, dryRun, json, error: "Use --resample area once with scene export-webp." };
+      }
+      areaResample = true;
+      i += 2;
+      continue;
+    }
+
     if (arg === "--sharp-chroma") {
       if (action !== "export-webp" || sharpChroma) {
         return { action, dryRun, json, error: "Use --sharp-chroma once with scene export-webp." };
@@ -488,6 +500,9 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     return { action, dryRun, json, error: "scene rasterize requires --output <absent.png>." };
   }
 
+  if (areaResample && (outputWidth === undefined || resizeFilter !== undefined)) {
+    return { action, dryRun, json, error: "--resample area requires --output-width and excludes --resize-filter." };
+  }
   if (resizeFilter !== undefined && outputWidth === undefined) {
     return { action, dryRun, json, error: "--resize-filter requires --output-width." };
   }
@@ -558,6 +573,7 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     viewBoxSize,
     ...(outputWidth === undefined ? {} : { outputWidth }),
     ...(resizeFilter === undefined ? {} : { resizeFilter }),
+    ...(areaResample ? { areaResample } : {}),
     ...(quality === undefined ? {} : { quality }),
     ...(sharpChroma ? { sharpChroma } : {}),
     ...(recipeId === undefined ? {} : { recipeId }),
@@ -664,7 +680,7 @@ export async function runSceneCli(
     }
   }
 
-  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fineAlpha = false, reserveElements, densePalette = false, underpaintOverlap = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
+  const { action, positional, output, palette, edits, compactPaths = false, illustrationSource, svgSource, viewBoxSize, outputWidth, resizeFilter, areaResample, quality, sharpChroma, recipeId, expectedSvgDigest, expectedSceneDigest, traceMode, excludeDetail, preserveAlpha = false, fineAlpha = false, reserveElements, densePalette = false, underpaintOverlap = false, fitSourceColors = false, dryRun, json: jsonMode } = parsed;
 
   const ctx = { operation: "build", domain: "scene" } as const;
   function assertExpectedSvg(svgDigest: string): void {
@@ -737,7 +753,11 @@ export async function runSceneCli(
       const rasterHeight = viewBoxSize ? gridHeight : height;
       if (action === "rasterize") return await rasterizeSvg(bytes, digest, rasterWidth, rasterHeight);
       const derivativeWidth = outputWidth ?? width;
-      const derivativeHeight = outputWidth === undefined ? height : (height * outputWidth) / width;
+      const proportionalHeight = outputWidth === undefined ? height : height * outputWidth / width;
+      const derivativeHeight = areaResample ? Math.round(rasterHeight * derivativeWidth / rasterWidth) : proportionalHeight;
+      if (areaResample && (derivativeWidth > rasterWidth || derivativeHeight > rasterHeight || derivativeHeight < 1)) {
+        throw new DiagnosticError(diagnostic(ctx, "SCENE_WEBP_SIZE_INVALID", "Area resampling requires output dimensions within the SVG raster."));
+      }
       if (outputWidth !== undefined && (outputWidth > width || !Number.isSafeInteger(derivativeHeight))) {
         throw new DiagnosticError(diagnostic(
           ctx, "SCENE_WEBP_SIZE_INVALID", "The WebP width must fit the artboard and preserve its aspect ratio at a whole-pixel height.",
@@ -745,7 +765,7 @@ export async function runSceneCli(
       }
       const { pngBytes, pngDigest, rendererBuildDigest } = await renderSvgPng(bytes, rasterWidth, rasterHeight);
       const { exportSceneWebp } = await import("./illustration/derivative-cli.js");
-      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd, quality, sharpChroma, resizeFilter, recipeId);
+      const derivative = await exportSceneWebp(pngBytes, derivativeWidth, derivativeHeight, output!, cwd, quality, sharpChroma, resizeFilter, recipeId, areaResample);
       if (!derivative.ok) {
         throw new DiagnosticError(diagnostic(ctx, `SCENE_WEBP_${derivative.code}`, "Scene WebP export refused."));
       }
