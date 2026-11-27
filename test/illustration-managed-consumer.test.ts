@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { computeSha256 } from "../src/digests.js";
 import { createRasterIllustrationRecord, serializeRasterIllustration } from "../src/illustration/v1.js";
-import { createRasterDerivativeRecipe, probeMagickDerivativeCapability, renderRasterDerivative } from "../src/illustration/derivative.js";
+import {
+  bindCarrierComparisonProcessor, createRasterDerivativeRecipe, probeMagickDerivativeCapability,
+  renderRasterDerivative, renderSceneWebpArea, type CarrierDerivativeRecipe,
+} from "../src/illustration/derivative.js";
 import { loadRasterCapability } from "../src/brand/raster-capability.js";
 import { compileScene } from "../src/scene/index.js";
 import {
@@ -82,7 +85,7 @@ describe("managed saved-raster consumer", () => {
 
     const root = await temporary();
     await writeFile(join(root, "reviewed.svg"), svg);
-    async function carrier(directory: string, saved: typeof recipe) {
+    async function carrier(directory: string, saved: CarrierDerivativeRecipe, bytes = exported.bytes) {
       const record = createRasterIllustrationRecord({ illustrationId: "synthetic-hero", revision: 1,
         operation: "import", characters: [{ id: "synthetic", revision: 1 }],
         style: { id: "fixture", revision: 1 }, provider: null, model: null, source,
@@ -90,7 +93,7 @@ describe("managed saved-raster consumer", () => {
         exportRecipes: [{ id: saved.recipeId, recipeSha256: saved.recipeDigest,
           mime: "image/webp", width: 8, height: 12, alpha: "straight" }] });
       await writeIllustrationCarrier({ directory: join(root, directory), packageId: "fixture-art", revision: 1,
-        record, derivatives: [{ recipe: saved, bytes: exported.bytes }] });
+        record, derivatives: [{ recipe: saved, bytes }] });
     }
     const differentEncoder = createRasterDerivativeRecipe({ recipeId: recipe.recipeId, recipeRevision: 1,
       sourceSha256: source.sha256, sourceMime: source.mime, output,
@@ -120,6 +123,31 @@ describe("managed saved-raster consumer", () => {
     } });
     expect(await readFile(join(root, "different/derivatives/hero-web.webp"))).toEqual(before);
     expect(await readFile(join(root, "reviewed.svg"))).toEqual(svg);
+
+    const area = await renderSceneWebpArea(png.pngBytes, { width: 8, height: 12, quality: 88 });
+    const areaDerivative = { id: area.recipe.recipeId, sha256: area.output.sha256, alpha: "has-alpha" };
+    await carrier("area", area.recipe, area.output.bytes);
+    expect(await audit("area")).toMatchObject({ code: 0, state: "verified", data: {
+      pngDigest: source.sha256, derivatives: [areaDerivative],
+    } });
+    const otherArea = bindCarrierComparisonProcessor(area.recipe, { ...encoder.processor, version: "0.0.0" });
+    await carrier("area-different-encoder", otherArea, area.output.bytes);
+    expect(await audit("area-different-encoder")).toMatchObject({
+      code: 3, data: { failureCode: "PROCESSOR_MISMATCH" },
+    });
+    expect(await audit("area-different-encoder", true)).toMatchObject({ code: 0, state: "compared", data: {
+      derivatives: [areaDerivative], localEncoderComparison: { recipes: [{
+        derivativeId: area.recipe.recipeId, savedRecipeDigest: otherArea.recipeDigest,
+        replayRecipeDigest: area.recipe.recipeDigest,
+      }] },
+    } });
+    const wrongMaster = bindCarrierComparisonProcessor(
+      { ...area.recipe, sourceWidth: 32, sourceHeight: 48 }, area.recipe.processor,
+    );
+    await expect(carrier("wrong-master", wrongMaster, area.output.bytes)).rejects.toMatchObject({
+      code: "ILLUSTRATION_CARRIER_INPUT_INVALID",
+    });
+    await expect(lstat(join(root, "wrong-master"))).rejects.toMatchObject({ code: "ENOENT" });
   }, 60_000);
 
   it("retains verified source authority and refuses same-byte inode substitution", async () => {
