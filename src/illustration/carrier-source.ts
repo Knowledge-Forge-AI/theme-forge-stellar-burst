@@ -9,7 +9,7 @@ import {
 } from "./carrier-v1.js";
 import {
   canonicalCarrierDerivativeRecipeJson, inspectRasterDerivativePayload,
-  validateCarrierDerivativeRecipe, type CarrierDerivativeRecipe,
+  isRgb6Recipe, validateCarrierDerivativeRecipe, type CarrierDerivativeRecipe,
 } from "./derivative.js";
 import { parseRasterIllustration, type RasterIllustrationRecordV1 } from "./v1.js";
 import {
@@ -109,13 +109,13 @@ export async function verifyIllustrationSource(directoryInput: string): Promise<
           || planned.recipeSha256 !== item.recipeDigest || planned.mime !== item.mime
           || planned.width !== item.width || planned.height !== item.height
           || recipe.sourceSha256 !== record.source.sha256 || recipe.sourceMime !== record.source.mime
-          || (recipe.schemaVersion === 3 && (recipe.sourceWidth !== record.source.dimensions.width
+          || ((recipe.schemaVersion === 3 || recipe.schemaVersion === 4) && (recipe.sourceWidth !== record.source.dimensions.width
             || recipe.sourceHeight !== record.source.dimensions.height))
           || recipe.output.mime !== item.mime || recipe.output.width !== item.width || recipe.output.height !== item.height) invalid();
       const extension = item.mime === "image/png" ? "png" : "webp";
       const file = await retain(`derivatives/${item.id}.${extension}`, 32 * 1048576);
       if (file.bytes.byteLength !== item.byteLength || computeSha256(file.bytes) !== item.sha256) invalid();
-      const inspected = inspectRasterDerivativePayload(file.bytes, item.mime);
+      const inspected = inspectRasterDerivativePayload(file.bytes, item.mime, isRgb6Recipe(recipe));
       if (inspected.width !== item.width || inspected.height !== item.height || inspected.alpha !== item.alpha
           || (planned.alpha === "opaque" && inspected.alpha !== "opaque")) invalid();
       payloads.set(item.id, file.bytes); recipes.push(recipe);

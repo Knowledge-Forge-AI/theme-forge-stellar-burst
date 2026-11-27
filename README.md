@@ -211,6 +211,15 @@ appearance in some comparisons and remains the default. The generic
 illustration derivative commands still consume the existing v1 and v2
 recipes.
 
+Add `--rgb6` to an Area export to use six-bit RGB and lossless WebP
+encoding. The export preserves alpha and limits RGB rounding to two
+8-bit levels per channel. It emits a v4 recipe for managed carrier
+replay. An older verifier refuses the whole carrier if any recipe is v4.
+Custom recipe IDs name managed slots. The digest binds the recipe even when
+a slot name stays the same. Use separate exports when comparing `--rgb6` to `--quality`
+or `--sharp-chroma`. Review smooth gradients for banding before
+selecting this mode for delivery.
+
 To reopen the reviewed SVG for editing, pass the matching digest to
 `scene import-svg`. Compile edits to a new SVG and export against its
 new digest. Reviewed import and export recognize spaced and compact

@@ -7,7 +7,7 @@ import { createIllustrationCarrierManifest, serializeIllustrationCarrierManifest
 import { disposeIllustrationSource, verifyIllustrationSource } from "./carrier-source.js";
 import {
   canonicalCarrierDerivativeRecipeJson, inspectRasterDerivativePayload,
-  validateCarrierDerivativeRecipe, type CarrierDerivativeRecipe,
+  isRgb6Recipe, validateCarrierDerivativeRecipe, type CarrierDerivativeRecipe,
 } from "./derivative.js";
 import {
   closeIllustrationDirectories, illustrationAbsolutePath, retainIllustrationDirectories,
@@ -43,11 +43,11 @@ export async function writeIllustrationCarrier(options: {
       if (total > 30 * 1048576) throw new Error();
       const planned = record.exportRecipes.find(item => item.id === recipe.recipeId);
       if (!planned || recipe.sourceSha256 !== record.source.sha256 || recipe.sourceMime !== record.source.mime
-          || (recipe.schemaVersion === 3 && (recipe.sourceWidth !== record.source.dimensions.width
+          || ((recipe.schemaVersion === 3 || recipe.schemaVersion === 4) && (recipe.sourceWidth !== record.source.dimensions.width
             || recipe.sourceHeight !== record.source.dimensions.height))
           || planned.recipeSha256 !== recipe.recipeDigest || planned.mime !== recipe.output.mime
           || planned.width !== recipe.output.width || planned.height !== recipe.output.height) throw new Error();
-      const inspected = inspectRasterDerivativePayload(bytes, recipe.output.mime);
+      const inspected = inspectRasterDerivativePayload(bytes, recipe.output.mime, isRgb6Recipe(recipe));
       if (inspected.width !== recipe.output.width || inspected.height !== recipe.output.height
           || (planned.alpha === "opaque" && inspected.alpha !== "opaque")) throw new Error();
       const recipeName = `recipes/${recipe.recipeId}.json`;
