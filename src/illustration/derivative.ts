@@ -35,7 +35,7 @@ export const DERIVATIVE_LIMITS = Object.freeze({
 });
 
 export type RasterDerivativeMime = "image/png" | "image/webp";
-export type RasterDerivativeFilter = "Lanczos" | "Mitchell" | "Catrom";
+export type RasterDerivativeFilter = "Lanczos" | "Mitchell" | "Catrom" | "Box";
 export type RasterDerivativeAlpha = "opaque" | "has-alpha" | "unknown";
 
 export interface ImageMagickProcessorDescriptorV1 {
@@ -155,7 +155,7 @@ type RecordValue = Record<string, unknown>;
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
 const ID = /^[a-z][a-z0-9]*(?:[-._][a-z0-9]+)*$/u;
 const VERSION = /^[0-9][0-9A-Za-z.+-]{0,127}$/u;
-const FILTERS = ["Lanczos", "Mitchell", "Catrom"] as const;
+const FILTERS = ["Lanczos", "Mitchell", "Catrom", "Box"] as const;
 const MIMES = ["image/png", "image/webp"] as const;
 const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 

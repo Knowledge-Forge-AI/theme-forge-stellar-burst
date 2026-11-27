@@ -139,7 +139,9 @@ WebP. Its height must be a whole number of pixels at the source ratio.
 The option retains the same SVG and PNG digests in the export receipt.
 The resize filter defaults to Lanczos. With `--output-width`, use
 `--resize-filter Catrom` for Catmull–Rom or `--resize-filter Mitchell` for
-Mitchell. The receipt records the chosen filter in the replayable recipe.
+Mitchell. Use `--resize-filter Box` to opt in to box averaging when downsampling for a
+responsive export. Compare the result at its intended display sizes. The
+receipt records the chosen filter in the replayable recipe.
 Filter selection requires `--output-width`, including with `--viewbox-size`.
 A width equal to the artboard width is allowed; filter selection does not
 require smaller output dimensions. With `--viewbox-size`, resizing
@@ -148,7 +150,8 @@ enlarged even when it fits within the artboard.
 Add `--quality 93 --sharp-chroma` to select the Compact Sharp recipe.
 Standard export defaults to quality 94 and recipe version 1. Sharp
 chroma uses recipe version 2. Retain that recipe with the matching PNG
-to replay it with `tfsb illustration export`.
+to replay it with `tfsb illustration export`. Box recipes require a
+Stellar Burst version that admits Box; older verifiers reject that filter.
 
 To reopen the reviewed SVG for editing, pass the matching digest to
 `scene import-svg`. Compile edits to a new SVG and export against its

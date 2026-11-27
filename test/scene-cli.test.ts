@@ -331,6 +331,8 @@ describe("tfsb scene CLI integration", () => {
     ["export-webp", ["--resize-filter", "Catrom", "--output-width", "512"], false],
     ["export-webp", ["--output-width", "512", "--resize-filter", "Mitchell"], false],
     ["export-webp", ["--output-width", "512", "--resize-filter", "Lanczos"], false],
+    ["export-webp", ["--output-width", "512", "--resize-filter", "Box"], false],
+    ["export-webp", ["--resize-filter", "Box"], true],
     ["export-webp", ["--resize-filter", "Catrom"], true],
     ["export-webp", ["--viewbox-size", "--resize-filter", "Catrom"], true],
     ["export-webp", ["--output-width", "512", "--resize-filter"], true],
@@ -372,7 +374,7 @@ describe("tfsb scene CLI integration", () => {
       expect(await runSceneCli(["rasterize", "source.svg", "--svg-source", "--expect-svg-digest", svgDigest,
         "--output", "source.png", "--json"], dir, rasterized.io)).toBe(0);
       const png = await readFile(join(dir, "source.png"));
-      for (const filter of ["Lanczos", "Catrom", "Mitchell"]) {
+      for (const filter of ["Lanczos", "Catrom", "Mitchell", "Box"]) {
         const run = capture();
         expect(await runSceneCli(["export-webp", "source.svg", "--expect-svg-digest", svgDigest,
           "--output", `${filter}.webp`, "--output-width", "12", "--resize-filter", filter,

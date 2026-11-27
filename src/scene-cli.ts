@@ -77,7 +77,7 @@ Options:
   --viewbox-size        Rasterize reviewed SVG at its whole-pixel viewBox size
   --output-width        Set WebP width in pixels without changing the artboard ratio
   --quality <0-100>     Set WebP encoder quality (default 94)
-  --resize-filter      Use Lanczos (default), Catrom, or Mitchell with --output-width
+  --resize-filter      Use Lanczos (default), Catrom, Mitchell, or Box with --output-width
   --sharp-chroma       Use the versioned sharp WebP color conversion
   --recipe-id <id>     Set the export-webp recipe identifier (default scene-webp)
   --expect-svg-digest <sha256>  Require the SVG digest to match before rendering or importing
@@ -332,8 +332,8 @@ function parseSceneArgs(argv: readonly string[]): ParsedSceneArgs {
     if (arg === "--resize-filter") {
       const next = rest[i + 1];
       if (action !== "export-webp" || resizeFilter !== undefined
-          || (next !== "Lanczos" && next !== "Catrom" && next !== "Mitchell")) {
-        return { action, dryRun, json, error: "Use --resize-filter <Lanczos|Catrom|Mitchell> once with scene export-webp." };
+          || (next !== "Lanczos" && next !== "Catrom" && next !== "Mitchell" && next !== "Box")) {
+        return { action, dryRun, json, error: "Use --resize-filter <Lanczos|Catrom|Mitchell|Box> once with scene export-webp." };
       }
       resizeFilter = next;
       i += 2;

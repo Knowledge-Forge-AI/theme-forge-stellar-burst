@@ -463,7 +463,8 @@ describe("raster derivative capability", () => {
       const defaultResult = await renderSceneWebp(source, 12, 9, 96, sharpChroma);
       const recipeDigests = new Set<string>();
       const outputDigests = new Set<string>();
-      for (const filter of ["Lanczos", "Catrom", "Mitchell"] as const) {
+      const filters = ["Lanczos", "Catrom", "Mitchell", "Box"] as const;
+      for (const filter of filters) {
         const selected = await renderSceneWebp(source, 12, 9, 96, sharpChroma, filter);
         expect(selected.recipe).toMatchObject({
           schemaVersion: sharpChroma ? 2 : 1, sourceSha256: sourceDigest,
@@ -487,8 +488,8 @@ describe("raster derivative capability", () => {
         recipeDigests.add(selected.recipe.recipeDigest);
         outputDigests.add(selected.output.sha256);
       }
-      expect(recipeDigests.size).toBe(3);
-      expect(outputDigests.size).toBe(3);
+      expect(recipeDigests.size).toBe(filters.length);
+      expect(outputDigests.size).toBe(filters.length);
       expect(computeSha256(source)).toBe(sourceDigest);
     }, 60_000);
   }
