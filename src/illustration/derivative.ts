@@ -361,6 +361,33 @@ export function validateRasterDerivativeAreaRecipe(value: unknown): RasterDeriva
   return Object.freeze({ ...recipe, recipeDigest });
 }
 
+export type CarrierDerivativeRecipe = RasterDerivativeRecipe | RasterDerivativeAreaRecipe;
+
+export function validateCarrierDerivativeRecipe(value: unknown): CarrierDerivativeRecipe {
+  switch (own(plainRecord(value), "schemaVersion")) {
+    case 1:
+    case 2: return validateRasterDerivativeRecipe(value);
+    case 3: return validateRasterDerivativeAreaRecipe(value);
+    default: return invalid();
+  }
+}
+
+export function canonicalCarrierDerivativeRecipeJson(value: unknown): string {
+  const recipe = validateCarrierDerivativeRecipe(value);
+  return `${JSON.stringify(JSON.parse(canonicalJson(recipe)), null, 2)}\n`;
+}
+
+export function bindCarrierComparisonProcessor(
+  savedRecipe: CarrierDerivativeRecipe, processor: ImageMagickProcessorDescriptorV1,
+): CarrierDerivativeRecipe {
+  const { recipeDigest: _savedDigest, ...source } = savedRecipe;
+  const recipe = { ...source, processor };
+  const recipeDigest = recipe.schemaVersion === 3
+    ? areaRecipeDigest(normalizeAreaRecipe(recipe, false))
+    : computeRasterDerivativeRecipeDigest(recipe);
+  return validateCarrierDerivativeRecipe({ ...recipe, recipeDigest });
+}
+
 const PNG_SIGNATURE = Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10);
 const PNG_CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -917,6 +944,38 @@ export async function renderSceneWebpArea(source: Uint8Array, options: Readonly<
     },
   }, false);
   const recipe = Object.freeze({ ...normalized, recipeDigest: areaRecipeDigest(normalized) });
+  const output = await executeAreaRecipe(decoded, recipe, run, signal);
+  return { recipe, output, receipt: verifyRasterDerivativeOutput(output, recipe) };
+}
+
+/** Replay only a validated carrier recipe against its authenticated source and processor. */
+export async function renderCarrierDerivative(
+  source: Uint8Array, savedRecipe: CarrierDerivativeRecipe,
+): Promise<RasterDerivativeOutputV1> {
+  const recipe = validateCarrierDerivativeRecipe(savedRecipe);
+  if (recipe.schemaVersion !== 3) return renderRasterDerivative(source, recipe);
+  if (!(source instanceof Uint8Array) || source.byteLength < 1 || source.byteLength > DERIVATIVE_LIMITS.sourceBytes) {
+    throw new RasterDerivativeError("SOURCE_INVALID");
+  }
+  const snapshot = new Uint8Array(source);
+  if (computeSha256(snapshot) !== recipe.sourceSha256) throw new RasterDerivativeError("SOURCE_CHECKSUM_MISMATCH");
+  let decoded: ReturnType<typeof decodeStrictPng>;
+  try { decoded = decodeStrictPng(snapshot); } catch { throw new RasterDerivativeError("SOURCE_INVALID"); }
+  if (decoded.width !== recipe.sourceWidth || decoded.height !== recipe.sourceHeight) {
+    throw new RasterDerivativeError("SOURCE_INVALID");
+  }
+  const run: RunMagick = (args, input, limit, timeout) => runMagick(args, input, limit, timeout);
+  const capability = await probeMagick(run);
+  if (!capability.available) throw new RasterDerivativeError("PROCESSOR_UNAVAILABLE");
+  if (!sameProcessor(recipe.processor, capability.processor)) throw new RasterDerivativeError("PROCESSOR_MISMATCH");
+  return executeAreaRecipe(decoded, recipe, run);
+}
+
+async function executeAreaRecipe(
+  decoded: ReturnType<typeof decodeStrictPng>, recipe: RasterDerivativeAreaRecipe,
+  run: RunMagick, signal?: AbortSignal,
+): Promise<RasterDerivativeOutputV1> {
+  const { width, height } = recipe.output;
   const deadline = performance.now() + DERIVATIVE_LIMITS.processTimeoutMs;
   const checkBudget = (): void => {
     if (signal?.aborted) throw new RasterDerivativeError("PROCESS_CANCELLED");
@@ -932,12 +991,11 @@ export async function renderSceneWebpArea(source: Uint8Array, options: Readonly<
     "-define", "webp:use-sharp-yuv=true", "webp:-"], png, DERIVATIVE_LIMITS.outputBytes, DERIVATIVE_LIMITS.processTimeoutMs);
   if (encoded.byteLength < 1 || encoded.byteLength > DERIVATIVE_LIMITS.outputBytes) throw new RasterDerivativeError("OUTPUT_INVALID");
   const verified = await verifyWebpOutput(encoded, recipe, run);
-  const output: RasterDerivativeOutputV1 = Object.freeze({
+  return Object.freeze({
     sourceSha256: recipe.sourceSha256, recipeDigest: recipe.recipeDigest, processor: recipe.processor,
     mime: "image/webp", bytes: new Uint8Array(encoded), sha256: computeSha256(encoded), byteLength: encoded.byteLength,
     ...verified, verification: "processor-decoded-dimensions",
   });
-  return { recipe, output, receipt: verifyRasterDerivativeOutput(output, recipe) };
 }
 
 /** Decode a bounded still WebP through the existing processor, preserving its canvas. */

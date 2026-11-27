@@ -6,7 +6,7 @@ import { durableWrite } from "../filesystem.js";
 import { createIllustrationConsumerProfile, serializeIllustrationConsumerProfile } from "./carrier-v1.js";
 import { disposeIllustrationSource, verifyIllustrationSource } from "./carrier-source.js";
 import { writeIllustrationCarrier } from "./carrier-write.js";
-import { validateRasterDerivativeRecipe } from "./derivative.js";
+import { validateCarrierDerivativeRecipe } from "./derivative.js";
 import {
   disposeIllustrationPlan, executeIllustrationInstallPlan, ILLUSTRATION_PROFILE_FILENAME, planIllustrationInstall,
 } from "./consumer-plan.js";
@@ -88,7 +88,7 @@ export async function runIllustrationConsumerCli(argv: readonly string[], cwd: s
       for (const item of request.derivatives) {
         const row = object(item, ["recipePath", "sourcePath"]);
         if (typeof row.recipePath !== "string" || typeof row.sourcePath !== "string") throw new Error();
-        const recipe = validateRasterDerivativeRecipe(jsonInput(await readInput(resolve(dirname(requestPath), row.recipePath), 262144)));
+        const recipe = validateCarrierDerivativeRecipe(jsonInput(await readInput(resolve(dirname(requestPath), row.recipePath), 262144)));
         const bytes = await readInput(resolve(dirname(requestPath), row.sourcePath), 32 * 1048576);
         derivatives.push({ recipe, bytes });
       }

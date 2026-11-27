@@ -1,10 +1,9 @@
 # TFSB illustration carrier v1
 
 This document defines the small, deterministic metadata contract for the first
-illustration carrier.  The v1 transport is a directory; archive transport is
-deferred.  The implementation is metadata-only: it does not perform file I/O,
-open file descriptors, decode image bytes, install assets, or qualify a
-provider.
+illustration carrier. The v1 transport is a directory. The metadata module
+defines the manifest, profile, and lock. The managed consumer reads the
+directory, verifies derivative bytes, and installs selected outputs.
 
 ## Directory layout
 
@@ -20,6 +19,20 @@ derivatives/<derivative-id>.webp
 
 Only the extension selected by a derivative's MIME is used.  The paths are
 derived from validated public IDs, not accepted as caller-provided paths.
+
+## Derivative recipes
+
+A carrier can contain legacy derivative recipes (versions 1 and 2) and
+exact-area WebP recipes (version 3). Each recipe is stored as canonical JSON
+and retains its original versioned digest. Readers that predate version 3
+refuse carriers containing it.
+
+An exact-area recipe binds a PNG master by checksum and exact dimensions.
+Its output preserves the complete canvas at the specified responsive size.
+SVG verification reconstructs the master, checks the saved processor identity,
+and compares the recomputed WebP with the carrier's stored bytes. An explicit
+local-encoder comparison uses a separately computed recipe digest and verifies
+the same output bytes. Installation uses the verified saved derivative.
 
 ## Manifest
 

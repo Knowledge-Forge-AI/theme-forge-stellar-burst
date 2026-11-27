@@ -8,8 +8,8 @@ import {
   type IllustrationCarrierManifestV1,
 } from "./carrier-v1.js";
 import {
-  canonicalRasterDerivativeRecipeJson, inspectRasterDerivativePayload,
-  validateRasterDerivativeRecipe, type RasterDerivativeRecipe,
+  canonicalCarrierDerivativeRecipeJson, inspectRasterDerivativePayload,
+  validateCarrierDerivativeRecipe, type CarrierDerivativeRecipe,
 } from "./derivative.js";
 import { parseRasterIllustration, type RasterIllustrationRecordV1 } from "./v1.js";
 import {
@@ -27,7 +27,7 @@ export class IllustrationSourceError extends Error {
 export interface VerifiedIllustrationSource {
   readonly manifest: IllustrationCarrierManifestV1;
   readonly record: RasterIllustrationRecordV1;
-  readonly recipes: readonly RasterDerivativeRecipe[];
+  readonly recipes: readonly CarrierDerivativeRecipe[];
 }
 
 interface SourceState {
@@ -53,7 +53,7 @@ async function inventory(path: string, expected: readonly string[]): Promise<voi
   } catch (error) { if (error instanceof IllustrationSourceError) throw error; invalid(); }
 }
 
-function readRecipe(bytes: Uint8Array): RasterDerivativeRecipe {
+function readRecipe(bytes: Uint8Array): CarrierDerivativeRecipe {
   try {
     const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
     if (text.startsWith("\uFEFF")) invalid();
@@ -66,8 +66,8 @@ function readRecipe(bytes: Uint8Array): RasterDerivativeRecipe {
       else if (char === "{" || char === "[") { if (++depth > 32) invalid(); }
       else if (char === "}" || char === "]") { if (--depth < 0) invalid(); }
     }
-    const result = validateRasterDerivativeRecipe(parseDuplicateFreeJson(text, { operation: "validate", domain: "cli" }));
-    if (canonicalRasterDerivativeRecipeJson(result) !== text) invalid();
+    const result = validateCarrierDerivativeRecipe(parseDuplicateFreeJson(text, { operation: "validate", domain: "cli" }));
+    if (canonicalCarrierDerivativeRecipeJson(result) !== text) invalid();
     return result;
   } catch { invalid(); }
 }
@@ -101,7 +101,7 @@ export async function verifyIllustrationSource(directoryInput: string): Promise<
       await inventory(path, entries); inventories.push({ path, entries });
     }
     const payloads = new Map<string, Uint8Array>();
-    const recipes: RasterDerivativeRecipe[] = [];
+    const recipes: CarrierDerivativeRecipe[] = [];
     for (const item of manifest.derivatives) {
       const recipe = readRecipe((await retain(`recipes/${item.id}.json`, 262144)).bytes);
       const planned = record.exportRecipes.find(entry => entry.id === item.id);
@@ -109,6 +109,8 @@ export async function verifyIllustrationSource(directoryInput: string): Promise<
           || planned.recipeSha256 !== item.recipeDigest || planned.mime !== item.mime
           || planned.width !== item.width || planned.height !== item.height
           || recipe.sourceSha256 !== record.source.sha256 || recipe.sourceMime !== record.source.mime
+          || (recipe.schemaVersion === 3 && (recipe.sourceWidth !== record.source.dimensions.width
+            || recipe.sourceHeight !== record.source.dimensions.height))
           || recipe.output.mime !== item.mime || recipe.output.width !== item.width || recipe.output.height !== item.height) invalid();
       const extension = item.mime === "image/png" ? "png" : "webp";
       const file = await retain(`derivatives/${item.id}.${extension}`, 32 * 1048576);

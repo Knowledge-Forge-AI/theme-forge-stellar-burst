@@ -7,7 +7,7 @@ import {
   disposeIllustrationSource, revalidateIllustrationSource, verifyIllustrationSource,
 } from "./carrier-source.js";
 import {
-  computeRasterDerivativeRecipeDigest, probeMagickDerivativeCapability, renderRasterDerivative,
+  bindCarrierComparisonProcessor, probeMagickDerivativeCapability, renderCarrierDerivative,
 } from "./derivative.js";
 import {
   closeIllustrationDirectories, retainIllustrationDirectories, retainIllustrationFile,
@@ -77,12 +77,13 @@ export async function verifyIllustrationCarrierSvg(
         for (const [index, savedRecipe] of carrier.recipes.entries()) {
           let recipe = savedRecipe;
           if (localEncoder?.available) {
-            const { recipeDigest: savedRecipeDigest, ...source } = savedRecipe;
-            const replay = { ...source, processor: localEncoder.processor };
-            recipe = { ...replay, recipeDigest: computeRasterDerivativeRecipeDigest(replay) };
-            comparisons.push({ derivativeId: savedRecipe.recipeId, savedRecipeDigest, replayRecipeDigest: recipe.recipeDigest });
+            recipe = bindCarrierComparisonProcessor(savedRecipe, localEncoder.processor);
+            comparisons.push({
+              derivativeId: savedRecipe.recipeId, savedRecipeDigest: savedRecipe.recipeDigest,
+              replayRecipeDigest: recipe.recipeDigest,
+            });
           }
-          const rebuilt = await renderRasterDerivative(raster.pngBytes, recipe);
+          const rebuilt = await renderCarrierDerivative(raster.pngBytes, recipe);
           const saved = carrier.manifest.derivatives[index]!;
           if (rebuilt.sha256 !== saved.sha256 || rebuilt.byteLength !== saved.byteLength || rebuilt.alpha !== saved.alpha) {
             throw new IllustrationSvgError("ILLUSTRATION_SVG_DERIVATIVE_MISMATCH");
