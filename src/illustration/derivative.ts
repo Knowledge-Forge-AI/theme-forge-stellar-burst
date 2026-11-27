@@ -2,10 +2,12 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { constants } from "node:fs";
 import { open, realpath, stat } from "node:fs/promises";
 import { dirname } from "node:path";
+import { deflateSync } from "node:zlib";
 
 import { decodeStrictPng } from "../brand/raster-capability.js";
 import { computeSha256, type Sha256Digest } from "../digests.js";
 import { canonicalJson } from "../service-protocol/canonical-json.js";
+import { downsampleArea } from "./area-resample.js";
 import { hasIllustrationCredentialToken, hasIllustrationPrivateTokenPrefix } from "./privacy.js";
 
 /**
@@ -93,6 +95,23 @@ export interface RasterDerivativeRecipeV2 extends RasterDerivativeRecipeWithoutD
 
 type RasterDerivativeRecipeWithoutDigest = RasterDerivativeRecipeWithoutDigestV1 | RasterDerivativeRecipeWithoutDigestV2;
 export type RasterDerivativeRecipe = RasterDerivativeRecipeV1 | RasterDerivativeRecipeV2;
+
+export const AREA_RESAMPLE_ID = "area-srgb-alpha-weighted-v1" as const;
+
+interface RasterDerivativeAreaRecipeWithoutDigest extends Omit<RasterDerivativeRecipeWithoutDigestV1, "schemaVersion" | "output" | "sourceMime"> {
+  readonly schemaVersion: 3;
+  readonly sourceMime: "image/png";
+  readonly sourceWidth: number;
+  readonly sourceHeight: number;
+  readonly output: Omit<RasterDerivativeOutputRecipeV2, "filter" | "fit"> & {
+    readonly fit: "fill";
+    readonly resample: typeof AREA_RESAMPLE_ID;
+  };
+}
+
+export interface RasterDerivativeAreaRecipe extends RasterDerivativeAreaRecipeWithoutDigest {
+  readonly recipeDigest: Sha256Digest;
+}
 
 export interface RasterDerivativeOutputV1 {
   readonly sourceSha256: Sha256Digest;
@@ -297,6 +316,49 @@ export function createRasterDerivativeRecipe(value: Omit<RasterDerivativeRecipeW
 export function canonicalRasterDerivativeRecipeJson(value: unknown): string {
   const recipe = validateRasterDerivativeRecipe(value);
   return `${JSON.stringify(JSON.parse(canonicalJson(recipe)), null, 2)}\n`;
+}
+
+function normalizeAreaRecipe(value: unknown, requireDigest: boolean): RasterDerivativeAreaRecipeWithoutDigest {
+  const record = plainRecord(value);
+  const required = ["schema", "schemaVersion", "recipeId", "recipeRevision", "sourceSha256", "sourceMime",
+    "sourceWidth", "sourceHeight", "output", "processor"];
+  exact(record, requireDigest ? [...required, "recipeDigest"] : required);
+  if (own(record, "schema") !== DERIVATIVE_RECIPE_SCHEMA_ID || own(record, "schemaVersion") !== 3
+      || own(record, "sourceMime") !== "image/png") invalid();
+  const [sourceWidth, sourceHeight] = dimensions(own(record, "sourceWidth"), own(record, "sourceHeight"));
+  const output = plainRecord(own(record, "output"));
+  exact(output, ["mime", "width", "height", "fit", "colorSpace", "metadata", "alpha", "quality", "method", "chroma", "resample"]);
+  const [width, height] = dimensions(own(output, "width"), own(output, "height"));
+  if (width > sourceWidth || height > sourceHeight
+      || height !== Math.round(width * sourceHeight / sourceWidth)) invalid();
+  if (own(output, "mime") !== "image/webp" || own(output, "fit") !== "fill"
+      || own(output, "colorSpace") !== "srgb" || own(output, "metadata") !== "stripped"
+      || own(output, "alpha") !== "preserve" || own(output, "chroma") !== "sharp-yuv"
+      || own(output, "resample") !== AREA_RESAMPLE_ID) invalid();
+  const normalized: RasterDerivativeAreaRecipeWithoutDigest = Object.freeze({
+    schema: DERIVATIVE_RECIPE_SCHEMA_ID, schemaVersion: 3, sourceMime: "image/png", sourceWidth, sourceHeight,
+    recipeId: validateRasterDerivativeRecipeId(own(record, "recipeId")),
+    recipeRevision: integer(own(record, "recipeRevision"), 1, 1_000_000),
+    sourceSha256: digest(own(record, "sourceSha256")), processor: normalizeProcessor(own(record, "processor")),
+    output: Object.freeze({
+      mime: "image/webp", width, height, fit: "fill", colorSpace: "srgb", metadata: "stripped", alpha: "preserve",
+      quality: integer(own(output, "quality"), 0, 100), method: integer(own(output, "method"), 0, 6),
+      chroma: "sharp-yuv", resample: AREA_RESAMPLE_ID,
+    }),
+  });
+  if (Buffer.byteLength(canonicalJson(normalized), "utf8") > DERIVATIVE_LIMITS.recipeBytes) invalid();
+  return normalized;
+}
+
+function areaRecipeDigest(recipe: RasterDerivativeAreaRecipeWithoutDigest): Sha256Digest {
+  return computeSha256(Buffer.from(`tfsb.raster-derivative-recipe-v3\n${canonicalJson(recipe)}`, "utf8"));
+}
+
+export function validateRasterDerivativeAreaRecipe(value: unknown): RasterDerivativeAreaRecipe {
+  const recipe = normalizeAreaRecipe(value, true);
+  const recipeDigest = digest(own(plainRecord(value), "recipeDigest"));
+  if (recipeDigest !== areaRecipeDigest(recipe)) invalid();
+  return Object.freeze({ ...recipe, recipeDigest });
 }
 
 const PNG_SIGNATURE = Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10);
@@ -512,10 +574,11 @@ async function authenticateBoundMagick(bound: BoundMagick): Promise<void> {
 
 async function runMagick(
   args: readonly string[], input: Uint8Array | undefined, maxOutputBytes: number, timeoutMs: number,
-  bound?: BoundMagick,
+  bound?: BoundMagick, abortSignal?: AbortSignal,
 ): Promise<Uint8Array> {
   if (bound !== undefined) await authenticateBoundMagick(bound);
-  const signal = bound?.signal;
+  const signal = bound?.signal ?? abortSignal;
+  if (signal?.aborted) throw new RasterDerivativeError("PROCESS_CANCELLED");
   return await new Promise<Uint8Array>((resolve, reject) => {
     let child: ChildProcessWithoutNullStreams;
     try {
@@ -689,7 +752,7 @@ function parseIdentify(textValue: string): Readonly<{ width: number; height: num
   return Object.freeze({ width, height, alpha: match[4]!.toLowerCase().endsWith("a") ? "has-alpha" : "opaque" });
 }
 
-async function verifyWebpOutput(bytes: Uint8Array, recipe: RasterDerivativeRecipe, run: RunMagick): Promise<Readonly<{ width: number; height: number; alpha: RasterDerivativeAlpha }>> {
+async function verifyWebpOutput(bytes: Uint8Array, recipe: RasterDerivativeRecipe | RasterDerivativeAreaRecipe, run: RunMagick): Promise<Readonly<{ width: number; height: number; alpha: RasterDerivativeAlpha }>> {
   const header = inspectWebpHeader(bytes, "OUTPUT_INVALID", true);
   if (header.width !== recipe.output.width || header.height !== recipe.output.height) throw new RasterDerivativeError("OUTPUT_INVALID");
   let identify: string;
@@ -740,7 +803,7 @@ async function renderWithMagick(sourceBytes: Uint8Array, recipeValue: unknown, r
 }
 
 export function verifyRasterDerivativeOutput(
-  output: RasterDerivativeOutputV1, recipe: RasterDerivativeRecipe,
+  output: RasterDerivativeOutputV1, recipe: RasterDerivativeRecipe | RasterDerivativeAreaRecipe,
 ): RasterDerivativeReceiptV1 {
   if (output.recipeDigest !== recipe.recipeDigest) throw new RasterDerivativeError("OUTPUT_INVALID");
   if (output.sourceSha256 !== recipe.sourceSha256) throw new RasterDerivativeError("SOURCE_CHECKSUM_MISMATCH");
@@ -779,6 +842,102 @@ export function renderSceneWebp(
   source: Uint8Array, width: number, height: number, quality?: number, sharpChroma = false, filter?: RasterDerivativeFilter, recipeId?: string,
 ) {
   return encodeSceneWebp(source, width, height, runMagick, quality, sharpChroma, filter, recipeId);
+}
+
+/** @internal Encode the bounded Area sampler handoff without profiles or ancillary chunks. */
+export function encodeAreaPng(rgba: Uint8Array, width: number, height: number,
+  maximumByteLength = DERIVATIVE_LIMITS.sourceBytes,
+): Uint8Array {
+  dimensions(width, height);
+  if (rgba.byteLength !== width * height * 4) throw new RasterDerivativeError("SOURCE_INVALID");
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  header[9] = 6;
+  const stride = width * 4;
+  const scanlines = Buffer.alloc((stride + 1) * height);
+  for (let row = 0; row < height; row += 1) {
+    scanlines.set(rgba.subarray(row * stride, (row + 1) * stride), row * (stride + 1) + 1);
+  }
+  function chunk(type: string, bytes: Uint8Array): Buffer {
+    const value = Buffer.allocUnsafe(bytes.length + 12);
+    value.writeUInt32BE(bytes.length);
+    value.write(type, 4, "ascii");
+    value.set(bytes, 8);
+    value.writeUInt32BE(pngCrc32(value.subarray(4, 8 + bytes.length)), 8 + bytes.length);
+    return value;
+  }
+  // Bound the generated PNG with the same input limit as the established encoder path.
+  const fixedBytes = PNG_SIGNATURE.length + header.length + 3 * 12;
+  if (!Number.isSafeInteger(maximumByteLength) || maximumByteLength <= fixedBytes
+      || maximumByteLength > DERIVATIVE_LIMITS.sourceBytes) throw new RasterDerivativeError("PROCESS_OUTPUT_LIMIT");
+  let compressed: Buffer;
+  try {
+    compressed = deflateSync(scanlines, { maxOutputLength: maximumByteLength - fixedBytes });
+  } catch (error) {
+    if (error instanceof RangeError && (error as NodeJS.ErrnoException).code === "ERR_BUFFER_TOO_LARGE") {
+      throw new RasterDerivativeError("PROCESS_OUTPUT_LIMIT");
+    }
+    throw new RasterDerivativeError("PROCESS_FAILED");
+  }
+  return Buffer.concat([PNG_SIGNATURE, chunk("IHDR", header), chunk("IDAT", compressed), chunk("IEND", new Uint8Array())]);
+}
+
+/** Encode the complete reviewed PNG canvas via the opt-in, alpha-weighted sampler. */
+export async function renderSceneWebpArea(source: Uint8Array, options: Readonly<{
+  width: number;
+  height: number;
+  quality?: number;
+  recipeId?: string;
+  signal?: AbortSignal;
+}>): Promise<{
+  readonly recipe: RasterDerivativeAreaRecipe;
+  readonly output: RasterDerivativeOutputV1;
+  readonly receipt: RasterDerivativeReceiptV1;
+}> {
+  const { width, height, quality = 94, recipeId = "scene-webp-area", signal } = options;
+  if (signal?.aborted) throw new RasterDerivativeError("PROCESS_CANCELLED");
+  if (!(source instanceof Uint8Array) || source.byteLength < 1 || source.byteLength > DERIVATIVE_LIMITS.sourceBytes) {
+    throw new RasterDerivativeError("SOURCE_INVALID");
+  }
+  const snapshot = new Uint8Array(source);
+  let decoded: ReturnType<typeof decodeStrictPng>;
+  try { decoded = decodeStrictPng(snapshot); } catch { throw new RasterDerivativeError("SOURCE_INVALID"); }
+  const run: RunMagick = (args, input, limit, timeout) => runMagick(args, input, limit, timeout, undefined, signal);
+  const capability = await probeMagick(run);
+  if (!capability.available) throw new RasterDerivativeError("PROCESSOR_UNAVAILABLE");
+  const normalized = normalizeAreaRecipe({
+    schema: DERIVATIVE_RECIPE_SCHEMA_ID, schemaVersion: 3, recipeId, recipeRevision: 1,
+    sourceSha256: computeSha256(snapshot), sourceMime: "image/png", sourceWidth: decoded.width,
+    sourceHeight: decoded.height, processor: capability.processor,
+    output: {
+      mime: "image/webp", width, height, fit: "fill", colorSpace: "srgb", metadata: "stripped",
+      alpha: "preserve", quality, method: 6, chroma: "sharp-yuv", resample: AREA_RESAMPLE_ID,
+    },
+  }, false);
+  const recipe = Object.freeze({ ...normalized, recipeDigest: areaRecipeDigest(normalized) });
+  const deadline = performance.now() + DERIVATIVE_LIMITS.processTimeoutMs;
+  const checkBudget = (): void => {
+    if (signal?.aborted) throw new RasterDerivativeError("PROCESS_CANCELLED");
+    if (performance.now() > deadline) throw new RasterDerivativeError("PROCESS_TIMEOUT");
+  };
+  checkBudget();
+  const rgba = downsampleArea(decoded, width, height, checkBudget);
+  checkBudget();
+  const png = encodeAreaPng(rgba, width, height);
+  checkBudget();
+  const encoded = await run(["png:-", "-colorspace", "sRGB", "-strip", "-depth", "8", "-quality",
+    String(recipe.output.quality), "-define", `webp:method=${recipe.output.method}`,
+    "-define", "webp:use-sharp-yuv=true", "webp:-"], png, DERIVATIVE_LIMITS.outputBytes, DERIVATIVE_LIMITS.processTimeoutMs);
+  if (encoded.byteLength < 1 || encoded.byteLength > DERIVATIVE_LIMITS.outputBytes) throw new RasterDerivativeError("OUTPUT_INVALID");
+  const verified = await verifyWebpOutput(encoded, recipe, run);
+  const output: RasterDerivativeOutputV1 = Object.freeze({
+    sourceSha256: recipe.sourceSha256, recipeDigest: recipe.recipeDigest, processor: recipe.processor,
+    mime: "image/webp", bytes: new Uint8Array(encoded), sha256: computeSha256(encoded), byteLength: encoded.byteLength,
+    ...verified, verification: "processor-decoded-dimensions",
+  });
+  return { recipe, output, receipt: verifyRasterDerivativeOutput(output, recipe) };
 }
 
 /** Decode a bounded still WebP through the existing processor, preserving its canvas. */

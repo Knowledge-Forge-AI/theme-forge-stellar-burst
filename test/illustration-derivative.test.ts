@@ -1,16 +1,18 @@
-import { deflateSync } from "node:zlib";
-import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { deflateSync, inflateSync } from "node:zlib";
+import { access, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { decodeStrictPng } from "../src/brand/raster-capability.js";
 import { computeSha256 } from "../src/digests.js";
 import {
   DERIVATIVE_RECIPE_SCHEMA_ID,
   DERIVATIVE_RECIPE_SCHEMA_VERSION,
   DERIVATIVE_RECIPE_DIGEST_BASIS,
   createRasterDerivativeRecipe,
+  encodeAreaPng,
   computeRasterDerivativeRecipeDigest,
   inspectRasterIllustrationSource,
   inspectRasterDerivativePayload,
@@ -18,13 +20,17 @@ import {
   probeMagickDerivativeCapability,
   renderRasterDerivative,
   renderSceneWebp,
+  renderSceneWebpArea,
   renderSceneWebpWithNixMagick,
   verifyRasterDerivativeOutput,
   supportsImageMagickFormat,
   validateRasterDerivativeRecipe,
+  validateRasterDerivativeAreaRecipe,
   type ImageMagickProcessorDescriptorV1,
   type RasterDerivativeRecipeWithoutDigestV1,
 } from "../src/illustration/derivative.js";
+
+import { canonicalJson } from "../src/service-protocol/canonical-json.js";
 
 const encoder = new TextEncoder();
 
@@ -507,4 +513,220 @@ describe("raster derivative capability", () => {
     expect(result.byteLength).toBe(result.bytes.byteLength);
   }, 60_000);
 
+});
+
+describe("area WebP source admission", () => {
+  it("refuses an aborted request before PNG processing", async () => {
+    await expect(renderSceneWebpArea(new Uint8Array(), {
+      width: 1, height: 1, signal: AbortSignal.abort(),
+    })).rejects.toMatchObject({ code: "PROCESS_CANCELLED" });
+  });
+
+  it("refuses a color-profiled PNG under the strict sRGB source policy", async () => {
+    const png = pngWithInsertedChunk(tinyPng(), { type: "gAMA", data: Uint8Array.of(0, 0, 177, 143) }, 1);
+    await expect(renderSceneWebpArea(png, { width: 1, height: 1 }))
+      .rejects.toMatchObject({ code: "SOURCE_INVALID" });
+  });
+});
+
+describe("exact-area recipe conformance", () => {
+  const v3 = (sourceWidth = 1000, sourceHeight = 1537, width = 384, height = 590) => ({
+    schema: DERIVATIVE_RECIPE_SCHEMA_ID, schemaVersion: 3,
+    recipeId: "pinned-area", recipeRevision: 1, sourceMime: "image/png",
+    sourceSha256: `sha256:${"2".repeat(64)}`, sourceWidth, sourceHeight, processor: processor(),
+    output: { mime: "image/webp", width, height, fit: "fill", colorSpace: "srgb", metadata: "stripped",
+      alpha: "preserve", quality: 94, method: 6, chroma: "sharp-yuv", resample: "area-srgb-alpha-weighted-v1" },
+  });
+  const seal = (draft: Record<string, unknown>, version = 3) => ({
+    ...draft, recipeDigest: computeSha256(Buffer.from(`tfsb.raster-derivative-recipe-v${version}\n${canonicalJson(draft)}`)),
+  });
+
+  it("pins historical recipe digests and keeps Area out of v1/v2 validation", async () => {
+    for (const [version, filter, expected] of [
+      [1, "Lanczos", "ba3cb5a0e35a464498aaf6b18c56bb2f2b248ba9ac49b8e5dd29f0277ebbda99"],
+      [2, "Lanczos", "b3a2f5b23b319455479c562b1ddc111a17e6a7cd2c1174e3b29f4fe84201f8ed"],
+      [2, "Box", "f59e85b7ffcf1a71f5509106834218d48b02eacb360d5763eaecbff50861bb09"],
+    ] as const) {
+      const draft = {
+        schema: DERIVATIVE_RECIPE_SCHEMA_ID, schemaVersion: version, recipeId: "pinned-recipe",
+        recipeRevision: 1, sourceMime: "image/png", sourceSha256: `sha256:${"2".repeat(64)}`,
+        processor: processor(),
+        output: { mime: "image/webp", width: 1, height: 1, fit: "contain-pad", colorSpace: "srgb",
+          metadata: "stripped", alpha: "preserve", quality: 94, method: 6, filter,
+          ...(version === 2 ? { chroma: "sharp-yuv" } : {}) },
+      };
+      expect(computeRasterDerivativeRecipeDigest(draft)).toBe(`sha256:${expected}`);
+      for (const extra of [{ filter: "Area" }, { resample: "area-srgb-alpha-weighted-v1" }]) {
+        expect(() => validateRasterDerivativeRecipe(seal({ ...draft, output: { ...draft.output, ...extra } }, version))).toThrow();
+      }
+    }
+    const exact = validateRasterDerivativeAreaRecipe(seal(v3()));
+    expect(() => validateRasterDerivativeRecipe(exact)).toThrow();
+    await expect(renderRasterDerivative(tinyPng(), exact)).rejects.toMatchObject({ code: "INVALID_RECIPE" });
+  });
+
+  it("refuses unsupported fields even when the altered recipe is re-digested", () => {
+    const draft = v3();
+    const { chroma: _ignored, ...withoutChroma } = draft.output;
+    for (const value of [
+      { ...draft, sourceMime: "image/webp" }, { ...draft, output: withoutChroma },
+      ...[{ mime: "image/png" }, { fit: "contain-pad" }, { resample: "future" }, { filter: "Box" }].map(extra =>
+        ({ ...draft, output: { ...draft.output, ...extra } })),
+    ]) expect(() => validateRasterDerivativeAreaRecipe(seal(value))).toThrow();
+    expect(() => validateRasterDerivativeAreaRecipe({ ...seal(draft), constructor: "forbidden" })).toThrow();
+    expect(() => validateRasterDerivativeAreaRecipe(seal(draft, 2))).toThrow();
+  });
+
+  it("enforces width-anchored rounding and both axis bounds", () => {
+    expect(validateRasterDerivativeAreaRecipe(seal(v3())).output.height).toBe(590);
+    expect(validateRasterDerivativeAreaRecipe(seal(v3(4, 2, 3, 2))).output.height).toBe(2);
+    for (const invalid of [v3(1000, 1537, 384, 591), v3(4, 2, 3, 1), v3(16000, 1, 1, 0),
+      v3(4, 2, 5, 3), v3(4, 2, 4, 3)]) {
+      expect(() => validateRasterDerivativeAreaRecipe(seal(invalid))).toThrow();
+    }
+  });
+
+  it("rejects tampered dimensions and output digest before creating a receipt", () => {
+    const exact = validateRasterDerivativeAreaRecipe(seal(v3()));
+    const bytes = Uint8Array.of(18, 33, 21);
+    const output = { sourceSha256: exact.sourceSha256, recipeDigest: exact.recipeDigest,
+      processor: exact.processor, mime: "image/webp", bytes, sha256: computeSha256(bytes),
+      byteLength: bytes.byteLength, width: 384, height: 590, alpha: "has-alpha",
+      verification: "processor-decoded-dimensions" } as const;
+    expect(verifyRasterDerivativeOutput(output, exact).outputSha256).toBe(output.sha256);
+    expect(() => verifyRasterDerivativeOutput({ ...output, height: 591 }, exact)).toThrow();
+    expect(() => verifyRasterDerivativeOutput({ ...output, bytes: Uint8Array.of(18, 33, 22) }, exact)).toThrow();
+  });
+});
+
+async function withPngTransportProbe<T>(callback: (path: string) => Promise<T>): Promise<T> {
+  const directory = await mkdtemp(join(await realpath(tmpdir()), "tfsb-area-transport-"));
+  const previousPath = process.env.PATH;
+  try {
+    const singlePixelWebp = webpDocument([{ type: "VP8L", data: Uint8Array.of(0x2f, 0, 0, 0, 0x10) }]);
+    await writeFile(join(directory, "image.webp"), singlePixelWebp);
+    await writeFile(join(directory, "magick"), `#!/bin/sh
+set -eu
+directory=\$(dirname "\$0")
+printf '%s\\n' "\$*" >> "\$directory/argv.log"
+case "\$1 \${2:-}" in
+  "-version ") printf '%s\\n' 'Version: ImageMagick 7.1.2-test' ;;
+  "-list format") printf '%s\\n' 'PNG PNG rw-' 'WEBP WEBP rw-' ;;
+  "png:- -colorspace")
+    cat > "\$directory/capture.png"
+    if [ -e "\$directory/hold" ]; then
+      : > "\$directory/ready"
+      exec /bin/sleep 10
+    fi
+    cat "\$directory/image.webp" ;;
+  "webp:- -format") cat >/dev/null; printf '%s' 'WEBP 1 1 srgba' ;;
+  *) exit 79 ;;
+esac
+`, { mode: 0o700 });
+    process.env.PATH = `${directory}${delimiter}${previousPath ?? ""}`;
+    return await callback(directory);
+  } finally {
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+describe("versioned WebP process boundary", () => {
+  it("preserves v1/v2 argv and sends only bounded PNG bytes on the v3 path", async () => {
+    await withPngTransportProbe(async directory => {
+      const source = tinyPng();
+      for (const [sharp, filter] of [[false, "Lanczos"], [true, "Lanczos"], [true, "Box"]] as const) {
+        await writeFile(join(directory, "argv.log"), "");
+        const current = await renderSceneWebp(source, 1, 1, 94, sharp, filter);
+        const calls = (await readFile(join(directory, "argv.log"), "utf8")).trimEnd().split("\n");
+        expect(calls.slice(0, 4)).toEqual(["-version", "-list format", "-version", "-list format"]);
+        expect(calls[5]).toBe("webp:- -format %m %w %h %[channels] info:-");
+        expect(calls).toHaveLength(6);
+        const line = calls[4];
+        expect(line).toBe(`png:- -colorspace sRGB -filter ${filter} -resize 1x1 -gravity center -background none -extent 1x1 -strip -depth 8 -quality 94 -define webp:method=6${sharp ? " -define webp:use-sharp-yuv=true" : ""} webp:-`);
+        expect(current.recipe.schemaVersion).toBe(sharp ? 2 : 1);
+        expect(await readFile(join(directory, "capture.png"))).toEqual(Buffer.from(source));
+      }
+      await writeFile(join(directory, "argv.log"), "");
+      const area = await renderSceneWebpArea(source, { width: 1, height: 1 });
+      expect(area.recipe.schemaVersion).toBe(3);
+      expect((await readFile(join(directory, "argv.log"), "utf8")).trimEnd().split("\n")).toEqual([
+        "-version",
+        "-list format",
+        "png:- -colorspace sRGB -strip -depth 8 -quality 94 -define webp:method=6 -define webp:use-sharp-yuv=true webp:-",
+        "webp:- -format %m %w %h %[channels] info:-",
+      ]);
+      expect(decodeStrictPng(await readFile(join(directory, "capture.png")), 1, 1).rgba8)
+        .toEqual(Uint8Array.of(240, 32, 16, 128));
+    });
+  });
+
+  it("keeps pre-abort and transform deadline failures before encoder invocation", async () => {
+    await withPngTransportProbe(async directory => {
+      const log = join(directory, "argv.log");
+      const source = tinyPng();
+      await writeFile(log, "");
+      await expect(renderSceneWebpArea(source, { width: 1, height: 1, signal: AbortSignal.abort() }))
+        .rejects.toMatchObject({ code: "PROCESS_CANCELLED" });
+      expect(await readFile(log, "utf8")).toBe("");
+      let tick = 0;
+      const deadline = vi.spyOn(performance, "now").mockImplementation(() => tick += 20_000);
+      try {
+        await expect(renderSceneWebpArea(source, { width: 1, height: 1 })).rejects.toMatchObject({ code: "PROCESS_TIMEOUT" });
+      } finally {
+        deadline.mockRestore();
+      }
+      expect(await readFile(log, "utf8")).toBe("-version\n-list format\n");
+    });
+  });
+
+  it("cancels an active Area encoder after the PNG reaches the process", async () => {
+    await withPngTransportProbe(async directory => {
+      await writeFile(join(directory, "hold"), "");
+      const controller = new AbortController();
+      const active = renderSceneWebpArea(tinyPng(), { width: 1, height: 1, signal: controller.signal });
+      const outcome = active.catch((error: unknown) => error);
+      const limit = Date.now() + 2000;
+      try {
+        for (;;) {
+          try { await access(join(directory, "ready")); break; } catch {
+            if (Date.now() >= limit) throw new Error("Test encoder did not receive its PNG.");
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
+        }
+      } finally {
+        controller.abort();
+        expect(await outcome).toMatchObject({ code: "PROCESS_CANCELLED" });
+      }
+    });
+  });
+});
+
+describe("Area PNG handoff structure", () => {
+  it.each([[1, 1], [5, 3], [3, 4]] as const)("round-trips a fixed %s × %s RGBA layout", (width, height) => {
+    const rgba = Uint8Array.from({ length: width * height * 4 }, (_, index) => index % 4 === 3
+      ? [0, 20, 255, 176][Math.floor(index / 4) % 4]!
+      : (index * 37 + Math.floor(index / 4)) & 255);
+    const png = encodeAreaPng(rgba, width, height);
+    expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    const chunks = pngChunks(png);
+    expect(chunks.map(chunk => chunk.type)).toEqual(["IHDR", "IDAT", "IEND"]);
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(width);
+    header.writeUInt32BE(height, 4);
+    header.set([8, 6], 8);
+    expect(chunks[0]!.data).toEqual(new Uint8Array(header));
+    expect(inflateSync(chunks[1]!.data).filter((_byte, index) => index % (width * 4 + 1) === 0))
+      .toEqual(Buffer.alloc(height));
+    expect(decodeStrictPng(png, width, height).rgba8).toEqual(rgba);
+    expect(() => decodeStrictPng(corruptChunkCrc(png, 1))).toThrow(/CRC/u);
+  });
+
+  it("classifies compressed handoff overflow separately from an invalid layout", () => {
+    expect(() => encodeAreaPng(Uint8Array.of(10, 15, 20, 255), 1, 1, 58))
+      .toThrow(expect.objectContaining({ code: "PROCESS_OUTPUT_LIMIT" }));
+    expect(() => encodeAreaPng(Uint8Array.of(10, 15, 20), 1, 1))
+      .toThrow(expect.objectContaining({ code: "SOURCE_INVALID" }));
+  });
 });

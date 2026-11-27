@@ -201,6 +201,16 @@ chroma uses recipe version 2. Retain that recipe with the matching PNG
 to replay it with `tfsb illustration export`. Box recipes require a
 Stellar Burst version that admits Box; older verifiers reject that filter.
 
+Use `--output-width 384 --resample area` to opt in to alpha-weighted
+exact-area downsampling with sharp WebP chroma. This fills the target
+with the entire reviewed raster, rounds height once, and emits an
+independently versioned scene export recipe. An intermediate PNG larger than 32 MiB
+refuses before encoding. Area can reduce ringing
+and file size on transparent artwork. Lanczos preserves a sharper
+appearance in some comparisons and remains the default. The generic
+illustration derivative commands still consume the existing v1 and v2
+recipes.
+
 To reopen the reviewed SVG for editing, pass the matching digest to
 `scene import-svg`. Compile edits to a new SVG and export against its
 new digest. Reviewed import and export recognize spaced and compact
