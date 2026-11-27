@@ -12,7 +12,7 @@ test("transparent editable SVG preserves alpha in Standard and Sharp WebP", asyn
   const pixels = new Uint8Array(width * height * 4);
   for (let y = 12; y < 84; y += 1) {
     for (let x = 8; x < 56; x += 1) {
-      const color = x < 32 ? [48, 96, 224, 128] : [224, 96, 48, 255];
+      const color = x < 31 ? [48, 96, 224, 128] : [224, 96, 48, 255];
       pixels.set(color, (y * width + x) * 4);
     }
   }
@@ -82,11 +82,35 @@ test("transparent editable SVG preserves alpha in Standard and Sharp WebP", asyn
     Math.max(0, Math.min((pixel + 1) * 8, end * 5) - Math.max(pixel * 8, start * 5));
   const expectedAreaAlpha = Buffer.from(Array.from({ length: 40 * 60 }, (_, offset) => {
     const x = offset % 40, y = Math.floor(offset / 40);
-    const opacity = overlap(x, 8, 32) * 128 + overlap(x, 32, 56) * 255;
+    const opacity = overlap(x, 8, 31) * 128 + overlap(x, 31, 56) * 255;
     return Math.round(opacity * overlap(y, 12, 84) / 64);
   }));
   const areaPixels = await render(page, "/area.webp", 40, 60, null);
   expect(alpha(areaPixels)).toEqual(expectedAreaAlpha);
+
+  const lossless = await scene([
+    "export-webp", "source.svg", "--expect-svg-digest", svgDigest,
+    "--output-width", "38", "--resample", "area", "--quality", "100", "--output", "area-lossless.webp",
+  ]);
+  const losslessWebp = await readFile(info.outputPath("area-lossless.webp"));
+  expect(lossless).toMatchObject({
+    svgDigest, pngDigest: raster.pngDigest,
+    recipe: { output: { width: 38, height: 57, resample: "area-srgb-alpha-weighted-v1" } },
+  });
+  await page.route("http://alpha.test/area-lossless.webp", route =>
+    route.fulfill({ contentType: "image/webp", body: losslessWebp }));
+  const areaLossless = await render(page, "/area-lossless.webp", 38, 57, null);
+  // Column 18 spans both bands. Their distinct opacities give RGB
+  // [179, 96, 93] with weighting, versus [153, 96, 119] without it.
+  for (let y = 7; y < 50; y += 1) {
+    const offset = (y * 38 + 18) * 4;
+    expect(areaLossless[offset + 3], `edge alpha at row ${y}`).toBe(y === 7 || y === 49 ? 178 : 203);
+    for (const [channel, expected] of [179, 96, 93].entries()) {
+      // Browser canvas premultiplication can round the decoded color by one.
+      expect(Math.abs(areaLossless.readUInt8(offset + channel) - expected), `edge channel ${channel} at row ${y}`)
+        .toBeLessThanOrEqual(1);
+    }
+  }
   const mobilePixels = await render(page, "/mobile.webp", 32, 48, null);
   // Sample the flat bands and the far margin outside the Lanczos edge.
   expect(([[0, 0], [8, 24], [24, 24], [31, 47]] as const).map(([x, y]) =>
