@@ -107,7 +107,7 @@ test("transparent editable SVG preserves alpha in Standard and Sharp WebP", asyn
     expect(areaLossless[offset + 3], `edge alpha at row ${y}`).toBe(y === 7 || y === 49 ? 178 : 203);
     for (const [channel, expected] of [179, 96, 93].entries()) {
       // Browser canvas premultiplication can round the decoded color by one.
-      expect(Math.abs(areaLossless[offset + channel] - expected), `edge channel ${channel} at row ${y}`)
+      expect(Math.abs(areaLossless.readUInt8(offset + channel) - expected), `edge channel ${channel} at row ${y}`)
         .toBeLessThanOrEqual(1);
     }
   }
