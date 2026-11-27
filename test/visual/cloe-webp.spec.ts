@@ -64,6 +64,29 @@ test("transparent editable SVG preserves alpha in Standard and Sharp WebP", asyn
   expect(mobile).toMatchObject({ pngDigest: raster.pngDigest, receipt: { width: 32, height: 48 } });
   await page.route("http://alpha.test/mobile.webp", async route =>
     route.fulfill({ contentType: "image/webp", body: await readFile(info.outputPath("mobile.webp")) }));
+  const area = await scene([
+    "export-webp", "source.svg", "--expect-svg-digest", svgDigest,
+    "--output-width", "40", "--resample", "area", "--output", "area.webp",
+  ]);
+  const areaWebp = await readFile(info.outputPath("area.webp"));
+  expect(area).toMatchObject({
+    svgDigest, pngDigest: raster.pngDigest,
+    recipe: { schemaVersion: 3, output: { width: 40, height: 60, resample: "area-srgb-alpha-weighted-v1" } },
+    receipt: { outputSha256: `sha256:${createHash("sha256").update(areaWebp).digest("hex")}` },
+  });
+  await page.route("http://alpha.test/area.webp", route =>
+    route.fulfill({ contentType: "image/webp", body: areaWebp }));
+  // Each output sample spans eight fifths of a source pixel. Use integer
+  // fifths to intersect that footprint with the two known rectangle bands.
+  const overlap = (pixel: number, start: number, end: number) =>
+    Math.max(0, Math.min((pixel + 1) * 8, end * 5) - Math.max(pixel * 8, start * 5));
+  const expectedAreaAlpha = Buffer.from(Array.from({ length: 40 * 60 }, (_, offset) => {
+    const x = offset % 40, y = Math.floor(offset / 40);
+    const opacity = overlap(x, 8, 32) * 128 + overlap(x, 32, 56) * 255;
+    return Math.round(opacity * overlap(y, 12, 84) / 64);
+  }));
+  const areaPixels = await render(page, "/area.webp", 40, 60, null);
+  expect(alpha(areaPixels)).toEqual(expectedAreaAlpha);
   const mobilePixels = await render(page, "/mobile.webp", 32, 48, null);
   // Sample the flat bands and the far margin outside the Lanczos edge.
   expect(([[0, 0], [8, 24], [24, 24], [31, 47]] as const).map(([x, y]) =>
@@ -550,6 +573,39 @@ for (const detail of [null, "--high-detail", "--native-detail"] as const) {
         });
         expect(narrow.receipt.recipeDigest).toBe(narrow.recipe.recipeDigest);
         expect(narrow.recipe.recipeDigest).not.toBe(direct.recipe.recipeDigest);
+        const areaArgs = [
+          "export-webp", "cloe.svg", "--expect-svg-digest", sha256(svg),
+          "--output-width", "384", "--resample", "area",
+        ];
+        const { data: area } = await scene([...areaArgs, "--output", "area.webp"]);
+        const areaWebp = await readFile(info.outputPath("area.webp"));
+        expect(area).toMatchObject({
+          svgDigest: rasterized.svgDigest, pngDigest: rasterized.pngDigest,
+          rendererBuildDigest: rasterized.rendererBuildDigest, rasterWidth: width, rasterHeight: height,
+          recipe: {
+            schemaVersion: 3, sourceSha256: rasterized.pngDigest, sourceWidth: width, sourceHeight: height,
+            output: { width: 384, height: 576, resample: "area-srgb-alpha-weighted-v1", chroma: "sharp-yuv" },
+          },
+          receipt: { width: 384, height: 576, outputSha256: sha256(areaWebp) },
+        });
+        expect(area.receipt.recipeDigest).toBe(area.recipe.recipeDigest);
+        const { data: areaRepeat } = await scene([...areaArgs, "--output", "area-repeat.webp"]);
+        expect(areaRepeat.receipt).toEqual(area.receipt);
+        expect(await readFile(info.outputPath("area-repeat.webp"))).toEqual(areaWebp);
+        expect(await readFile(info.outputPath("cloe.svg"))).toEqual(svg);
+        await page.route("http://cloe.test/area.webp", route =>
+          route.fulfill({ contentType: "image/webp", body: areaWebp }));
+        const areaPixels = await render(page, "/area.webp", 384, 576);
+        const areaReference = await render(page, "/reference.webp", 384, 576);
+        const areaErrors = compareCloe(areaReference, areaPixels, 384, 576);
+        for (const [region, { mean, severe }] of Object.entries(areaErrors)) {
+          expect(mean, `Area 384px ${region} mean RGB error`).toBeLessThan(13);
+          expect(severe, `Area 384px ${region} large-error rate`).toBeLessThan(0.08);
+        }
+        await info.attach("area-webp-receipt-chain.json", {
+          body: JSON.stringify({ raster: rasterized, recipe: area.recipe, derivative: area.receipt, errors: areaErrors }),
+          contentType: "application/json",
+        });
         const clobber = await scene([
           "export-webp", "cloe.svg", "--output", "direct.webp", "--expect-svg-digest", sha256(svg),
         ], 1);
