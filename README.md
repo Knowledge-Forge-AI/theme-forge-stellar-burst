@@ -67,12 +67,58 @@ Each has its own artifacts, notices and qualification.
 
 The published npm 0.7.0 CLI supports scene compilation and SVG import.
 The registry release lacks `trace-png`, `trace-webp` and `export-webp`.
-Use a qualified engineering build, such as the exact Apple Silicon package
-and raster companion from [the PR #35 CI run][illustration-build].
-The workflow below uses that build's scene commands and requires the
-qualified encoder described below.
+For local development on Apple Silicon only, use the engineering package
+pair from [CI run 45964792765, attempt 2][illustration-build]. That run
+built merge-candidate commit `55a4583a8f570a0f2d56cb2755fa01574a30a723`
+(tree `282ee40e12621c8651b56e2e7aa33666adafb147`). Downloading GitHub
+Actions artifacts requires a signed-in GitHub account, and the artifacts
+expire. Download the `raster-companion-darwin-arm64` archive from that run.
+Before installing, check both tarballs against the values below and
+cross-check the archive's `artifact-manifest.json`.
 
-[illustration-build]: https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/actions/runs/45819597663
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `root-package.tgz` | 739,726 | `44fe666e7217c1204aa695b63a6f5e6baccd98ed963712c71133c86af434b698` |
+| `raster-companion.tgz` | 20,809 | `0ae938ea7e97827898018130919dd7ad1c2717b2b04e09aa3b499adec2f3a2df` |
+
+```sh
+shasum -a 256 root-package.tgz raster-companion.tgz
+```
+
+This build and the published release both report version 0.7.0, so
+`tfsb --version` can't tell them apart. The tarball hashes identify this
+build.
+
+Install both tarballs in an empty working directory with Node.js 22 or
+later, and put that directory's `node_modules/.bin` at the front of the
+command path:
+
+```sh
+npm install --ignore-scripts ./root-package.tgz ./raster-companion.tgz
+export PATH="$PWD/node_modules/.bin:$PATH"
+command -v tfsb
+```
+
+`command -v tfsb` must print the path inside this directory. If it points elsewhere, use `./node_modules/.bin/tfsb` explicitly.
+
+The pair's qualification installed its four pinned dependencies offline,
+from archives checked against lockfile integrities: `@xmldom/xmldom`
+0.9.12, `fflate` 0.8.3, `smol-toml` 1.9.1 and `@resvg/resvg-wasm` 2.6.2.
+The tarballs include no lockfile. The documented install also passed
+with a fresh cache and the public npm registry. Its resulting lockfile
+recorded identical versions and integrities for all four dependencies.
+
+The pair was verified with ImageMagick 7.1.2-23 as the `magick`
+encoder. It reproduced SVG import, compilation and WebP export byte for
+byte, including full-size, 512 px and Sharp 98 outputs. Other ImageMagick
+or libwebp builds can produce different WebP bytes. Separate tests on
+the same install traced Cloe's full-frame WebP, reopened and revised
+the SVG, and traced a transparent Hikari PNG. Both tests produced WebP
+from the compiled SVG. This installation replay covers Apple Silicon.
+
+No published release includes this scene workflow yet.
+
+[illustration-build]: https://github.com/Knowledge-Forge-AI/theme-forge-stellar-burst/actions/runs/45964792765/attempts/2
 
 Keep the reviewed, full-artboard SVG as the illustration source. An
 editable scene JSON file lets you revise paths or append a named group
